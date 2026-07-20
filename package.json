@@ -8,9 +8,9 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --publish never",
-    "build:win": "electron-builder --win portable",
-    "build:linux": "electron-builder --linux AppImage",
-    "build:mac": "electron-builder --mac dmg"
+    "build:win": "electron-builder --win portable --publish never",
+    "build:linux": "electron-builder --linux AppImage --publish never",
+    "build:mac": "electron-builder --mac dmg --publish never"
   },
   "devDependencies": {
     "electron": "^30.0.0",
