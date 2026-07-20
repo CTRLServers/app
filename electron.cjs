@@ -388,5 +388,4 @@ ipcMain.handle('sftp-disconnect', async (event, id) => {
 app.whenReady().then(() => {
   createwindow();
   const win = BrowserWindow.getAllWindows()[0];
-  if (win) win.webContents.openDevTools();
 });
