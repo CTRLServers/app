@@ -24,7 +24,8 @@ jobs:
       - run: npm run build:win
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/**
+          files: |
+            dist/*.exe
   linux:
     needs: release
     runs-on: ubuntu-latest
@@ -37,7 +38,8 @@ jobs:
       - run: npm run build:linux
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/**
+          files: |
+            dist/*.AppImage
   mac:
     needs: release
     runs-on: macos-latest
@@ -50,4 +52,5 @@ jobs:
       - run: npm run build:mac
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/**
+          files: |
+            dist/*.dmg
