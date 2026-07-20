@@ -2,13 +2,13 @@ const Docker = {
   server: null,
   loading: false,
   installed: false,
-  activetab: 'containers',
+  activeTab: 'containers',
   containers: [],
   images: [],
   volumes: [],
 
   async load() {
-    this.server = App.currentserver;
+    this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
 
     this.loading = true;
@@ -16,7 +16,7 @@ const Docker = {
 
     try {
       const check = await this.exec('command -v docker && docker --version');
-      this.installed = check.exitcode === 0 && check.stdout.includes('Docker');
+      this.installed = check.exitCode === 0 && check.stdout.includes('Docker');
       if (this.installed) {
         await this.fetchall();
       }
@@ -39,7 +39,7 @@ const Docker = {
   async fetchcontainers() {
     this.containers = [];
     const r = await this.exec('docker ps -a --format "{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|{{.Size}}" 2>/dev/null');
-    if (r.exitcode !== 0 || !r.stdout.trim()) return;
+    if (r.exitCode !== 0 || !r.stdout.trim()) return;
     for (const line of r.stdout.split('\n')) {
       const p = line.split('|');
       if (p.length < 4) continue;
@@ -54,7 +54,7 @@ const Docker = {
   async fetchimages() {
     this.images = [];
     const r = await this.exec('docker images --format "{{.ID}}|{{.Repository}}|{{.Tag}}|{{.Size}}|{{.CreatedSince}}" 2>/dev/null');
-    if (r.exitcode !== 0 || !r.stdout.trim()) return;
+    if (r.exitCode !== 0 || !r.stdout.trim()) return;
     for (const line of r.stdout.split('\n')) {
       const p = line.split('|');
       if (p.length < 3) continue;
@@ -67,7 +67,7 @@ const Docker = {
   async fetchvolumes() {
     this.volumes = [];
     const r = await this.exec('docker volume ls --format "{{.Name}}|{{.Driver}}" 2>/dev/null');
-    if (r.exitcode !== 0 || !r.stdout.trim()) return;
+    if (r.exitCode !== 0 || !r.stdout.trim()) return;
     for (const line of r.stdout.split('\n')) {
       const p = line.split('|');
       if (p.length < 2) continue;
@@ -105,27 +105,27 @@ const Docker = {
       port: this.server.port || 22,
       username: this.server.username || 'root'
     };
-    if (this.server.authtype === 'key' && this.server.privatekey) {
-      cfg.authtype = 'privatekey';
-      cfg.privatekey = this.server.privatekey;
+    if (this.server.authType === 'key' && this.server.privateKey) {
+      cfg.authType = 'privateKey';
+      cfg.privateKey = this.server.privateKey;
     } else {
-      cfg.authtype = 'password';
+      cfg.authType = 'password';
       cfg.password = this.server.password || '';
     }
-    const isroot = (this.server.username || 'root') === 'root';
-    if (isroot) return await window.electronapi.sshexec(cfg, command);
+    const isRoot = (this.server.username || 'root') === 'root';
+    if (isRoot) return await window.electronAPI.sshexec(cfg, command);
     const pass = (this.server.password || '').replace(/'/g, "'\\''");
     const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronapi.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
   },
 
   setactivetab(tab) {
-    this.activetab = tab;
+    this.activeTab = tab;
     this.render();
   },
 
   render() {
-    const el = Utils.el('tabdocker');
+    const el = Utils.el('tabDocker');
     if (!el) return;
 
     if (this.loading) {
@@ -134,7 +134,7 @@ const Docker = {
     }
 
     if (!this.installed) {
-      el.innerHTML = `<div class="pkg-container"><div class="pkg-os-banner"><div class="pkg-os-info"><svg width="32" height="32" viewbox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><h3>Docker is not installed</h3></div></div></div>`;
+      el.innerHTML = `<div class="pkg-container"><div class="pkg-os-banner"><div class="pkg-os-info"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><h3>Docker is not installed</h3></div></div></div>`;
       return;
     }
 
@@ -149,18 +149,18 @@ const Docker = {
       </div>
 
       <div class="dkr-tabs">
-        <button class="dkr-tab ${this.activetab === 'containers' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('containers')">Containers</button>
-        <button class="dkr-tab ${this.activetab === 'images' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('images')">Images</button>
-        <button class="dkr-tab ${this.activetab === 'volumes' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('volumes')">Volumes</button>
+        <button class="dkr-tab ${this.activeTab === 'containers' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('containers')">Containers</button>
+        <button class="dkr-tab ${this.activeTab === 'images' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('images')">Images</button>
+        <button class="dkr-tab ${this.activeTab === 'volumes' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('volumes')">Volumes</button>
       </div>`;
 
-    if (this.activetab === 'containers') {
+    if (this.activeTab === 'containers') {
       html += `<div class="dkr-list">`;
       for (const c of this.containers) {
-        const statusclass = c.running ? 'svc-active' : 'svc-inactive';
+        const statusClass = c.running ? 'svc-active' : 'svc-inactive';
         html += `<div class="dkr-card">
           <div class="dkr-card-main">
-            <div class="svc-status-dot ${statusclass}"></div>
+            <div class="svc-status-dot ${statusClass}"></div>
             <div class="dkr-card-info">
               <div class="dkr-card-name">${Utils.escape(c.name)}</div>
               <div class="dkr-card-meta">
@@ -183,7 +183,7 @@ const Docker = {
       html += '</div>';
     }
 
-    if (this.activetab === 'images') {
+    if (this.activeTab === 'images') {
       html += `<div class="dkr-list">`;
       for (const img of this.images) {
         html += `<div class="dkr-card">
@@ -205,7 +205,7 @@ const Docker = {
       html += '</div>';
     }
 
-    if (this.activetab === 'volumes') {
+    if (this.activeTab === 'volumes') {
       html += `<div class="dkr-list">`;
       for (const v of this.volumes) {
         html += `<div class="dkr-card">

@@ -10,7 +10,7 @@ let sshIdCounter = 0;
 const sftpConnections = new Map();
 let sftpIdCounter = 0;
 
-function createWindow() {
+function createwindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -85,7 +85,7 @@ ipcMain.handle('ws-close', async (event, id) => {
 });
 
 ipcMain.handle('open-external', async (event, url) => {
-  await shell.openExternal(url);
+  await shell.openexternal(url);
 });
 
 ipcMain.handle('ssh-connect', async (event, config) => {
@@ -226,7 +226,7 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
   });
 });
 
-function buildSFTPConfig(config) {
+function buildsftpconfig(config) {
   const connectConfig = {
     host: config.host,
     port: parseInt(config.port) || 22,
@@ -254,7 +254,7 @@ ipcMain.handle('sftp-connect', async (event, config) => {
       });
     });
     conn.on('error', (err) => { reject(err); });
-    conn.connect(buildSFTPConfig(config));
+    conn.connect(buildsftpconfig(config));
   });
 });
 
@@ -386,5 +386,7 @@ ipcMain.handle('sftp-disconnect', async (event, id) => {
 });
 
 app.whenReady().then(() => {
-  createWindow();
+  createwindow();
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) win.webContents.openDevTools();
 });

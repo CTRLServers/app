@@ -56,7 +56,7 @@ const Utils = {
 
     let result = '';
     let i = 0;
-    let openspans = 0;
+    let openSpans = 0;
     while (i < str.length) {
       if (str[i] === '\x1b' && str[i + 1] === '[') {
         let j = i + 2;
@@ -68,15 +68,15 @@ const Utils = {
           i = j + 1;
           if (cmd === 'm') {
             if (params.length === 0 || params.includes(0)) {
-              while (openspans > 0) { result += '</span>'; openspans--; }
+              while (openSpans > 0) { result += '</span>'; openSpans--; }
             } else {
               for (const code of params) {
-                if (code === 1) { result += '<span style="font-weight:bold">'; openspans++; }
-                else if (code === 3) { result += '<span style="font-style:italic">'; openspans++; }
-                else if (code === 4) { result += '<span style="text-decoration:underline">'; openspans++; }
-                else if (code >= 30 && code <= 37) { result += `<span style="color:${colors[code - 30]}">`; openspans++; }
-                else if (code >= 90 && code <= 97) { result += `<span style="color:${bright[code - 90]}">`; openspans++; }
-                else if (code >= 40 && code <= 47) { result += `<span style="background-color:${colors[code - 40]}">`; openspans++; }
+                if (code === 1) { result += '<span style="font-weight:bold">'; openSpans++; }
+                else if (code === 3) { result += '<span style="font-style:italic">'; openSpans++; }
+                else if (code === 4) { result += '<span style="text-decoration:underline">'; openSpans++; }
+                else if (code >= 30 && code <= 37) { result += `<span style="color:${colors[code - 30]}">`; openSpans++; }
+                else if (code >= 90 && code <= 97) { result += `<span style="color:${bright[code - 90]}">`; openSpans++; }
+                else if (code >= 40 && code <= 47) { result += `<span style="background-color:${colors[code - 40]}">`; openSpans++; }
               }
             }
           }
@@ -90,7 +90,7 @@ const Utils = {
       result += esc(str[i]);
       i++;
     }
-    while (openspans > 0) { result += '</span>'; openspans--; }
+    while (openSpans > 0) { result += '</span>'; openSpans--; }
     return result;
   }
 };

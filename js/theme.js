@@ -1,14 +1,14 @@
 const Theme = {
   init() {
     const theme = localStorage.getItem('ctrl_theme') || 'dark';
-    document.documentelement.setAttribute('data-theme', theme);
-    Utils.el('themetoggle').addEventListener('click', () => this.toggle());
+    document.documentElement.setAttribute('data-theme', theme);
+    Utils.el('themeToggle').addEventListener('click', () => this.toggle());
   },
 
   toggle() {
-    const current = document.documentelement.getAttribute('data-theme');
+    const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
-    document.documentelement.setAttribute('data-theme', next);
+    document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('ctrl_theme', next);
     this.applytoeditor(next);
   },
@@ -20,6 +20,6 @@ const Theme = {
   },
 
   getcurrent() {
-    return document.documentelement.getAttribute('data-theme') || 'dark';
+    return document.documentElement.getAttribute('data-theme') || 'dark';
   }
 };

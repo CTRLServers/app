@@ -1,17 +1,17 @@
 const ServerActivity = {
   activities: [],
   page: 1,
-  totalpages: 1,
+  totalPages: 1,
   loading: false,
 
   async load(page = 1) {
-    const s = App.currentserver;
+    const s = App.currentServer;
     if (!s || s.type !== 'Pterodactyl') return;
     this.loading = true;
     this.page = page;
     this.render();
     try {
-      const data = await Api.fetchactivity(s.panelurl, s.apikey, s.uuid, page);
+      const data = await Api.fetchactivity(s.panelUrl, s.apiKey, s.uuid, page);
       if (data.data) {
         this.activities = data.data.map(item => ({
           id: item.attributes.timestamp,
@@ -24,7 +24,7 @@ const ServerActivity = {
         }));
       }
       if (data.meta && data.meta.pagination) {
-        this.totalpages = data.meta.pagination.total_pages || 1;
+        this.totalPages = data.meta.pagination.total_pages || 1;
       }
     } catch (e) {
       this.activities = [];
@@ -127,10 +127,10 @@ const ServerActivity = {
   },
 
   render() {
-    const container = Utils.el('tabactivity');
+    const container = Utils.el('tabActivity');
     if (!container) return;
     if (this.loading) {
-      container.innerHTML = '<div class="tab-loading"><svg class="spin" width="24" height="24" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg></div>';
+      container.innerHTML = '<div class="tab-loading"><svg class="spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg></div>';
       return;
     }
     if (!this.activities.length) {
@@ -139,20 +139,20 @@ const ServerActivity = {
     }
     let html = '<div class="activity-list">';
     for (const item of this.activities) {
-      let actorname = 'Unknown';
+      let actorName = 'Unknown';
       if (item.actor) {
         const a = item.actor.attributes || item.actor;
-        actorname = a.username || a.email || 'Unknown';
+        actorName = a.username || a.email || 'Unknown';
       }
       html += `
         <div class="activity-item">
           <div class="activity-icon">
-            <svg width="16" height="16" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
           <div class="activity-details">
             <div class="activity-desc">${Utils.escape(item.description)}</div>
             <div class="activity-meta">
-              <span class="activity-actor">${Utils.escape(actorname)}</span>
+              <span class="activity-actor">${Utils.escape(actorName)}</span>
               ${item.ip ? `<span class="activity-dot">&middot;</span><span class="activity-ip">${Utils.escape(item.ip)}</span>` : ''}
               <span class="activity-dot">&middot;</span>
               <span class="activity-time">${this.formatdate(item.timestamp)}</span>
@@ -162,17 +162,17 @@ const ServerActivity = {
         </div>`;
     }
     html += '</div>';
-    if (this.totalpages > 1) {
+    if (this.totalPages > 1) {
       html += `
         <div class="pagination">
           <button class="btn btn-secondary btn-sm" ${this.page <= 1 ? 'disabled' : ''} onclick="ServerActivity.load(${this.page - 1})">
-            <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
             Prev
           </button>
-          <span class="pagination-info">Page ${this.page} of ${this.totalpages}</span>
-          <button class="btn btn-secondary btn-sm" ${this.page >= this.totalpages ? 'disabled' : ''} onclick="ServerActivity.load(${this.page + 1})">
+          <span class="pagination-info">Page ${this.page} of ${this.totalPages}</span>
+          <button class="btn btn-secondary btn-sm" ${this.page >= this.totalPages ? 'disabled' : ''} onclick="ServerActivity.load(${this.page + 1})">
             Next
-            <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>`;
     }

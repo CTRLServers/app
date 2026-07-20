@@ -1,7 +1,7 @@
 const ServerConsole = {
-  wsid: null,
+  wsId: null,
   server: null,
-  serverinfo: null,
+  serverInfo: null,
   connected: false,
   _listenersSetup: false,
 
@@ -16,31 +16,31 @@ const ServerConsole = {
     }
     this.connect();
     this.loadserverinfo();
-    this._updateConsoleState();
-    this._updateButtons(server.status || 'offline');
+    this._updateconsolestate();
+    this._updatebuttons(server.status || 'offline');
   },
 
   destroy() {
-    if (this.wsid !== null) {
-      window.electronapi.closews(this.wsid);
-      this.wsid = null;
+    if (this.wsId !== null) {
+      window.electronAPI.closews(this.wsId);
+      this.wsId = null;
     }
     this.server = null;
-    this.serverinfo = null;
+    this.serverInfo = null;
     this.connected = false;
   },
 
   setuplisteners() {
-    window.electronapi.onwsmessage((id, data) => {
-      if (id !== this.wsid) return;
+    window.electronAPI.onwsmessage((id, data) => {
+      if (id !== this.wsId) return;
       try {
         const msg = JSON.parse(data);
         switch (msg.event) {
           case 'auth success':
             this.connected = true;
             this.log('system', 'Authenticated');
-            window.electronapi.sendws(this.wsid, JSON.stringify({ event: 'send logs', args: [null] }));
-            window.electronapi.sendws(this.wsid, JSON.stringify({ event: 'send stats', args: [null] }));
+            window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send logs', args: [null] }));
+            window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send stats', args: [null] }));
             break;
           case 'console output':
             if (msg.args && msg.args[0]) {
@@ -68,14 +68,14 @@ const ServerConsole = {
             break;
           case 'token expired':
             this.log('error', 'Token expired');
-            if (this.wsid !== null) window.electronapi.closews(this.wsid);
+            if (this.wsId !== null) window.electronAPI.closews(this.wsId);
             break;
         }
-      } catch (e) { /* silent */ }
+      } catch (e) {}
     });
 
-    window.electronapi.onwsclose((id, code, reason) => {
-      if (id !== this.wsid) return;
+    window.electronAPI.onwsclose((id, code, reason) => {
+      if (id !== this.wsId) return;
       this.connected = false;
       this.log('system', 'Disconnected (code: ' + code + ')');
       if (this.server) {
@@ -83,82 +83,82 @@ const ServerConsole = {
       }
     });
 
-    window.electronapi.onwserror((id, err) => {
-      if (id !== this.wsid) return;
+    window.electronAPI.onwserror((id, err) => {
+      if (id !== this.wsId) return;
       this.log('error', 'Error: ' + err);
     });
   },
 
   async loadserverinfo() {
     try {
-      this.serverinfo = await Api.getcachedserver(this.server.panelurl, this.server.apikey, this.server.uuid);
-    } catch (e) { /* silent */ }
+      this.serverInfo = await Api.getcachedserver(this.server.panelUrl, this.server.apiKey, this.server.uuid);
+    } catch (e) {}
   },
 
   updateresources(uuid) {
     const res = Servers.resources[uuid];
     if (!res) return;
     const server = this.server;
-    const memused = res.memory_bytes || 0;
-    const memtotal = (server.limits?.memory || 0) * 1024 * 1024;
-    const diskused = res.disk_bytes || 0;
-    const disktotal = (server.limits?.disk || 0) * 1024 * 1024;
+    const memUsed = res.memory_bytes || 0;
+    const memTotal = (server.limits?.memory || 0) * 1024 * 1024;
+    const diskUsed = res.disk_bytes || 0;
+    const diskTotal = (server.limits?.disk || 0) * 1024 * 1024;
 
-    Utils.el('rescpu').textContent = (res.cpu || 0).toFixed(1) + '%';
-    Utils.el('resram').textContent = Utils.formatbytes(memused) + ' / ' + Utils.formatmb(server.limits?.memory);
-    Utils.el('resdisk').textContent = Utils.formatbytes(diskused) + ' / ' + Utils.formatmb(server.limits?.disk);
-    Utils.el('resuptime').textContent = Utils.formatuptime(res.uptime);
+    Utils.el('resCpu').textContent = (res.cpu || 0).toFixed(1) + '%';
+    Utils.el('resRam').textContent = Utils.formatbytes(memUsed) + ' / ' + Utils.formatmb(server.limits?.memory);
+    Utils.el('resDisk').textContent = Utils.formatbytes(diskUsed) + ' / ' + Utils.formatmb(server.limits?.disk);
+    Utils.el('resUptime').textContent = Utils.formatuptime(res.uptime);
 
-    const cpupct = Math.min(res.cpu || 0, 100);
-    const rampct = memtotal > 0 ? Math.min((memused / memtotal) * 100, 100) : 0;
-    const diskpct = disktotal > 0 ? Math.min((diskused / disktotal) * 100, 100) : 0;
+    const cpuPct = Math.min(res.cpu || 0, 100);
+    const ramPct = memTotal > 0 ? Math.min((memUsed / memTotal) * 100, 100) : 0;
+    const diskPct = diskTotal > 0 ? Math.min((diskUsed / diskTotal) * 100, 100) : 0;
 
-    const cpuring = Utils.el('rescpuring');
-    const ramring = Utils.el('resramring');
-    const diskring = Utils.el('resdiskring');
-    if (cpuring) {
-      cpuring.style.strokedashoffset = 100 - cpupct;
-      cpuring.style.stroke = this._loadColor(cpupct);
+    const cpuRing = Utils.el('resCpuRing');
+    const ramRing = Utils.el('resRamRing');
+    const diskRing = Utils.el('resDiskRing');
+    if (cpuRing) {
+      cpuRing.style.strokeDashoffset = 100 - cpuPct;
+      cpuRing.style.stroke = this._loadcolor(cpuPct);
     }
-    if (ramring) {
-      ramring.style.strokedashoffset = 100 - rampct;
-      ramring.style.stroke = this._loadColor(rampct);
+    if (ramRing) {
+      ramRing.style.strokeDashoffset = 100 - ramPct;
+      ramRing.style.stroke = this._loadcolor(ramPct);
     }
-    if (diskring) {
-      diskring.style.strokedashoffset = 100 - diskpct;
-      diskring.style.stroke = this._loadColor(diskpct);
+    if (diskRing) {
+      diskRing.style.strokeDashoffset = 100 - diskPct;
+      diskRing.style.stroke = this._loadcolor(diskPct);
     }
 
-    const uptimering = Utils.el('resuptimering');
-    if (uptimering) {
-      uptimering.style.strokedashoffset = 0;
-      uptimering.style.stroke = 'var(--text-muted)';
+    const uptimeRing = Utils.el('resUptimeRing');
+    if (uptimeRing) {
+      uptimeRing.style.strokeDashoffset = 0;
+      uptimeRing.style.stroke = 'var(--text-muted)';
     }
   },
 
-  _loadColor(pct) {
+  _loadcolor(pct) {
     if (pct >= 80) return '#ef4444';
     if (pct >= 50) return '#f59e0b';
     return '#22c55e';
   },
 
   async connect() {
-    if (!this.server || !this.server.apikey || !this.server.panelurl) return;
+    if (!this.server || !this.server.apiKey || !this.server.panelUrl) return;
     if (this.connected) return;
 
     try {
-      const data = await Api.fetchwebsocket(this.server.panelurl, this.server.apikey, this.server.uuid);
+      const data = await Api.fetchwebsocket(this.server.panelUrl, this.server.apiKey, this.server.uuid);
       if (!data || !data.socket || !data.token) {
         this.log('error', 'Invalid WebSocket response');
         return;
       }
 
       this.log('system', 'Connecting...');
-      const id = await window.electronapi.connectwebsocket(data.socket, data.token, {
-        'Authorization': 'Bearer ' + this.server.apikey,
+      const id = await window.electronAPI.connectwebsocket(data.socket, data.token, {
+        'Authorization': 'Bearer ' + this.server.apiKey,
         'Accept': 'application/vnd.pterodactyl.v1+json'
-      }, this.server.panelurl);
-      this.wsid = id;
+      }, this.server.panelUrl);
+      this.wsId = id;
     } catch (e) {
       this.log('error', 'Failed: ' + e.message);
       if (this.server) {
@@ -180,9 +180,9 @@ const ServerConsole = {
       this.server.status = stats.state;
       Servers.save();
       this.updateresources(this.server.uuid);
-      this._updateConsoleState();
-      this._updateButtons(stats.state);
-    } catch (e) { /* silent */ }
+      this._updateconsolestate();
+      this._updatebuttons(stats.state);
+    } catch (e) {}
   },
 
   handlestatus(state) {
@@ -192,45 +192,45 @@ const ServerConsole = {
     }
     Servers.save();
     this.updateresources(this.server.uuid);
-    this._updateConsoleState();
-    this._updateButtons(state);
+    this._updateconsolestate();
+    this._updatebuttons(state);
   },
 
-  _updateButtons(state) {
-    const btnstart = Utils.el('btnstart');
-    const btnstop = Utils.el('btnstop');
-    const btnrestart = Utils.el('btnrestart');
-    const btnkill = Utils.el('btnkill');
-    if (!btnstart) return;
+  _updatebuttons(state) {
+    const btnStart = Utils.el('btnStart');
+    const btnStop = Utils.el('btnStop');
+    const btnRestart = Utils.el('btnRestart');
+    const btnKill = Utils.el('btnKill');
+    if (!btnStart) return;
 
     if (state === 'running') {
-      btnstart.disabled = true;
-      btnstop.disabled = false;
-      btnrestart.disabled = false;
-      btnkill.disabled = false;
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      btnRestart.disabled = false;
+      btnKill.disabled = false;
     } else if (state === 'starting' || state === 'stopping') {
-      btnstart.disabled = true;
-      btnstop.disabled = false;
-      btnrestart.disabled = true;
-      btnkill.disabled = false;
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      btnRestart.disabled = true;
+      btnKill.disabled = false;
     } else {
-      btnstart.disabled = false;
-      btnstop.disabled = true;
-      btnrestart.disabled = true;
-      btnkill.disabled = true;
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      btnRestart.disabled = true;
+      btnKill.disabled = true;
     }
   },
 
   send() {
-    const input = Utils.el('consoleinput');
+    const input = Utils.el('consoleInput');
     const cmd = input.value.trim();
-    if (!cmd || !this.connected || this.wsid === null) return;
-    window.electronapi.sendws(this.wsid, JSON.stringify({ event: 'send command', args: [cmd] }));
+    if (!cmd || !this.connected || this.wsId === null) return;
+    window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send command', args: [cmd] }));
     input.value = '';
   },
 
   log(type, text) {
-    const output = Utils.el('consoleoutput');
+    const output = Utils.el('consoleOutput');
     const line = document.createElement('div');
     line.className = 'console-line console-' + type;
     if (type === 'output') {
@@ -245,13 +245,13 @@ const ServerConsole = {
 
     if (type === 'output' && !this._hasOutput) {
       this._hasOutput = true;
-      this._updateConsoleState();
+      this._updateconsolestate();
     }
   },
 
-  _updateConsoleState() {
-    const empty = Utils.el('consoleempty');
-    const offline = Utils.el('consoleoffline');
+  _updateconsolestate() {
+    const empty = Utils.el('consoleEmpty');
+    const offline = Utils.el('consoleOffline');
     if (!empty || !offline) return;
 
     if (this._hasOutput) {
@@ -260,9 +260,9 @@ const ServerConsole = {
       return;
     }
 
-    const isoffline = this.server && this.server.status !== 'running';
-    empty.style.display = isoffline ? 'none' : '';
-    offline.style.display = isoffline ? '' : 'none';
+    const isOffline = this.server && this.server.status !== 'running';
+    empty.style.display = isOffline ? 'none' : '';
+    offline.style.display = isOffline ? '' : 'none';
   },
 
   async power(signal) {
@@ -277,10 +277,10 @@ const ServerConsole = {
   },
 
   sendpower(signal) {
-    if (this.connected && this.wsid !== null) {
-      window.electronapi.sendws(this.wsid, JSON.stringify({ event: 'set state', args: [signal] }));
+    if (this.connected && this.wsId !== null) {
+      window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'set state', args: [signal] }));
     } else {
-      Api.power(this.server.panelurl, this.server.apikey, this.server.uuid, signal);
+      Api.power(this.server.panelUrl, this.server.apiKey, this.server.uuid, signal);
     }
   },
 

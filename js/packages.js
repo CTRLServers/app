@@ -1,12 +1,12 @@
 const Packages = {
   server: null,
-  osid: null,
-  osname: null,
-  pkgmanager: null,
-  installedpackages: [],
-  allinstalledraw: [],
+  osId: null,
+  osName: null,
+  pkgManager: null,
+  installedPackages: [],
+  allInstalledRaw: [],
   loading: false,
-  showall: false,
+  showAll: false,
 
   PACKAGES: [
     { id: 'nginx', name: 'Nginx' },
@@ -143,16 +143,16 @@ const Packages = {
   },
 
   async load() {
-    this.server = App.currentserver;
+    this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
 
     this.loading = true;
-    this.showall = false;
+    this.showAll = false;
     this.render();
 
     try {
       await this.detectos();
-      if (this.pkgmanager) {
+      if (this.pkgManager) {
         await this.fetchinstalled();
       }
     } catch (e) {
@@ -165,46 +165,46 @@ const Packages = {
 
   async detectos() {
     const res = await this.exec('cat /etc/os-release 2>/dev/null');
-    this.osid = null;
-    this.osname = null;
-    this.pkgmanager = null;
+    this.osId = null;
+    this.osName = null;
+    this.pkgManager = null;
 
-    if (res.exitcode !== 0 || !res.stdout) return;
+    if (res.exitCode !== 0 || !res.stdout) return;
 
     for (const line of res.stdout.split('\n')) {
-      if (line.startsWith('ID=')) this.osid = line.slice(3).replace(/"/g, '').trim().toLowerCase();
-      if (line.startsWith('NAME=')) this.osname = line.slice(5).replace(/"/g, '').trim();
+      if (line.startsWith('ID=')) this.osId = line.slice(3).replace(/"/g, '').trim().toLowerCase();
+      if (line.startsWith('NAME=')) this.osName = line.slice(5).replace(/"/g, '').trim();
     }
 
-    if (this.osid === 'rhel') this.osid = 'rhel';
-    this.pkgmanager = this.OS_MAP[this.osid] || null;
+    if (this.osId === 'rhel') this.osId = 'rhel';
+    this.pkgManager = this.OS_MAP[this.osId] || null;
   },
 
   async fetchinstalled() {
-    const cmd = this.INSTALLED_CMD[this.pkgmanager];
-    if (!cmd) { this.installedpackages = []; this.allinstalledraw = []; return; }
+    const cmd = this.INSTALLED_CMD[this.pkgManager];
+    if (!cmd) { this.installedPackages = []; this.allInstalledRaw = []; return; }
 
     const res = await this.exec(cmd);
-    this.allinstalledraw = [];
-    this.installedpackages = [];
+    this.allInstalledRaw = [];
+    this.installedPackages = [];
 
-    if (res.exitcode === 0 && res.stdout) {
+    if (res.exitCode === 0 && res.stdout) {
       for (const line of res.stdout.split('\n')) {
         const trimmed = line.trim();
         if (!trimmed) continue;
-        this.allinstalledraw.push(trimmed);
+        this.allInstalledRaw.push(trimmed);
         const name = trimmed.split(/[\s-]/)[0] || trimmed.split(' ')[0];
-        if (name) this.installedpackages.push(name);
+        if (name) this.installedPackages.push(name);
       }
     }
   },
 
-  isinstalled(pkgid) {
-    if (!this.pkgmanager) return false;
-    const names = this.DETECT_NAMES[this.pkgmanager];
-    if (!names || !names[pkgid]) return false;
-    const target = names[pkgid].toLowerCase();
-    return this.installedpackages.some(p => p.toLowerCase() === target);
+  isinstalled(pkgId) {
+    if (!this.pkgManager) return false;
+    const names = this.DETECT_NAMES[this.pkgManager];
+    if (!names || !names[pkgId]) return false;
+    const target = names[pkgId].toLowerCase();
+    return this.installedPackages.some(p => p.toLowerCase() === target);
   },
 
   async exec(command) {
@@ -213,24 +213,24 @@ const Packages = {
       port: this.server.port || 22,
       username: this.server.username || 'root'
     };
-    if (this.server.authtype === 'key' && this.server.privatekey) {
-      cfg.authtype = 'privatekey';
-      cfg.privatekey = this.server.privatekey;
+    if (this.server.authType === 'key' && this.server.privateKey) {
+      cfg.authType = 'privateKey';
+      cfg.privateKey = this.server.privateKey;
     } else {
-      cfg.authtype = 'password';
+      cfg.authType = 'password';
       cfg.password = this.server.password || '';
     }
-    const isroot = (this.server.username || 'root') === 'root';
-    if (isroot) {
-      return await window.electronapi.sshexec(cfg, command);
+    const isRoot = (this.server.username || 'root') === 'root';
+    if (isRoot) {
+      return await window.electronAPI.sshexec(cfg, command);
     }
     const pass = (this.server.password || '').replace(/'/g, "'\\''");
     const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronapi.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
   },
 
   render() {
-    const tab = Utils.el('tabpackages');
+    const tab = Utils.el('tabPackages');
     if (!tab) return;
 
     if (this.loading) {
@@ -238,55 +238,55 @@ const Packages = {
       return;
     }
 
-    if (!this.pkgmanager) {
+    if (!this.pkgManager) {
       tab.innerHTML = `<div class="packages-unsupported">
-        <svg width="48" height="48" viewbox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <h3>Unable to detect package manager</h3>
-        <p>Detected OS: ${Utils.escape(this.osname || this.osid || 'Unknown')}</p>
+        <p>Detected OS: ${Utils.escape(this.osName || this.osId || 'Unknown')}</p>
         <p>Supported: Ubuntu, Debian, Mint, CentOS, RHEL, Rocky, AlmaLinux, Fedora, Arch, Alpine, Gentoo</p>
       </div>`;
       return;
     }
 
-    const oslabel = this.osname || (this.osid ? this.osid.charAt(0).toUpperCase() + this.osid.slice(1) : 'Unknown');
-    const displaylimit = 30;
-    const hasmore = this.allinstalledraw.length > displaylimit;
-    const visiblepkgs = this.showall ? this.allinstalledraw : this.allinstalledraw.slice(0, displaylimit);
+    const osLabel = this.osName || (this.osId ? this.osId.charAt(0).toUpperCase() + this.osId.slice(1) : 'Unknown');
+    const displayLimit = 30;
+    const hasMore = this.allInstalledRaw.length > displayLimit;
+    const visiblePkgs = this.showAll ? this.allInstalledRaw : this.allInstalledRaw.slice(0, displayLimit);
 
     let html = `<div class="packages-container">
       <div class="packages-card">
         <div class="packages-card-header">
           <div class="packages-card-title">
-            <svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             <h3>Installed Packages</h3>
           </div>
           <div class="packages-card-right">
-            <span class="packages-os-badge">${Utils.escape(oslabel)}</span>
-            <span class="packages-count-badge">${this.allinstalledraw.length}</span>
+            <span class="packages-os-badge">${Utils.escape(osLabel)}</span>
+            <span class="packages-count-badge">${this.allInstalledRaw.length}</span>
           </div>
         </div>
         <div class="packages-card-body">
-          <div class="installed-packages-grid" id="installedpkgsgrid">`;
+          <div class="installed-packages-grid" id="installedPkgsGrid">`;
 
-    for (const pkg of visiblepkgs) {
+    for (const pkg of visiblePkgs) {
       html += `<div class="pkg-chip">${Utils.escape(pkg)}</div>`;
     }
 
     html += '</div>';
 
-    if (hasmore && !this.showall) {
-      html += `<button class="btn btn-secondary btn-sm packages-show-more" onclick="Packages.showallpackages()">Show all ${this.allinstalledraw.length} packages</button>`;
+    if (hasMore && !this.showAll) {
+      html += `<button class="btn btn-secondary btn-sm packages-show-more" onclick="Packages.showallpackages()">Show all ${this.allInstalledRaw.length} packages</button>`;
     }
 
     html += `</div></div>
       <div class="packages-card">
         <div class="packages-card-header">
           <div class="packages-card-title">
-            <svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             <h3>Install Packages</h3>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="Packages.load()" title="Refresh">
-            <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           </button>
         </div>
         <div class="packages-card-body">
@@ -303,12 +303,12 @@ const Packages = {
 
     html += `</div>
           <div class="packages-install-actions">
-            <button class="btn btn-primary" id="pkginstallbtn" onclick="Packages.installselected()">
-              <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <button class="btn btn-primary" id="pkgInstallBtn" onclick="Packages.installselected()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Install Selected
             </button>
           </div>
-          <div id="pkginstalloutput" class="pkg-output" style="display:none;"></div>
+          <div id="pkgInstallOutput" class="pkg-output" style="display:none;"></div>
         </div>
       </div>
     </div>`;
@@ -317,10 +317,10 @@ const Packages = {
   },
 
   showallpackages() {
-    this.showall = true;
-    const grid = Utils.el('installedpkgsgrid');
+    this.showAll = true;
+    const grid = Utils.el('installedPkgsGrid');
     if (!grid) return;
-    grid.innerHTML = this.allinstalledraw.map(p => `<div class="pkg-chip">${Utils.escape(p)}</div>`).join('');
+    grid.innerHTML = this.allInstalledRaw.map(p => `<div class="pkg-chip">${Utils.escape(p)}</div>`).join('');
     const btn = grid.parentElement.querySelector('.packages-show-more');
     if (btn) btn.remove();
   },
@@ -330,15 +330,15 @@ const Packages = {
     if (!checks.length) return;
 
     const ids = Array.from(checks).map(c => c.value);
-    const cmds = ids.map(id => this.INSTALL[this.pkgmanager]?.[id]).filter(Boolean);
+    const cmds = ids.map(id => this.INSTALL[this.pkgManager]?.[id]).filter(Boolean);
     if (!cmds.length) return;
 
-    const output = Utils.el('pkginstalloutput');
+    const output = Utils.el('pkgInstallOutput');
     if (!output) return;
     output.style.display = '';
     output.innerHTML = '<div class="pkg-output-loading"><div class="spinner"></div><span>Installing packages...</span></div>';
 
-    const btn = Utils.el('pkginstallbtn');
+    const btn = Utils.el('pkgInstallBtn');
     if (btn) btn.disabled = true;
 
     try {
@@ -346,10 +346,10 @@ const Packages = {
       const res = await this.exec(combined);
 
       let html = '';
-      if (res.exitcode === 0) {
+      if (res.exitCode === 0) {
         html += '<div class="pkg-output-success">Packages installed successfully</div>';
       } else {
-        html += `<div class="pkg-output-error">Installation failed (exit code: ${res.exitcode})</div>`;
+        html += `<div class="pkg-output-error">Installation failed (exit code: ${res.exitCode})</div>`;
       }
       if (res.stdout && res.stdout.trim()) {
         html += `<pre class="pkg-output-pre">${Utils.escape(res.stdout.trim())}</pre>`;
@@ -359,7 +359,7 @@ const Packages = {
       }
       output.innerHTML = html;
 
-      if (res.exitcode === 0) {
+      if (res.exitCode === 0) {
         await this.fetchinstalled();
         this.render();
       }

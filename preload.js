@@ -23,7 +23,7 @@ ipcRenderer.on('ssh-close', (event, id) => {
   sshCallbacks.close.forEach(cb => cb(id));
 });
 
-contextBridge.exposeInMainWorld('electronapi', {
+contextBridge.exposeInMainWorld('electronAPI', {
   connectwebsocket: (url, token, headers, origin) => {
     return ipcRenderer.invoke('ws-connect', url, token, headers, origin);
   },

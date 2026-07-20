@@ -1,11 +1,11 @@
 const VPSConsole = {
   term: null,
-  fitaddon: null,
-  sshid: null,
+  fitAddon: null,
+  sshId: null,
   server: null,
   connected: false,
-  _dataListener: null,
-  _closeListener: null,
+  _datalistener: null,
+  _closelistener: null,
   _resizeObserver: null,
 
   init(server) {
@@ -13,7 +13,7 @@ const VPSConsole = {
     this.server = server;
     this.connected = false;
 
-    const container = Utils.el('vpsconsolewrap');
+    const container = Utils.el('vpsConsoleWrap');
     container.innerHTML = '';
 
     this.term = new Terminal({
@@ -21,8 +21,8 @@ const VPSConsole = {
         background: Theme.getcurrent() === 'dark' ? '#0a0a0a' : '#ffffff',
         foreground: Theme.getcurrent() === 'dark' ? '#e0e0e0' : '#1a1a1a',
         cursor: Theme.getcurrent() === 'dark' ? '#ffffff' : '#000000',
-        cursoraccent: Theme.getcurrent() === 'dark' ? '#0a0a0a' : '#ffffff',
-        selectionbackground: Theme.getcurrent() === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
+        cursorAccent: Theme.getcurrent() === 'dark' ? '#0a0a0a' : '#ffffff',
+        selectionBackground: Theme.getcurrent() === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
         black: '#000000',
         red: '#e06060',
         green: '#60d060',
@@ -31,63 +31,63 @@ const VPSConsole = {
         magenta: '#d060d0',
         cyan: '#50c0c0',
         white: '#d0d0d0',
-        brightblack: '#666666',
-        brightred: '#ff7070',
-        brightgreen: '#70ff70',
-        brightyellow: '#ffe070',
-        brightblue: '#70b0ff',
-        brightmagenta: '#ff70ff',
-        brightcyan: '#70ffff',
-        brightwhite: '#ffffff'
+        brightBlack: '#666666',
+        brightRed: '#ff7070',
+        brightGreen: '#70ff70',
+        brightYellow: '#ffe070',
+        brightBlue: '#70b0ff',
+        brightMagenta: '#ff70ff',
+        brightCyan: '#70ffff',
+        brightWhite: '#ffffff'
       },
-      fontfamily: 'Cascadia Code, Fira Code, JetBrains Mono, monospace',
-      fontsize: 14,
-      lineheight: 1.2,
-      cursorblink: true,
+      fontFamily: 'Cascadia Code, Fira Code, JetBrains Mono, monospace',
+      fontSize: 14,
+      lineHeight: 1.2,
+      cursorBlink: true,
       scrollback: 10000
     });
 
-    this.fitaddon = new FitAddon.FitAddon();
-    this.term.loadaddon(this.fitaddon);
+    this.fitAddon = new FitAddon.FitAddon();
+    this.term.loadAddon(this.fitAddon);
     this.term.open(container);
 
     setTimeout(() => {
-      this.fitaddon.fit();
+      this.fitAddon.fit();
       this.connect();
     }, 100);
 
-    this.term.ondata((data) => {
-      if (this.connected && this.sshid !== null) {
-        window.electronapi.sshdata(this.sshid, data);
+    this.term.onData((data) => {
+      if (this.connected && this.sshId !== null) {
+        window.electronAPI.sshdata(this.sshId, data);
       }
     });
 
-    this.term.onresize(({ cols, rows }) => {
-      if (this.sshid !== null) {
-        window.electronapi.sshresize(this.sshid, cols, rows);
+    this.term.onResize(({ cols, rows }) => {
+      if (this.sshId !== null) {
+        window.electronAPI.sshresize(this.sshId, cols, rows);
       }
     });
 
     this._resizeObserver = new ResizeObserver(() => {
-      if (this.fitaddon && this.term) {
-        this.fitaddon.fit();
+      if (this.fitAddon && this.term) {
+        this.fitAddon.fit();
       }
     });
     this._resizeObserver.observe(container);
 
-    this._dataListener = (id, data) => {
-      if (id !== this.sshid) return;
+    this._datalistener = (id, data) => {
+      if (id !== this.sshId) return;
       this.term.write(data);
     };
-    window.electronapi.onsshdata(this._dataListener);
+    window.electronAPI.onsshdata(this._datalistener);
 
-    this._closeListener = (id) => {
-      if (id !== this.sshid) return;
+    this._closelistener = (id) => {
+      if (id !== this.sshId) return;
       this.connected = false;
-      this.sshid = null;
+      this.sshId = null;
       this.term.writeln('\r\n\x1b[33mConnection closed.\x1b[0m');
     };
-    window.electronapi.onsshclose(this._closeListener);
+    window.electronAPI.onsshclose(this._closelistener);
 
     this.term.focus();
   },
@@ -103,22 +103,22 @@ const VPSConsole = {
       rows: this.term.rows
     };
 
-    if (this.server.authtype === 'key' && this.server.privatekey) {
-      config.authtype = 'privatekey';
-      config.privatekey = this.server.privatekey;
+    if (this.server.authType === 'key' && this.server.privateKey) {
+      config.authType = 'privateKey';
+      config.privateKey = this.server.privateKey;
     } else {
-      config.authtype = 'password';
+      config.authType = 'password';
       config.password = this.server.password || '';
     }
 
     this.term.writeln('\x1b[36mConnecting to ' + this.server.host + '...\x1b[0m');
 
     try {
-      this.sshid = await window.electronapi.sshconnect(config);
+      this.sshId = await window.electronAPI.sshconnect(config);
       this.connected = true;
       this.term.clear();
-      this.fitaddon.fit();
-      window.electronapi.sshresize(this.sshid, this.term.cols, this.term.rows);
+      this.fitAddon.fit();
+      window.electronAPI.sshresize(this.sshId, this.term.cols, this.term.rows);
     } catch (e) {
       this.term.writeln('\x1b[31mConnection failed: ' + (e.message || e) + '\x1b[0m');
     }
@@ -129,27 +129,27 @@ const VPSConsole = {
       this._resizeObserver.disconnect();
       this._resizeObserver = null;
     }
-    if (this._dataListener) {
-      window.electronapi.offsshdata(this._dataListener);
-      this._dataListener = null;
+    if (this._datalistener) {
+      window.electronAPI.offsshdata(this._datalistener);
+      this._datalistener = null;
     }
-    if (this._closeListener) {
-      window.electronapi.offsshclose(this._closeListener);
-      this._closeListener = null;
+    if (this._closelistener) {
+      window.electronAPI.offsshclose(this._closelistener);
+      this._closelistener = null;
     }
-    if (this.sshid !== null) {
-      window.electronapi.sshdisconnect(this.sshid);
-      this.sshid = null;
+    if (this.sshId !== null) {
+      window.electronAPI.sshdisconnect(this.sshId);
+      this.sshId = null;
     }
     if (this.term) {
       this.term.dispose();
       this.term = null;
     }
-    this.fitaddon = null;
+    this.fitAddon = null;
     this.connected = false;
     this.server = null;
 
-    const container = Utils.el('vpsconsolewrap');
+    const container = Utils.el('vpsConsoleWrap');
     if (container) container.innerHTML = '';
   }
 };

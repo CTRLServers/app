@@ -4,7 +4,7 @@ const Security = {
   data: null,
 
   async load() {
-    this.server = App.currentserver;
+    this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
 
     this.loading = true;
@@ -33,22 +33,22 @@ const Security = {
 
     const get = (i) => results[i].status === 'fulfilled' ? results[i].value.stdout.trim() : '';
 
-    const tcpports = this.parseports(get(0));
-    const udpports = this.parseports(get(1));
+    const tcpPorts = this.parseports(get(0));
+    const udpPorts = this.parseports(get(1));
     const fail2banRaw = get(2);
-    const sshconfig = get(3);
-    const lastlogins = this.parselast(get(4));
-    const failedlogins = this.parselast(get(5));
-    const firewallraw = get(6);
+    const sshConfig = get(3);
+    const lastLogins = this.parselast(get(4));
+    const failedLogins = this.parselast(get(5));
+    const firewallRaw = get(6);
 
     this.data = {
-      tcpports,
-      udpports,
-      fail2ban: fail2banRaw.includes('FAIL2BAN_NOT_INSTALLED') ? null : this.parseFail2ban(fail2banRaw),
-      sshconfig: this.parsesshconfig(sshconfig),
-      lastlogins,
-      failedlogins,
-      firewallraw
+      tcpPorts,
+      udpPorts,
+      fail2ban: fail2banRaw.includes('FAIL2BAN_NOT_INSTALLED') ? null : this.parsefail2ban(fail2banRaw),
+      sshConfig: this.parsesshconfig(sshConfig),
+      lastLogins,
+      failedLogins,
+      firewallRaw
     };
   },
 
@@ -61,18 +61,18 @@ const Security = {
       const [proto, state, recv, send, local] = parts;
       if (!local) continue;
       const addr = local;
-      const lastcolon = addr.lastIndexOf(':');
-      if (lastcolon === -1) continue;
-      const port = addr.slice(lastcolon + 1).split('*')[0];
-      const host = addr.slice(0, lastcolon);
+      const lastColon = addr.lastIndexOf(':');
+      if (lastColon === -1) continue;
+      const port = addr.slice(lastColon + 1).split('*')[0];
+      const host = addr.slice(0, lastColon);
       const process = parts.find(p => p.startsWith('users:')) || '';
-      const procname = process.match(/\("([^"]+)"/)?.[1] || '';
-      ports.push({ port, host: host.replace('[', '').replace(']', ''), process: procname, state });
+      const procName = process.match(/\("([^"]+)"/)?.[1] || '';
+      ports.push({ port, host: host.replace('[', '').replace(']', ''), process: procName, state });
     }
     return ports.sort((a, b) => parseInt(a.port) - parseInt(b.port));
   },
 
-  parseFail2ban(output) {
+  parsefail2ban(output) {
     if (!output || output.includes('not installed')) return null;
     const lines = output.split('\n');
     const result = { jails: [], status: '' };
@@ -124,24 +124,24 @@ const Security = {
       port: this.server.port || 22,
       username: this.server.username || 'root'
     };
-    if (this.server.authtype === 'key' && this.server.privatekey) {
-      cfg.authtype = 'privatekey';
-      cfg.privatekey = this.server.privatekey;
+    if (this.server.authType === 'key' && this.server.privateKey) {
+      cfg.authType = 'privateKey';
+      cfg.privateKey = this.server.privateKey;
     } else {
-      cfg.authtype = 'password';
+      cfg.authType = 'password';
       cfg.password = this.server.password || '';
     }
-    const isroot = (this.server.username || 'root') === 'root';
-    if (isroot) {
-      return await window.electronapi.sshexec(cfg, command);
+    const isRoot = (this.server.username || 'root') === 'root';
+    if (isRoot) {
+      return await window.electronAPI.sshexec(cfg, command);
     }
     const pass = (this.server.password || '').replace(/'/g, "'\\''");
     const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronapi.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
   },
 
   render() {
-    const tab = Utils.el('tabsecurity');
+    const tab = Utils.el('tabSecurity');
     if (!tab) return;
 
     if (this.loading) {
@@ -161,13 +161,13 @@ const Security = {
         <div class="fw-card">
           <div class="fw-card-header">
             <h3>Open Ports (TCP)</h3>
-            <span class="packages-count-badge">${d.tcpports.length}</span>
+            <span class="packages-count-badge">${d.tcpPorts.length}</span>
           </div>
           <div class="fw-card-body">`;
 
-    if (d.tcpports.length) {
+    if (d.tcpPorts.length) {
       html += `<table class="fw-table"><thead><tr><th>Port</th><th>Bind</th><th>Process</th><th>State</th></tr></thead><tbody>`;
-      for (const p of d.tcpports) {
+      for (const p of d.tcpPorts) {
         html += `<tr>
           <td><code>${Utils.escape(p.port)}</code></td>
           <td><code>${Utils.escape(p.host)}</code></td>
@@ -185,13 +185,13 @@ const Security = {
         <div class="fw-card">
           <div class="fw-card-header">
             <h3>Open Ports (UDP)</h3>
-            <span class="packages-count-badge">${d.udpports.length}</span>
+            <span class="packages-count-badge">${d.udpPorts.length}</span>
           </div>
           <div class="fw-card-body">`;
 
-    if (d.udpports.length) {
+    if (d.udpPorts.length) {
       html += `<table class="fw-table"><thead><tr><th>Port</th><th>Bind</th><th>Process</th></tr></thead><tbody>`;
-      for (const p of d.udpports) {
+      for (const p of d.udpPorts) {
         html += `<tr>
           <td><code>${Utils.escape(p.port)}</code></td>
           <td><code>${Utils.escape(p.host)}</code></td>
@@ -210,19 +210,19 @@ const Security = {
         <div class="fw-card-header"><h3>SSH Configuration</h3></div>
         <div class="fw-card-body">`;
 
-    if (d.sshconfig) {
+    if (d.sshConfig) {
       html += '<div class="sec-config-list">';
       const labels = {
         'Port': 'SSH Port', 'PermitRootLogin': 'Root Login', 'PasswordAuthentication': 'Password Auth',
         'PubkeyAuthentication': 'Key Auth', 'MaxAuthTries': 'Max Auth Tries',
         'Protocol': 'Protocol', 'X11Forwarding': 'X11 Forwarding'
       };
-      for (const [key, val] of Object.entries(d.sshconfig)) {
-        const ison = val === 'yes' || val === 'on';
-        const isoff = val === 'no' || val === 'off';
+      for (const [key, val] of Object.entries(d.sshConfig)) {
+        const isOn = val === 'yes' || val === 'on';
+        const isOff = val === 'no' || val === 'off';
         html += `<div class="sec-config-row">
           <span class="sec-config-key">${labels[key] || key}</span>
-          <span class="sec-config-val ${isoff ? 'sec-warn' : ''}">${Utils.escape(val)}</span>
+          <span class="sec-config-val ${isOff ? 'sec-warn' : ''}">${Utils.escape(val)}</span>
         </div>`;
       }
       html += '</div>';
@@ -254,7 +254,7 @@ const Security = {
     } else {
       html += `<div class="sec-fail2ban-missing">
         <p>Fail2Ban is not installed</p>
-        <button class="btn btn-sm btn-secondary" onclick="Security.installFail2ban()">Install Fail2Ban</button>
+        <button class="btn btn-sm btn-secondary" onclick="Security.installfail2ban()">Install Fail2Ban</button>
       </div>`;
     }
 
@@ -265,9 +265,9 @@ const Security = {
         <div class="fw-card-header"><h3>Recent Logins</h3></div>
         <div class="fw-card-body">`;
 
-    if (d.lastlogins.length) {
+    if (d.lastLogins.length) {
       html += `<table class="fw-table"><thead><tr><th>User</th><th>Terminal</th><th>From</th><th>Time</th></tr></thead><tbody>`;
-      for (const l of d.lastlogins) {
+      for (const l of d.lastLogins) {
         html += `<tr>
           <td><strong>${Utils.escape(l.user)}</strong></td>
           <td>${Utils.escape(l.terminal)}</td>
@@ -286,9 +286,9 @@ const Security = {
         <div class="fw-card-header"><h3>Failed Login Attempts</h3></div>
         <div class="fw-card-body">`;
 
-    if (d.failedlogins.length) {
+    if (d.failedLogins.length) {
       html += `<table class="fw-table"><thead><tr><th>User</th><th>Terminal</th><th>From</th><th>Time</th></tr></thead><tbody>`;
-      for (const l of d.failedlogins) {
+      for (const l of d.failedLogins) {
         html += `<tr>
           <td><strong>${Utils.escape(l.user)}</strong></td>
           <td>${Utils.escape(l.terminal)}</td>
@@ -305,16 +305,16 @@ const Security = {
     tab.innerHTML = html;
   },
 
-  async installFail2ban() {
+  async installfail2ban() {
     Modal.confirm('Install Fail2Ban', 'Install Fail2Ban using the Packages tab?', async () => {
-      const server = App.currentserver;
+      const server = App.currentServer;
       if (server) {
         const cfg = {
           host: server.host, port: server.port || 22, username: server.username || 'root'
         };
-        if (server.authtype === 'key' && server.privatekey) { cfg.authtype = 'privatekey'; cfg.privatekey = server.privatekey; }
-        else { cfg.authtype = 'password'; cfg.password = server.password || ''; }
-        await window.electronapi.sshexec(cfg, `echo '${(server.password || '').replace(/'/g, "'\\''")}' | sudo -S sh -c 'apt-get install -y fail2ban 2>/dev/null || dnf install -y fail2ban 2>/dev/null || pacman -S --noconfirm fail2ban 2>/dev/null' 2>/dev/null`);
+        if (server.authType === 'key' && server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = server.privateKey; }
+        else { cfg.authType = 'password'; cfg.password = server.password || ''; }
+        await window.electronAPI.sshexec(cfg, `echo '${(server.password || '').replace(/'/g, "'\\''")}' | sudo -S sh -c 'apt-get install -y fail2ban 2>/dev/null || dnf install -y fail2ban 2>/dev/null || pacman -S --noconfirm fail2ban 2>/dev/null' 2>/dev/null`);
         this.load();
       }
     });

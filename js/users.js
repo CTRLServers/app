@@ -74,10 +74,10 @@ const ServerUsers = {
   ],
 
   async load() {
-    const server = App.currentserver;
+    const server = App.currentServer;
     if (!server || server.type !== 'Pterodactyl') return;
     try {
-      this.users = await Api.fetchsubusers(server.panelurl, server.apikey, server.uuid);
+      this.users = await Api.fetchsubusers(server.panelUrl, server.apiKey, server.uuid);
     } catch (e) {
       this.users = [];
     }
@@ -85,11 +85,11 @@ const ServerUsers = {
   },
 
   render() {
-    const tab = Utils.el('tabusers');
+    const tab = Utils.el('tabUsers');
     if (!tab) return;
     if (!this.users.length) {
       tab.innerHTML = `<div class="perm-content"><div class="perm-empty">
-        <svg width="48" height="48" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <h3>No subusers yet</h3>
         <p>Invite users to grant them access to this server</p>
         <button class="btn btn-primary" onclick="ServerUsers.showinvite()">Invite User</button>
@@ -100,7 +100,7 @@ const ServerUsers = {
     let html = `<div class="perm-content">
       <div class="perm-header">
         <div class="network-info-box">
-          <svg width="16" height="16" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
           <span>${this.users.length} subuser${this.users.length !== 1 ? 's' : ''} with access to this server</span>
         </div>
         <button class="btn btn-primary btn-sm" onclick="ServerUsers.showinvite()">Invite User</button>
@@ -110,7 +110,7 @@ const ServerUsers = {
     for (let i = 0; i < this.users.length; i++) {
       const u = this.users[i];
       const attrs = u.attributes || u;
-      const userid = u.id || attrs.id;
+      const userId = u.id || attrs.id;
       const email = attrs.email || 'Unknown';
       const username = attrs.username || email.split('@')[0];
       const perms = attrs.permissions || [];
@@ -126,11 +126,11 @@ const ServerUsers = {
           </div>
           <div class="perm-user-actions">
             <button class="btn btn-secondary btn-sm" onclick="ServerUsers.showedit(${i})">
-              <svg width="13" height="13" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
               Edit
             </button>
             <button class="btn-icon btn-danger-sm" onclick="ServerUsers.confirmdelete(${i})" title="Remove">
-              <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
         </div>
@@ -143,10 +143,10 @@ const ServerUsers = {
           if (!grouped[prefix]) grouped[prefix] = [];
           grouped[prefix].push(p);
         }
-        for (const [group, groupperms] of Object.entries(grouped)) {
+        for (const [group, groupPerms] of Object.entries(grouped)) {
           html += `<div class="perm-chip-group">
             <span class="perm-chip-group-label">${Utils.escape(group)}</span>
-            ${groupperms.map(p => `<span class="perm-chip">${Utils.escape(p.split('.')[1])}</span>`).join('')}
+            ${groupPerms.map(p => `<span class="perm-chip">${Utils.escape(p.split('.')[1])}</span>`).join('')}
           </div>`;
         }
       } else {
@@ -164,7 +164,7 @@ const ServerUsers = {
     Modal.open('Invite Subuser', `
       <div class="form-group">
         <label class="form-label">Email</label>
-        <input class="form-input" type="email" id="subuseremail" placeholder="user@example.com" />
+        <input class="form-input" type="email" id="subuserEmail" placeholder="user@example.com" />
       </div>
       <div class="form-group">
         <label class="form-label">Quick Template</label>
@@ -177,25 +177,25 @@ const ServerUsers = {
       </div>
       <div class="form-group">
         <label class="form-label">Permissions</label>
-        <div class="perm-checkboxes" id="subuserperms">
+        <div class="perm-checkboxes" id="subuserPerms">
           ${this.buildpermcheckboxes([])}
         </div>
       </div>
-      <div id="subusererror"></div>
+      <div id="subuserError"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="subuserinvitebtn">Invite</button>
+        <button class="btn btn-primary" id="subuserInviteBtn">Invite</button>
       </div>
     `);
     setTimeout(() => {
-      document.getElementById('subuserinvitebtn').addEventListener('click', async () => {
-        const email = document.getElementById('subuseremail').value.trim();
+      document.getElementById('subuserInviteBtn').addEventListener('click', async () => {
+        const email = document.getElementById('subuserEmail').value.trim();
         const perms = this.getcheckedperms();
-        const err = document.getElementById('subusererror');
+        const err = document.getElementById('subuserError');
         if (!email) { err.innerHTML = '<div class="error-msg">Email required</div>'; return; }
-        const server = App.currentserver;
+        const server = App.currentServer;
         try {
-          await Api.invitesubuser(server.panelurl, server.apikey, server.uuid, email, perms);
+          await Api.invitesubuser(server.panelUrl, server.apiKey, server.uuid, email, perms);
           Modal.close();
           this.load();
         } catch (e) {
@@ -209,7 +209,7 @@ const ServerUsers = {
     const u = this.users[idx];
     if (!u) return;
     const attrs = u.attributes || u;
-    const userid = u.id || attrs.id;
+    const userId = u.id || attrs.id;
     const email = attrs.email || '';
     const perms = attrs.permissions || [];
 
@@ -229,23 +229,23 @@ const ServerUsers = {
       </div>
       <div class="form-group">
         <label class="form-label">Permissions</label>
-        <div class="perm-checkboxes" id="subuserperms">
+        <div class="perm-checkboxes" id="subuserPerms">
           ${this.buildpermcheckboxes(perms)}
         </div>
       </div>
-      <div id="subusererror"></div>
+      <div id="subuserError"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="subusersavebtn">Save Changes</button>
+        <button class="btn btn-primary" id="subuserSaveBtn">Save Changes</button>
       </div>
     `);
     setTimeout(() => {
-      document.getElementById('subusersavebtn').addEventListener('click', async () => {
-        const newperms = this.getcheckedperms();
-        const err = document.getElementById('subusererror');
-        const server = App.currentserver;
+      document.getElementById('subuserSaveBtn').addEventListener('click', async () => {
+        const newPerms = this.getcheckedperms();
+        const err = document.getElementById('subuserError');
+        const server = App.currentServer;
         try {
-          await Api.updatesubuser(server.panelurl, server.apikey, server.uuid, userid, newperms);
+          await Api.updatesubuser(server.panelUrl, server.apiKey, server.uuid, userId, newPerms);
           Modal.close();
           this.load();
         } catch (e) {
@@ -291,14 +291,14 @@ const ServerUsers = {
     const u = this.users[idx];
     if (!u) return;
     const attrs = u.attributes || u;
-    const userid = u.id || attrs.id;
+    const userId = u.id || attrs.id;
     const email = attrs.email || 'Unknown';
     Modal.confirm('Remove Subuser', `Remove "${email}" from this server?`, async () => {
-      const server = App.currentserver;
+      const server = App.currentServer;
       try {
-        await Api.deletesubuser(server.panelurl, server.apikey, server.uuid, userid);
+        await Api.deletesubuser(server.panelUrl, server.apiKey, server.uuid, userId);
         this.load();
-      } catch (e) { /* silent */ }
+      } catch (e) {}
     });
   }
 };

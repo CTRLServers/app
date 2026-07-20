@@ -2,10 +2,10 @@ const Cron = {
   server: null,
   loading: false,
   entries: [],
-  rawcrontab: '',
+  rawCrontab: '',
 
   async load() {
-    this.server = App.currentserver;
+    this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
 
     this.loading = true;
@@ -23,15 +23,15 @@ const Cron = {
 
   async fetchentries() {
     this.entries = [];
-    this.rawcrontab = '';
+    this.rawCrontab = '';
 
     const r = await this.exec('crontab -l 2>/dev/null');
-    if (r.exitcode !== 0 || !r.stdout.trim()) {
-      this.rawcrontab = r.stdout || '';
+    if (r.exitCode !== 0 || !r.stdout.trim()) {
+      this.rawCrontab = r.stdout || '';
       return;
     }
 
-    this.rawcrontab = r.stdout;
+    this.rawCrontab = r.stdout;
     const lines = r.stdout.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
@@ -41,7 +41,7 @@ const Cron = {
       const parts = line.split(/\s+/);
       if (parts.length >= 6) {
         this.entries.push({
-          linenum: i,
+          lineNum: i,
           minute: parts[0],
           hour: parts[1],
           dom: parts[2],
@@ -55,35 +55,35 @@ const Cron = {
   },
 
   async addentry(minute, hour, dom, month, dow, command) {
-    const newline = `${minute} ${hour} ${dom} ${month} ${dow} ${command}`;
-    const current = this.rawcrontab.trim();
-    const content = current ? current + '\n' + newline : newline;
+    const newLine = `${minute} ${hour} ${dom} ${month} ${dow} ${command}`;
+    const current = this.rawCrontab.trim();
+    const content = current ? current + '\n' + newLine : newLine;
 
     const r = await this.exec(`echo '${content.replace(/'/g, "'\\''")}' | crontab -`);
-    if (r.exitcode !== 0) return { error: r.stdout || r.stderr || 'Failed to add entry' };
+    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || 'Failed to add entry' };
 
     await this.fetchentries();
     return { success: true };
   },
 
   async deleteentry(index) {
-    const lines = this.rawcrontab.split('\n');
-    const targetline = this.entries[index];
-    if (!targetline) return { error: 'Entry not found' };
+    const lines = this.rawCrontab.split('\n');
+    const targetLine = this.entries[index];
+    if (!targetLine) return { error: 'Entry not found' };
 
-    const newlines = [];
+    const newLines = [];
     for (let i = 0; i < lines.length; i++) {
-      if (i !== targetline.linenum) {
-        newlines.push(lines[i]);
+      if (i !== targetLine.lineNum) {
+        newLines.push(lines[i]);
       }
     }
 
-    const content = newlines.join('\n').trim();
+    const content = newLines.join('\n').trim();
     const r = content
       ? await this.exec(`echo '${content.replace(/'/g, "'\\''")}' | crontab -`)
       : await this.exec('crontab -r 2>/dev/null; echo done');
 
-    if (r.exitcode !== 0) return { error: r.stdout || r.stderr || 'Failed to delete entry' };
+    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || 'Failed to delete entry' };
 
     await this.fetchentries();
     return { success: true };
@@ -95,24 +95,24 @@ const Cron = {
       port: this.server.port || 22,
       username: this.server.username || 'root'
     };
-    if (this.server.authtype === 'key' && this.server.privatekey) {
-      cfg.authtype = 'privatekey';
-      cfg.privatekey = this.server.privatekey;
+    if (this.server.authType === 'key' && this.server.privateKey) {
+      cfg.authType = 'privateKey';
+      cfg.privateKey = this.server.privateKey;
     } else {
-      cfg.authtype = 'password';
+      cfg.authType = 'password';
       cfg.password = this.server.password || '';
     }
-    const isroot = (this.server.username || 'root') === 'root';
-    if (isroot) {
-      return await window.electronapi.sshexec(cfg, command);
+    const isRoot = (this.server.username || 'root') === 'root';
+    if (isRoot) {
+      return await window.electronAPI.sshexec(cfg, command);
     }
     const pass = (this.server.password || '').replace(/'/g, "'\\''");
     const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronapi.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
   },
 
   render() {
-    const tab = Utils.el('tabcron');
+    const tab = Utils.el('tabCron');
     if (!tab) return;
 
     if (this.loading) {
@@ -157,7 +157,7 @@ const Cron = {
           <td><code class="cron-cmd">${Utils.escape(e.command)}</code></td>
           <td>
             <button class="btn-icon btn-danger-sm" onclick="Cron.confirmdelete(${i})" title="Delete">
-              <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </td>
         </tr>`;
@@ -173,7 +173,7 @@ const Cron = {
       <div class="fw-card">
         <div class="fw-card-header"><h3>Raw Crontab</h3></div>
         <div class="fw-card-body">
-          <pre class="fw-raw">${Utils.escape(this.rawcrontab || 'No crontab for current user')}</pre>
+          <pre class="fw-raw">${Utils.escape(this.rawCrontab || 'No crontab for current user')}</pre>
         </div>
       </div>
     </div>`;
@@ -187,28 +187,28 @@ const Cron = {
       <div class="cron-form-grid">
         <div class="form-group">
           <label class="form-label">Minute</label>
-          <input class="form-input" type="text" id="cronmin" value="0" placeholder="0-59" />
+          <input class="form-input" type="text" id="cronMin" value="0" placeholder="0-59" />
         </div>
         <div class="form-group">
           <label class="form-label">Hour</label>
-          <input class="form-input" type="text" id="cronhour" value="0" placeholder="0-23" />
+          <input class="form-input" type="text" id="cronHour" value="0" placeholder="0-23" />
         </div>
         <div class="form-group">
           <label class="form-label">Day (1-31)</label>
-          <input class="form-input" type="text" id="crondom" value="*" placeholder="1-31" />
+          <input class="form-input" type="text" id="cronDom" value="*" placeholder="1-31" />
         </div>
         <div class="form-group">
           <label class="form-label">Month (1-12)</label>
-          <input class="form-input" type="text" id="cronmonth" value="*" placeholder="1-12" />
+          <input class="form-input" type="text" id="cronMonth" value="*" placeholder="1-12" />
         </div>
         <div class="form-group">
           <label class="form-label">Weekday (0-6)</label>
-          <input class="form-input" type="text" id="crondow" value="*" placeholder="0-6" />
+          <input class="form-input" type="text" id="cronDow" value="*" placeholder="0-6" />
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">Command</label>
-        <input class="form-input" type="text" id="croncmd" placeholder="/path/to/script.sh" />
+        <input class="form-input" type="text" id="cronCmd" placeholder="/path/to/script.sh" />
       </div>
       <div class="cron-presets">
         <span class="cron-preset-label">Presets:</span>
@@ -218,22 +218,22 @@ const Cron = {
         <button class="btn btn-sm btn-secondary" onclick="Cron.preset('weekly')">Weekly</button>
         <button class="btn btn-sm btn-secondary" onclick="Cron.preset('monthly')">Monthly</button>
       </div>
-      <div id="cronerror"></div>
+      <div id="cronError"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="cronaddbtn">Add Job</button>
+        <button class="btn btn-primary" id="cronAddBtn">Add Job</button>
       </div>
     `);
     setTimeout(() => {
-      const btn = Utils.el('cronaddbtn');
+      const btn = Utils.el('cronAddBtn');
       if (btn) btn.addEventListener('click', async () => {
-        const min = Utils.el('cronmin').value.trim() || '*';
-        const hour = Utils.el('cronhour').value.trim() || '*';
-        const dom = Utils.el('crondom').value.trim() || '*';
-        const month = Utils.el('cronmonth').value.trim() || '*';
-        const dow = Utils.el('crondow').value.trim() || '*';
-        const cmd = Utils.el('croncmd').value.trim();
-        const err = Utils.el('cronerror');
+        const min = Utils.el('cronMin').value.trim() || '*';
+        const hour = Utils.el('cronHour').value.trim() || '*';
+        const dom = Utils.el('cronDom').value.trim() || '*';
+        const month = Utils.el('cronMonth').value.trim() || '*';
+        const dow = Utils.el('cronDow').value.trim() || '*';
+        const cmd = Utils.el('cronCmd').value.trim();
+        const err = Utils.el('cronError');
         if (!cmd) { err.innerHTML = '<div class="error-msg">Command is required</div>'; return; }
         btn.disabled = true;
         btn.textContent = 'Adding...';
@@ -260,11 +260,11 @@ const Cron = {
     };
     const p = map[type];
     if (!p) return;
-    Utils.el('cronmin').value = p.m;
-    Utils.el('cronhour').value = p.h;
-    Utils.el('crondom').value = p.dom;
-    Utils.el('cronmonth').value = p.mo;
-    Utils.el('crondow').value = p.dow;
+    Utils.el('cronMin').value = p.m;
+    Utils.el('cronHour').value = p.h;
+    Utils.el('cronDom').value = p.dom;
+    Utils.el('cronMonth').value = p.mo;
+    Utils.el('cronDow').value = p.dow;
   },
 
   confirmdelete(index) {

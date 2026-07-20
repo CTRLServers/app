@@ -1,503 +1,503 @@
 const Api = {
   _cache: {},
 
-  headers(apikey) {
+  headers(apiKey) {
     return {
-      'Authorization': `Bearer ${apikey}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Accept': 'application/vnd.pterodactyl.v1+json',
       'Content-Type': 'application/json'
     };
   },
 
-  async fetchservers(panelurl, apikey) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client`, { headers: this.headers(apikey) });
+  async fetchservers(panelUrl, apiKey) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || [];
   },
 
-  async fetchserver(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}`, { headers: this.headers(apikey) });
+  async fetchserver(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return (data.data && data.data.attributes) || data.attributes || data;
   },
 
-  async fetchresources(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/resources`, { headers: this.headers(apikey) });
+  async fetchresources(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/resources`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return (data.data && data.data.attributes) || data.attributes || data;
   },
 
-  async fetchwebsocket(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/websocket`, { headers: this.headers(apikey) });
+  async fetchwebsocket(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/websocket`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || data;
   },
 
-  async power(panelurl, apikey, uuid, signal) {
-    const base = panelurl.replace(/\/+$/, '');
+  async power(panelUrl, apiKey, uuid, signal) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/power`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ signal })
     });
     return res.ok;
   },
 
-  async listfiles(panelurl, apikey, uuid, directory = '/') {
-    const base = panelurl.replace(/\/+$/, '');
+  async listfiles(panelUrl, apiKey, uuid, directory = '/') {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/list?directory=${encodeURIComponent(directory)}`, {
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || [];
   },
 
-  async readfile(panelurl, apikey, uuid, file) {
-    const base = panelurl.replace(/\/+$/, '');
+  async readfile(panelUrl, apiKey, uuid, file) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/contents?file=${encodeURIComponent(file)}`, {
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.text();
   },
 
-  async createfolder(panelurl, apikey, uuid, name, path) {
-    const base = panelurl.replace(/\/+$/, '');
+  async createfolder(panelUrl, apiKey, uuid, name, path) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/create-folder`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ root: path || '/', name })
     });
     return res.ok;
   },
 
-  async writefile(panelurl, apikey, uuid, file, content) {
-    const base = panelurl.replace(/\/+$/, '');
+  async writefile(panelUrl, apiKey, uuid, file, content) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/write`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ file, content })
     });
     return res.ok;
   },
 
-  async uploadfiles(panelurl, apikey, uuid, directory, files) {
-    const base = panelurl.replace(/\/+$/, '');
+  async uploadfiles(panelUrl, apiKey, uuid, directory, files) {
+    const base = panelUrl.replace(/\/+$/, '');
     const dir = directory || '/';
-    const urlres = await fetch(`${base}/api/client/servers/${uuid}/files/upload?directory=${encodeURIComponent(dir)}`, {
-      headers: { 'Authorization': `Bearer ${apikey}`, 'Accept': 'application/vnd.pterodactyl.v1+json' }
+    const urlRes = await fetch(`${base}/api/client/servers/${uuid}/files/upload?directory=${encodeURIComponent(dir)}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/vnd.pterodactyl.v1+json' }
     });
-    if (!urlres.ok) throw new Error('Failed to get upload URL');
-    const urldata = await urlres.json();
-    const signedurl = urldata.attributes && urldata.attributes.url;
-    if (!signedurl) throw new Error('No signed URL');
-    const formdata = new FormData();
+    if (!urlRes.ok) throw new Error('Failed to get upload URL');
+    const urlData = await urlRes.json();
+    const signedUrl = urlData.attributes && urlData.attributes.url;
+    if (!signedUrl) throw new Error('No signed URL');
+    const formData = new FormData();
     for (const f of files) {
-      formdata.append('files', f.file, f.relpath.split('/').pop());
+      formData.append('files', f.file, f.relPath.split('/').pop());
     }
-    formdata.append('directory', dir);
-    const separator = signedurl.includes('?') ? '&' : '?';
-    const uploadres = await fetch(`${signedurl}${separator}directory=${encodeURIComponent(dir)}`, {
+    formData.append('directory', dir);
+    const separator = signedUrl.includes('?') ? '&' : '?';
+    const uploadRes = await fetch(`${signedUrl}${separator}directory=${encodeURIComponent(dir)}`, {
       method: 'POST',
-      body: formdata
+      body: formData
     });
-    return uploadres.ok;
+    return uploadRes.ok;
   },
 
-  async renamefile(panelurl, apikey, uuid, root, file, newname) {
-    const base = panelurl.replace(/\/+$/, '');
+  async renamefile(panelUrl, apiKey, uuid, root, file, newName) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/rename`, {
       method: 'PUT',
-      headers: this.headers(apikey),
-      body: JSON.stringify({ root, files: [{ from: file, to: newname }] })
+      headers: this.headers(apiKey),
+      body: JSON.stringify({ root, files: [{ from: file, to: newName }] })
     });
     return res.ok;
   },
 
-  async movefiles(panelurl, apikey, uuid, root, files, directory) {
-    const base = panelurl.replace(/\/+$/, '');
+  async movefiles(panelUrl, apiKey, uuid, root, files, directory) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/move`, {
       method: 'PUT',
-      headers: this.headers(apikey),
+      headers: this.headers(apiKey),
       body: JSON.stringify({ root, files, directory })
     });
     return res.ok;
   },
 
-  async copyfile(panelurl, apikey, uuid, location) {
-    const base = panelurl.replace(/\/+$/, '');
+  async copyfile(panelUrl, apiKey, uuid, location) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/copy`, {
       method: 'POST',
-      headers: this.headers(apikey),
+      headers: this.headers(apiKey),
       body: JSON.stringify({ location })
     });
     return res.ok;
   },
 
-  async deletefiles(panelurl, apikey, uuid, root, files) {
-    const base = panelurl.replace(/\/+$/, '');
+  async deletefiles(panelUrl, apiKey, uuid, root, files) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/delete`, {
       method: 'POST',
-      headers: this.headers(apikey),
+      headers: this.headers(apiKey),
       body: JSON.stringify({ root, files })
     });
     return res.ok;
   },
 
-  async compressfiles(panelurl, apikey, uuid, root, files, directory, prefix) {
-    const base = panelurl.replace(/\/+$/, '');
+  async compressfiles(panelUrl, apiKey, uuid, root, files, directory, prefix) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/compress`, {
       method: 'POST',
-      headers: this.headers(apikey),
+      headers: this.headers(apiKey),
       body: JSON.stringify({ root, files, directory, prefix })
     });
     return res.ok;
   },
 
-  async decompressfile(panelurl, apikey, uuid, root, file) {
-    const base = panelurl.replace(/\/+$/, '');
+  async decompressfile(panelUrl, apiKey, uuid, root, file) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/decompress`, {
       method: 'POST',
-      headers: this.headers(apikey),
+      headers: this.headers(apiKey),
       body: JSON.stringify({ root, file })
     });
     return res.ok;
   },
 
-  async changefilepermissions(panelurl, apikey, uuid, root, file, mode) {
-    const base = panelurl.replace(/\/+$/, '');
+  async changefilepermissions(panelUrl, apiKey, uuid, root, file, mode) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/chmod`, {
       method: 'POST',
-      headers: this.headers(apikey),
+      headers: this.headers(apiKey),
       body: JSON.stringify({ root, files: [{ file, mode }] })
     });
     return res.ok;
   },
 
-  async getcachedserver(panelurl, apikey, uuid) {
-    const key = `${panelurl}|${apikey}|${uuid}`;
+  async getcachedserver(panelUrl, apiKey, uuid) {
+    const key = `${panelUrl}|${apiKey}|${uuid}`;
     if (this._cache[key]) return this._cache[key];
-    const data = await this.fetchserver(panelurl, apikey, uuid);
+    const data = await this.fetchserver(panelUrl, apiKey, uuid);
     this._cache[key] = data;
     setTimeout(() => delete this._cache[key], 60000);
     return data;
   },
 
-  async fetchactivity(panelurl, apikey, uuid, page = 1) {
-    const base = panelurl.replace(/\/+$/, '');
+  async fetchactivity(panelUrl, apiKey, uuid, page = 1) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/activity?sort=-timestamp&page=${page}&include%5B%5D=actor`, {
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   },
 
-  async fetchsubusers(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
+  async fetchsubusers(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/users`, {
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || [];
   },
 
-  async invitesubuser(panelurl, apikey, uuid, email, permissions) {
-    const base = panelurl.replace(/\/+$/, '');
+  async invitesubuser(panelUrl, apiKey, uuid, email, permissions) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/users`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, permissions })
     });
     return res.ok;
   },
 
-  async updatesubuser(panelurl, apikey, uuid, useruuid, permissions) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/users/${useruuid}`, {
+  async updatesubuser(panelUrl, apiKey, uuid, userUuid, permissions) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/users/${userUuid}`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ permissions })
     });
     return res.ok;
   },
 
-  async deletesubuser(panelurl, apikey, uuid, useruuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/users/${useruuid}`, {
+  async deletesubuser(panelUrl, apiKey, uuid, userUuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/users/${userUuid}`, {
       method: 'DELETE',
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     return res.ok;
   },
 
-  async fetchaccount(panelurl, apikey) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/account`, { headers: this.headers(apikey) });
+  async fetchaccount(panelUrl, apiKey) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/account`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return (data.data && data.data.attributes) || data.attributes || data;
   },
 
-  async fetchstartup(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/startup`, { headers: this.headers(apikey) });
+  async fetchstartup(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/startup`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   },
 
-  async updatestartupvariable(panelurl, apikey, uuid, key, value) {
-    const base = panelurl.replace(/\/+$/, '');
+  async updatestartupvariable(panelUrl, apiKey, uuid, key, value) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/startup/variable`, {
       method: 'PUT',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, value })
     });
     return res.ok;
   },
 
-  async updatedockerimage(panelurl, apikey, uuid, docker_image) {
-    const base = panelurl.replace(/\/+$/, '');
+  async updatedockerimage(panelUrl, apiKey, uuid, docker_image) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/startup/image`, {
       method: 'PUT',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ docker_image })
     });
     return res.ok;
   },
 
-  async renameserver(panelurl, apikey, uuid, name, description) {
-    const base = panelurl.replace(/\/+$/, '');
+  async renameserver(panelUrl, apiKey, uuid, name, description) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/settings/rename`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, description: description || null })
     });
     return res.ok;
   },
 
-  async fetchnetwork(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations`, { headers: this.headers(apikey) });
+  async fetchnetwork(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || [];
   },
 
-  async createallocation(panelurl, apikey, uuid, ip, port) {
-    const base = panelurl.replace(/\/+$/, '');
+  async createallocation(panelUrl, apiKey, uuid, ip, port) {
+    const base = panelUrl.replace(/\/+$/, '');
     const body = {};
     if (ip) body.ip = ip;
     if (port) body.port = port;
     const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     return res.ok;
   },
 
-  async setprimaryallocation(panelurl, apikey, uuid, allocationid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationid}/primary`, {
+  async setprimaryallocation(panelUrl, apiKey, uuid, allocationId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationId}/primary`, {
       method: 'POST',
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     return res.ok;
   },
 
-  async setallocationnotes(panelurl, apikey, uuid, allocationid, notes) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationid}`, {
+  async setallocationnotes(panelUrl, apiKey, uuid, allocationId, notes) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationId}`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes })
     });
     return res.ok;
   },
 
-  async deleteallocation(panelurl, apikey, uuid, allocationid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationid}`, {
+  async deleteallocation(panelUrl, apiKey, uuid, allocationId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationId}`, {
       method: 'DELETE',
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     return res.ok;
   },
 
-  async fetchbackups(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups`, { headers: this.headers(apikey) });
+  async fetchbackups(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/backups`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || [];
   },
 
-  async createbackup(panelurl, apikey, uuid, name, ignored, islocked) {
-    const base = panelurl.replace(/\/+$/, '');
+  async createbackup(panelUrl, apiKey, uuid, name, ignored, isLocked) {
+    const base = panelUrl.replace(/\/+$/, '');
     const body = {};
     if (name) body.name = name;
     if (ignored) body.ignored = ignored;
-    if (islocked) body.is_locked = true;
+    if (isLocked) body.is_locked = true;
     const res = await fetch(`${base}/api/client/servers/${uuid}/backups`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     return res.ok;
   },
 
-  async deletebackup(panelurl, apikey, uuid, backupuuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupuuid}`, {
+  async deletebackup(panelUrl, apiKey, uuid, backupUuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}`, {
       method: 'DELETE',
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     return res.ok;
   },
 
-  async restorebackup(panelurl, apikey, uuid, backupuuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupuuid}/restore`, {
+  async restorebackup(panelUrl, apiKey, uuid, backupUuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}/restore`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ truncate: true })
     });
     return res.ok || res.status === 202;
   },
 
-  async downloadbackup(panelurl, apikey, uuid, backupuuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupuuid}/download`, {
-      headers: this.headers(apikey)
+  async downloadbackup(panelUrl, apiKey, uuid, backupUuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}/download`, {
+      headers: this.headers(apiKey)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return (data.attributes && data.attributes.url) || data.url || '';
   },
 
-  async togglebackuplock(panelurl, apikey, uuid, backupuuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupuuid}/lock`, {
+  async togglebackuplock(panelUrl, apiKey, uuid, backupUuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}/lock`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
     return res.ok;
   },
 
-  async fetchdatabases(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/databases?include=password`, { headers: this.headers(apikey) });
+  async fetchdatabases(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/databases?include=password`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || [];
   },
 
-  async createdatabase(panelurl, apikey, uuid, database, remote) {
-    const base = panelurl.replace(/\/+$/, '');
+  async createdatabase(panelUrl, apiKey, uuid, database, remote) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/databases`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ database, remote })
     });
     return res.ok;
   },
 
-  async deletedatabase(panelurl, apikey, uuid, dbid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/databases/${dbid}`, {
+  async deletedatabase(panelUrl, apiKey, uuid, dbId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/databases/${dbId}`, {
       method: 'DELETE',
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     return res.ok;
   },
 
-  async rotatedatabasepassword(panelurl, apikey, uuid, dbid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/databases/${dbid}/rotate-password`, {
+  async rotatedatabasepassword(panelUrl, apiKey, uuid, dbId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/databases/${dbId}/rotate-password`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
     return res.ok;
   },
 
-  async fetchschedules(panelurl, apikey, uuid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules`, { headers: this.headers(apikey) });
+  async fetchschedules(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.data || [];
   },
 
-  async fetchscheduledetail(panelurl, apikey, uuid, scheduleid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleid}?include=tasks`, { headers: this.headers(apikey) });
+  async fetchscheduledetail(panelUrl, apiKey, uuid, scheduleId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}?include=tasks`, { headers: this.headers(apiKey) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const raw = data.data || data;
     const attrs = raw.attributes || raw;
-    attrs.id = raw.id || scheduleid;
+    attrs.id = raw.id || scheduleId;
     if (!attrs.relationships) {
       attrs.relationships = raw.relationships || {};
     }
     return attrs;
   },
 
-  async createschedule(panelurl, apikey, uuid, payload) {
-    const base = panelurl.replace(/\/+$/, '');
+  async createschedule(panelUrl, apiKey, uuid, payload) {
+    const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/schedules`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     return res.ok;
   },
 
-  async updateschedule(panelurl, apikey, uuid, scheduleid, payload) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleid}`, {
+  async updateschedule(panelUrl, apiKey, uuid, scheduleId, payload) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     return res.ok;
   },
 
-  async deleteschedule(panelurl, apikey, uuid, scheduleid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleid}`, {
+  async deleteschedule(panelUrl, apiKey, uuid, scheduleId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}`, {
       method: 'DELETE',
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     return res.ok;
   },
 
-  async executeschedule(panelurl, apikey, uuid, scheduleid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleid}/execute`, {
+  async executeschedule(panelUrl, apiKey, uuid, scheduleId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}/execute`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
     return res.ok;
   },
 
-  async createscheduletask(panelurl, apikey, uuid, scheduleid, payload) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleid}/tasks`, {
+  async createscheduletask(panelUrl, apiKey, uuid, scheduleId, payload) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}/tasks`, {
       method: 'POST',
-      headers: { ...this.headers(apikey), 'Content-Type': 'application/json' },
+      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     if (!res.ok) {
@@ -507,11 +507,11 @@ const Api = {
     return res.ok;
   },
 
-  async deletescheduletask(panelurl, apikey, uuid, scheduleid, taskid) {
-    const base = panelurl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleid}/tasks/${taskid}`, {
+  async deletescheduletask(panelUrl, apiKey, uuid, scheduleId, taskId) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}/tasks/${taskId}`, {
       method: 'DELETE',
-      headers: this.headers(apikey)
+      headers: this.headers(apiKey)
     });
     return res.ok;
   }

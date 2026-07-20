@@ -1,13 +1,13 @@
 const Firewall = {
   server: null,
   loading: false,
-  fwtype: null,
+  fwType: null,
   active: false,
   rules: [],
-  rawoutput: '',
+  rawOutput: '',
 
   async load() {
-    this.server = App.currentserver;
+    this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
 
     this.loading = true;
@@ -15,7 +15,7 @@ const Firewall = {
 
     try {
       await this.detect();
-      if (this.fwtype) {
+      if (this.fwType) {
         await this.fetchstatus();
         await this.fetchrules();
       }
@@ -28,45 +28,45 @@ const Firewall = {
   },
 
   async detect() {
-    this.fwtype = null;
+    this.fwType = null;
     const r1 = await this.exec('which ufw 2>/dev/null');
-    if (r1.exitcode === 0 && r1.stdout.trim()) {
-      this.fwtype = 'ufw';
+    if (r1.exitCode === 0 && r1.stdout.trim()) {
+      this.fwType = 'ufw';
       return;
     }
     const r2 = await this.exec('which firewall-cmd 2>/dev/null');
-    if (r2.exitcode === 0 && r2.stdout.trim()) {
-      this.fwtype = 'firewalld';
+    if (r2.exitCode === 0 && r2.stdout.trim()) {
+      this.fwType = 'firewalld';
       return;
     }
     const r3 = await this.exec('which iptables 2>/dev/null');
-    if (r3.exitcode === 0 && r3.stdout.trim()) {
-      this.fwtype = 'iptables';
+    if (r3.exitCode === 0 && r3.stdout.trim()) {
+      this.fwType = 'iptables';
     }
   },
 
   async fetchstatus() {
-    if (this.fwtype === 'ufw') {
+    if (this.fwType === 'ufw') {
       const r = await this.exec('ufw status 2>/dev/null');
       this.active = r.stdout.toLowerCase().includes('active');
-    } else if (this.fwtype === 'firewalld') {
+    } else if (this.fwType === 'firewalld') {
       const r = await this.exec('firewall-cmd --state 2>/dev/null');
-      this.active = r.exitcode === 0 && r.stdout.trim() === 'running';
-    } else if (this.fwtype === 'iptables') {
+      this.active = r.exitCode === 0 && r.stdout.trim() === 'running';
+    } else if (this.fwType === 'iptables') {
       const r = await this.exec('iptables -L -n 2>/dev/null | head -5');
-      this.active = r.exitcode === 0 && r.stdout.length > 10;
+      this.active = r.exitCode === 0 && r.stdout.length > 10;
     }
   },
 
   async fetchrules() {
     this.rules = [];
-    if (this.fwtype === 'ufw') {
+    if (this.fwType === 'ufw') {
       const r = await this.exec('ufw status numbered 2>/dev/null');
-      this.rawoutput = r.stdout || '';
+      this.rawOutput = r.stdout || '';
       this.parseufwrules(r.stdout || '');
-    } else if (this.fwtype === 'firewalld') {
+    } else if (this.fwType === 'firewalld') {
       const r = await this.exec('firewall-cmd --list-all 2>/dev/null');
-      this.rawoutput = r.stdout || '';
+      this.rawOutput = r.stdout || '';
       this.parsefirewalldrules(r.stdout || '');
     }
   },
@@ -89,7 +89,7 @@ const Firewall = {
 
   parsefirewalldrules(output) {
     const lines = output.split('\n');
-    let currentsection = '';
+    let currentSection = '';
     for (const line of lines) {
       if (line.startsWith('services:')) {
         const svcs = line.slice(9).trim().split(/\s+/).filter(Boolean);
@@ -102,9 +102,9 @@ const Firewall = {
   },
 
   async togglefirewall() {
-    if (this.fwtype === 'ufw') {
+    if (this.fwType === 'ufw') {
       await this.exec(this.active ? 'ufw disable' : 'ufw --force enable');
-    } else if (this.fwtype === 'firewalld') {
+    } else if (this.fwType === 'firewalld') {
       await this.exec(this.active ? 'systemctl stop firewalld' : 'systemctl start firewalld');
     }
     await this.fetchstatus();
@@ -113,7 +113,7 @@ const Firewall = {
   },
 
   async addrule(port, proto, action, source) {
-    if (this.fwtype === 'ufw') {
+    if (this.fwType === 'ufw') {
       let cmd = '';
       const act = action === 'ALLOW' ? 'allow' : 'deny';
       if (source) {
@@ -122,7 +122,7 @@ const Firewall = {
         cmd = `ufw ${act} ${port}/${proto}`;
       }
       await this.exec(cmd);
-    } else if (this.fwtype === 'firewalld') {
+    } else if (this.fwType === 'firewalld') {
       const zone = 'public';
       await this.exec(`firewall-cmd --zone=${zone} --add-port=${port}/${proto} --permanent`);
       await this.exec('firewall-cmd --reload');
@@ -132,7 +132,7 @@ const Firewall = {
   },
 
   async deleterule(num) {
-    if (this.fwtype === 'ufw') {
+    if (this.fwType === 'ufw') {
       await this.exec(`ufw delete ${num}`);
     }
     await this.fetchrules();
@@ -145,24 +145,24 @@ const Firewall = {
       port: this.server.port || 22,
       username: this.server.username || 'root'
     };
-    if (this.server.authtype === 'key' && this.server.privatekey) {
-      cfg.authtype = 'privatekey';
-      cfg.privatekey = this.server.privatekey;
+    if (this.server.authType === 'key' && this.server.privateKey) {
+      cfg.authType = 'privateKey';
+      cfg.privateKey = this.server.privateKey;
     } else {
-      cfg.authtype = 'password';
+      cfg.authType = 'password';
       cfg.password = this.server.password || '';
     }
-    const isroot = (this.server.username || 'root') === 'root';
-    if (isroot) {
-      return await window.electronapi.sshexec(cfg, command);
+    const isRoot = (this.server.username || 'root') === 'root';
+    if (isRoot) {
+      return await window.electronAPI.sshexec(cfg, command);
     }
     const pass = (this.server.password || '').replace(/'/g, "'\\''");
     const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronapi.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
   },
 
   render() {
-    const tab = Utils.el('tabfirewall');
+    const tab = Utils.el('tabFirewall');
     if (!tab) return;
 
     if (this.loading) {
@@ -170,26 +170,26 @@ const Firewall = {
       return;
     }
 
-    if (!this.fwtype) {
+    if (!this.fwType) {
       tab.innerHTML = `<div class="fw-unsupported">
-        <svg width="48" height="48" viewbox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <h3>No supported firewall found</h3>
         <p>Install UFW or firewalld to manage firewall rules</p>
       </div>`;
       return;
     }
 
-    const fwlabel = this.fwtype === 'ufw' ? 'UFW' : this.fwtype === 'firewalld' ? 'Firewalld' : 'iptables';
+    const fwLabel = this.fwType === 'ufw' ? 'UFW' : this.fwType === 'firewalld' ? 'Firewalld' : 'iptables';
 
     let html = `<div class="fw-container">
       <div class="fw-status-card">
         <div class="fw-status-left">
           <div class="fw-status-icon ${this.active ? 'fw-active' : 'fw-inactive'}">
-            <svg width="24" height="24" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <div class="fw-status-info">
             <h3>Firewall ${this.active ? 'Active' : 'Inactive'}</h3>
-            <span>${fwlabel} — ${this.rules.length} rule${this.rules.length !== 1 ? 's' : ''}</span>
+            <span>${fwLabel} — ${this.rules.length} rule${this.rules.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
         <button class="btn btn-sm ${this.active ? 'btn-red' : 'btn-green'}" onclick="Firewall.togglefirewall()">
@@ -204,7 +204,7 @@ const Firewall = {
         </div>
         <div class="fw-card-body">`;
 
-    if (this.fwtype === 'ufw' && this.rules.length > 0) {
+    if (this.fwType === 'ufw' && this.rules.length > 0) {
       html += `<div class="fw-table-wrap"><table class="fw-table">
         <thead><tr><th>#</th><th>Port/Service</th><th>Action</th><th>Direction</th><th>Source</th><th></th></tr></thead>
         <tbody>`;
@@ -216,12 +216,12 @@ const Firewall = {
           <td>${r.direction}</td>
           <td>${r.source ? '<code>' + Utils.escape(r.source) + '</code>' : '<span class="text-muted">Any</span>'}</td>
           <td><button class="btn-icon btn-danger-sm" onclick="Firewall.deleterule(${r.number})" title="Delete">
-            <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button></td>
         </tr>`;
       }
       html += '</tbody></table></div>';
-    } else if (this.fwtype === 'firewalld' && this.rules.length > 0) {
+    } else if (this.fwType === 'firewalld' && this.rules.length > 0) {
       html += `<div class="fw-table-wrap"><table class="fw-table">
         <thead><tr><th>#</th><th>Service/Port</th><th>Type</th><th>Action</th></tr></thead>
         <tbody>`;
@@ -243,7 +243,7 @@ const Firewall = {
       <div class="fw-card">
         <div class="fw-card-header"><h3>Raw Output</h3></div>
         <div class="fw-card-body">
-          <pre class="fw-raw">${Utils.escape(this.rawoutput || 'No output')}</pre>
+          <pre class="fw-raw">${Utils.escape(this.rawOutput || 'No output')}</pre>
         </div>
       </div>
     </div>`;
@@ -255,11 +255,11 @@ const Firewall = {
     Modal.open('Add Firewall Rule', `
       <div class="form-group">
         <label class="form-label">Port / Service</label>
-        <input class="form-input" type="text" id="fwruleport" placeholder="80, 443, 22, ssh, http" />
+        <input class="form-input" type="text" id="fwRulePort" placeholder="80, 443, 22, ssh, http" />
       </div>
       <div class="form-group">
         <label class="form-label">Protocol</label>
-        <select class="form-input" id="fwruleproto">
+        <select class="form-input" id="fwRuleProto">
           <option value="tcp">TCP</option>
           <option value="udp">UDP</option>
           <option value="both">Both</option>
@@ -267,27 +267,27 @@ const Firewall = {
       </div>
       <div class="form-group">
         <label class="form-label">Action</label>
-        <select class="form-input" id="fwruleaction">
+        <select class="form-input" id="fwRuleAction">
           <option value="ALLOW">Allow</option>
           <option value="DENY">Deny</option>
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Source IP (optional)</label>
-        <input class="form-input" type="text" id="fwrulesource" placeholder="Leave empty for any" />
+        <input class="form-input" type="text" id="fwRuleSource" placeholder="Leave empty for any" />
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="fwaddrulebtn">Add Rule</button>
+        <button class="btn btn-primary" id="fwAddRuleBtn">Add Rule</button>
       </div>
     `);
     setTimeout(() => {
-      const btn = Utils.el('fwaddrulebtn');
+      const btn = Utils.el('fwAddRuleBtn');
       if (btn) btn.addEventListener('click', async () => {
-        const port = Utils.el('fwruleport').value.trim();
-        const proto = Utils.el('fwruleproto').value;
-        const action = Utils.el('fwruleaction').value;
-        const source = Utils.el('fwrulesource').value.trim();
+        const port = Utils.el('fwRulePort').value.trim();
+        const proto = Utils.el('fwRuleProto').value;
+        const action = Utils.el('fwRuleAction').value;
+        const source = Utils.el('fwRuleSource').value.trim();
         if (!port) return;
         btn.disabled = true;
         btn.textContent = 'Adding...';
