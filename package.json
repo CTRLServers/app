@@ -1,0 +1,52 @@
+{
+  "name": "ctrlservers",
+  "version": "1.0.0",
+  "description": "CTRLServers Desktop",
+  "author": "We Are CTRLServers",
+  "main": "electron.cjs",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable",
+    "build:win": "electron-builder --win portable",
+    "build:linux": "electron-builder --linux AppImage",
+    "build:mac": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "xyz.ctrlservers.desktop",
+    "productName": "CTRLServers",
+    "asar": true,
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false,
+    "files": [
+      "electron.cjs",
+      "preload.js",
+      "index.html",
+      "styles.css",
+      "js/**/*",
+      "assets/**/*",
+      "src/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "src/assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "src/assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "src/assets/logo.png"
+    }
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0",
+    "ws": "^8.21.1"
+  }
+}

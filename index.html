@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CTRLServers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="js/codemirror/codemirror.min.css" />
+  <link rel="stylesheet" href="js/codemirror/addon/hint/show-hint.min.css" />
+  <link rel="stylesheet" href="js/codemirror/theme/material-darker.min.css" />
+  <link rel="stylesheet" href="js/xterm/xterm.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <img src="assets/logo.png" alt="CTRLServers" width="28" height="28" style="border-radius:8px;object-fit:cover" />
+          <span class="logo-text">CTRLServers</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" id="mainnav">
+        <a href="#" class="nav-item active" data-page="dashboard">
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-page="keychain">
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+          </svg>
+          <span>Keychain</span>
+        </a>
+        <a href="#" class="nav-item" data-page="minecraft">
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" />
+            <polyline points="2 17 12 22 22 17" />
+            <polyline points="2 12 12 17 22 12" />
+          </svg>
+          <span>Minecraft Plugin</span>
+        </a>
+        <a href="#" class="nav-item" data-page="sftp">
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          <span>SFTP</span>
+        </a>
+      </nav>
+
+      <nav class="sidebar-nav server-nav" id="servernav" style="display:none;">
+        <a href="#" class="nav-item" data-server-page="console" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5" />
+            <line x1="12" y1="19" x2="20" y2="19" />
+          </svg>
+          <span>Console</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="files" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          <span>Files</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="databases" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3" />
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+          </svg>
+          <span>Databases</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="schedules" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span>Schedules</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="keychain">
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+          </svg>
+          <span>Keychain</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="users" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span>Users</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="backups" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
+          <span>Backups</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="network" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+          <span>Network</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="startup" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          <span>Startup</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="settings" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>Settings</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="activity" data-pterodactyl>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          <span>Activity</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="vpsconsole" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5" />
+            <line x1="12" y1="19" x2="20" y2="19" />
+          </svg>
+          <span>Console</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="packages" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
+          </svg>
+          <span>Packages</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="info" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <span>Information</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="firewall" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <span>Firewall</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="vpsusers" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span>Users</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="cron" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span>Cron Jobs</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="services" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+            <line x1="6" y1="6" x2="6.01" y2="6" />
+            <line x1="6" y1="18" x2="6.01" y2="18" />
+          </svg>
+          <span>Services</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="security" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+          <span>Security</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="docker" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+            <path d="M12 12v4" />
+            <path d="M8 16h8" />
+          </svg>
+          <span>Docker</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="webserver" data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+          <span>Web Server</span>
+        </a>
+        <div class="nav-separator"></div>
+        <a href="#" class="nav-item" id="backtoservers" data-pterodactyl data-vps>
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>All Servers</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="theme-toggle" id="themetoggle" title="Toggle theme">
+          <svg class="icon-sun" width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+          <svg class="icon-moon" width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-body">
+    <main class="main-content">
+      <header class="topbar" id="topbar">
+        <button class="sidebar-toggle" id="sidebartoggle">
+          <svg width="22" height="22" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <h1 class="page-title" id="pagetitle">Dashboard</h1>
+        <div class="topbar-resources" id="topbarresources" style="display:none;">
+          <div class="res-card">
+            <svg class="res-ring" viewbox="0 0 36 36">
+              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+              <circle class="res-ring-fill" id="rescpuring" cx="18" cy="18" r="15.915" />
+            </svg>
+            <div class="res-card-info">
+              <span class="res-card-val" id="rescpu">—</span>
+              <span class="res-card-label">CPU</span>
+            </div>
+          </div>
+          <div class="res-card">
+            <svg class="res-ring" viewbox="0 0 36 36">
+              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+              <circle class="res-ring-fill" id="resramring" cx="18" cy="18" r="15.915" />
+            </svg>
+            <div class="res-card-info">
+              <span class="res-card-val" id="resram">—</span>
+              <span class="res-card-label">RAM</span>
+            </div>
+          </div>
+          <div class="res-card">
+            <svg class="res-ring" viewbox="0 0 36 36">
+              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+              <circle class="res-ring-fill" id="resdiskring" cx="18" cy="18" r="15.915" />
+            </svg>
+            <div class="res-card-info">
+              <span class="res-card-val" id="resdisk">—</span>
+              <span class="res-card-label">Disk</span>
+            </div>
+          </div>
+          <div class="res-card">
+            <svg class="res-ring" viewbox="0 0 36 36">
+              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+              <circle class="res-ring-fill" id="resuptimering" cx="18" cy="18" r="15.915" />
+            </svg>
+            <div class="res-card-info">
+              <span class="res-card-val" id="resuptime">—</span>
+              <span class="res-card-label">Uptime</span>
+            </div>
+          </div>
+        </div>
+        <div class="topbar-actions" id="topbaractions">
+          <button class="btn btn-primary" id="addserverbtn">
+            <svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Server
+          </button>
+        </div>
+          <div class="topbar-server-actions" id="topbarserveractions" style="display:none;">
+          <div class="server-control-group">
+            <button class="btn btn-green btn-sm" id="btnstart" onclick="ServerConsole.power('start')">Start</button>
+            <button class="btn btn-yellow btn-sm" id="btnrestart" onclick="ServerConsole.power('restart')">Restart</button>
+            <button class="btn btn-red btn-sm" id="btnstop" onclick="ServerConsole.power('stop')">Stop</button>
+            <button class="btn btn-red-outline btn-sm" id="btnkill" onclick="ServerConsole.confirmkill()">Kill</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="content" id="content">
+        <div class="empty-state" id="emptystate">
+          <div class="empty-icon">
+            <svg width="64" height="64" viewbox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+              <line x1="6" y1="6" x2="6.01" y2="6" />
+              <line x1="6" y1="18" x2="6.01" y2="18" />
+            </svg>
+          </div>
+          <h2>You don't have any servers yet</h2>
+          <p>Add your first server to get started</p>
+          <button class="btn btn-primary" id="emptyaddbtn">
+            <svg width="18" height="18" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Server
+          </button>
+        </div>
+        <div class="servers-grid" id="serversgrid" style="display:none;"></div>
+        <div id="dashboardkeychain" style="display:none;"></div>
+        <div id="tabsftp" style="display:none;"></div>
+        <div id="tabminecraft" style="display:none;"></div>
+
+        <div class="server-detail" id="serverdetail" style="display:none;">
+          <div class="window-titlebar" id="windowtitlebar">
+            <span class="window-titlebar-icon" id="windowtitleicon"></span>
+            <span class="window-titlebar-text" id="windowtitletext"></span>
+            <div class="window-controls">
+              <button class="window-btn" id="windowminimizebtn" title="Minimize">
+                <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button class="window-btn window-btn-close" id="windowclosebtn" title="Close">
+                <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="server-page" id="serverpage">
+            <div class="server-page-tab" id="tabconsole">
+              <div class="console-container">
+                <div class="console-empty" id="consoleempty">
+                  <svg width="48" height="48" viewbox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <h3>Oops... Seems like its empty here!</h3>
+                  <p>There can be several reasons why console is empty: for example, because the server is offline, or the websocket is not outputing the console, or there was a error, and muuuuuuuuuuuuuuch more reasons!</p>
+                </div>
+                <div class="console-offline" id="consoleoffline" style="display:none;">
+                  <svg width="48" height="48" viewbox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 1l22 22"/>
+                    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+                    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+                    <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+                    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                    <line x1="12" y1="20" x2="12.01" y2="20"/>
+                  </svg>
+                  <h3>The server is offline!</h3>
+                  <p>Console will stay empty until you will power the server.</p>
+                </div>
+                <div class="console-output" id="consoleoutput"></div>
+                <div class="console-input-wrap">
+                  <input type="text" class="console-input" id="consoleinput" placeholder="Type a command..." />
+                  <button class="btn btn-primary btn-sm" onclick="ServerConsole.send()">Send</button>
+                </div>
+              </div>
+            </div>
+            <div class="server-page-tab" id="tabfiles" style="display:none;">
+              <div class="files-container" id="filescontainer">
+                <div class="files-toolbar" id="filestoolbar">
+                  <div class="files-breadcrumb" id="filesbreadcrumb"></div>
+                  <div class="files-actions" id="filesactions">
+                    <input type="file" id="fileuploadinput" style="display:none;" multiple />
+                    <button class="btn btn-secondary btn-sm" onclick="Utils.el('fileuploadinput').click()">Upload</button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfolder()">New Folder</button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfile()">New File</button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.doreload()" title="Refresh">
+                      <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="mass-actions" id="massactions" style="display:none;">
+                  <span class="mass-actions-count" id="massactionscount">0 selected</span>
+                  <div class="mass-actions-buttons">
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.massmove()">
+                      <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                      Move
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.massarchive()">
+                      <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                      Archive
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="ServerFiles.massdelete()">
+                      <svg width="14" height="14" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      Delete
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.clearselection()">Cancel</button>
+                  </div>
+                </div>
+                <div class="files-list" id="fileslist"></div>
+                <div class="editor-container" id="editorcontainer" style="display:none;">
+                  <div class="editor-header" id="editorheader">
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.closeeditor()">
+                      <svg width="16" height="16" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                      Back
+                    </button>
+                    <span class="editor-filename" id="editorfilename"></span>
+                    <div class="editor-actions">
+                      <button class="btn btn-primary btn-sm" onclick="ServerFiles.savefile()">Save</button>
+                    </div>
+                  </div>
+                  <div class="editor-wrapper" id="editorwrapper"></div>
+                </div>
+              </div>
+            </div>
+            <div class="server-page-tab" id="tabdatabases" style="display:none;"></div>
+            <div class="server-page-tab" id="tabschedules" style="display:none;"></div>
+            <div class="server-page-tab" id="tabkeychain" style="display:none;"></div>
+            <div class="server-page-tab" id="tabusers" style="display:none;"></div>
+            <div class="server-page-tab" id="tabbackups" style="display:none;"></div>
+            <div class="server-page-tab" id="tabnetwork" style="display:none;"></div>
+            <div class="server-page-tab" id="tabstartup" style="display:none;"></div>
+            <div class="server-page-tab" id="tabsettings" style="display:none;"></div>
+            <div class="server-page-tab" id="tabactivity" style="display:none;"></div>
+            <div class="server-page-tab" id="tabvpsconsole" style="display:none;">
+              <div class="vps-console-wrap" id="vpsconsolewrap"></div>
+            </div>
+            <div class="server-page-tab" id="tabpackages" style="display:none;"></div>
+            <div class="server-page-tab" id="tabinfo" style="display:none;"></div>
+            <div class="server-page-tab" id="tabfirewall" style="display:none;"></div>
+            <div class="server-page-tab" id="tabvpsusers" style="display:none;"></div>
+            <div class="server-page-tab" id="tabcron" style="display:none;"></div>
+            <div class="server-page-tab" id="tabservices" style="display:none;"></div>
+            <div class="server-page-tab" id="tabsecurity" style="display:none;"></div>
+            <div class="server-page-tab" id="tabdocker" style="display:none;"></div>
+            <div class="server-page-tab" id="tabwebserver" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <div class="taskbar" id="taskbar">
+      <button class="taskbar-start" id="taskbarstart" title="Dashboard">
+        <img src="assets/logo.png" alt="" width="22" height="22" style="border-radius:6px;object-fit:cover" />
+      </button>
+      <div class="taskbar-sep"></div>
+      <div class="taskbar-items" id="taskbaritems"></div>
+    </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modaloverlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modaltitle">Add Server</h2>
+        <button class="modal-close" id="modalclose">
+          <svg width="20" height="20" viewbox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modalbody"></div>
+    </div>
+  </div>
+
+  <script src="js/xterm/xterm.js"></script>
+  <script src="js/xterm/xterm-addon-fit.js"></script>
+  <script src="js/codemirror/codemirror.min.js"></script>
+  <script src="js/codemirror/addon/edit/matchbrackets.min.js"></script>
+  <script src="js/codemirror/addon/edit/closebrackets.min.js"></script>
+  <script src="js/codemirror/addon/edit/closetag.min.js"></script>
+  <script src="js/codemirror/addon/fold/foldcode.min.js"></script>
+  <script src="js/codemirror/addon/fold/foldgutter.min.js"></script>
+  <script src="js/codemirror/addon/fold/brace-fold.min.js"></script>
+  <script src="js/codemirror/addon/fold/xml-fold.min.js"></script>
+  <script src="js/codemirror/addon/fold/indent-fold.min.js"></script>
+  <script src="js/codemirror/addon/fold/markdown-fold.min.js"></script>
+  <script src="js/codemirror/addon/fold/comment-fold.min.js"></script>
+  <script src="js/codemirror/addon/selection/active-line.min.js"></script>
+  <script src="js/codemirror/addon/hint/show-hint.min.js"></script>
+  <script src="js/codemirror/addon/hint/anyword-hint.min.js"></script>
+  <script src="js/codemirror/addon/hint/xml-hint.min.js"></script>
+  <script src="js/codemirror/addon/hint/html-hint.min.js"></script>
+  <script src="js/codemirror/addon/hint/css-hint.min.js"></script>
+  <script src="js/codemirror/addon/hint/javascript-hint.min.js"></script>
+  <script src="js/codemirror/addon/hint/sql-hint.min.js"></script>
+  <script src="js/codemirror/addon/comment/comment.min.js"></script>
+  <script src="js/codemirror/addon/display/placeholder.min.js"></script>
+  <script src="js/codemirror/mode/javascript/javascript.min.js"></script>
+  <script src="js/codemirror/mode/typescript/typescript.min.js"></script>
+  <script src="js/codemirror/mode/python/python.min.js"></script>
+  <script src="js/codemirror/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="js/codemirror/mode/xml/xml.min.js"></script>
+  <script src="js/codemirror/mode/css/css.min.js"></script>
+  <script src="js/codemirror/mode/sass/sass.min.js"></script>
+  <script src="js/codemirror/mode/markdown/markdown.min.js"></script>
+  <script src="js/codemirror/mode/gfm/gfm.min.js"></script>
+  <script src="js/codemirror/mode/yaml/yaml.min.js"></script>
+  <script src="js/codemirror/mode/clike/clike.min.js"></script>
+  <script src="js/codemirror/mode/go/go.min.js"></script>
+  <script src="js/codemirror/mode/lua/lua.min.js"></script>
+  <script src="js/codemirror/mode/php/php.min.js"></script>
+  <script src="js/codemirror/mode/ruby/ruby.min.js"></script>
+  <script src="js/codemirror/mode/shell/shell.min.js"></script>
+  <script src="js/codemirror/mode/sql/sql.min.js"></script>
+  <script src="js/codemirror/mode/diff/diff.min.js"></script>
+  <script src="js/codemirror/mode/dockerfile/dockerfile.min.js"></script>
+  <script src="js/codemirror/mode/toml/toml.min.js"></script>
+  <script src="js/codemirror/mode/properties/properties.min.js"></script>
+  <script src="js/codemirror/mode/pug/pug.min.js"></script>
+  <script src="js/codemirror/mode/vue/vue.min.js"></script>
+  <script src="js/codemirror/mode/rust/rust.min.js"></script>
+  <script src="js/codemirror/mode/r/r.min.js"></script>
+  <script src="js/codemirror/mode/dart/dart.min.js"></script>
+  <script src="js/codemirror/mode/elm/elm.min.js"></script>
+  <script src="js/codemirror/mode/erlang/erlang.min.js"></script>
+  <script src="js/codemirror/mode/haskell/haskell.min.js"></script>
+  <script src="js/codemirror/mode/scala/scala.min.js"></script>
+  <script src="js/codemirror/mode/swift/swift.min.js"></script>
+  <script src="js/codemirror/mode/kotlin/kotlin.min.js"></script>
+  <script src="js/codemirror/mode/elixir/elixir.min.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/modal.js"></script>
+  <script src="js/servers.js"></script>
+  <script src="js/console.js"></script>
+  <script src="js/files.js"></script>
+  <script src="js/activity.js"></script>
+  <script src="js/users.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/startup.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/backups.js"></script>
+  <script src="js/databases.js"></script>
+  <script src="js/schedules.js"></script>
+  <script src="js/keychain.js"></script>
+  <script src="js/vps.js"></script>
+  <script src="js/packages.js"></script>
+  <script src="js/info.js"></script>
+  <script src="js/firewall.js"></script>
+  <script src="js/vps-users.js"></script>
+  <script src="js/cron.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/security.js"></script>
+  <script src="js/docker.js"></script>
+  <script src="js/nginx.js"></script>
+  <script src="js/sftp.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
