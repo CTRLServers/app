@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win portable",
+    "build": "electron-builder --publish never",
     "build:win": "electron-builder --win portable",
     "build:linux": "electron-builder --linux AppImage",
     "build:mac": "electron-builder --mac dmg"
