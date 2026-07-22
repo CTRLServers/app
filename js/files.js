@@ -1,10 +1,15 @@
 const ServerFiles = {
   currentPath: '/',
   files: [],
+  filteredFiles: [],
   editor: null,
   _editingPath: null,
   _editingName: null,
   selected: new Set(),
+  _searchQuery: '',
+  _filterTab: 'all',
+  _sortBy: 'name',
+  _sortDir: 'asc',
 
   ARCHIVE_EXTS: ['.tar', '.gz', '.7z', '.zip', '.rar', '.tgz', '.bz2', '.xz', '.zst', '.lz4', '.lzh', '.lha', '.nrg', '.ace', '.wad', '.kdk'],
   IMAGE_EXTS: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp', '.ico', '.tiff', '.tga', '.pcx', '.msp'],
@@ -180,12 +185,20 @@ const ServerFiles = {
   async load(path) {
     this.currentPath = path || '/';
     this.selected.clear();
+    this._searchQuery = '';
+    if (Utils.el('filesSearchInput')) Utils.el('filesSearchInput').value = '';
     this.updatemassbar();
     const s = App.currentServer;
     if (!s || s.type !== 'Pterodactyl') return;
     this.closeeditor();
     try {
       this.files = await Api.listfiles(s.panelUrl, s.apiKey, s.uuid, this.currentPath);
+      this.files.sort((a, b) => {
+        const aDir = a.attributes.mimetype === 'inode/directory' || !a.attributes.is_file;
+        const bDir = b.attributes.mimetype === 'inode/directory' || !b.attributes.is_file;
+        if (aDir !== bDir) return aDir ? -1 : 1;
+        return a.attributes.name.localeCompare(b.attributes.name);
+      });
       this.render();
     } catch (e) {
       Utils.el('filesList').innerHTML = `<div class="files-empty">Failed to load: ${Utils.escape(e.message)}</div>`;
@@ -195,19 +208,43 @@ const ServerFiles = {
   render() {
     this.renderbreadcrumb();
     const list = Utils.el('filesList');
-    if (!this.files.length) {
-      list.innerHTML = '<div class="files-empty">This directory is empty</div>';
-      return;
-    }
 
-    const sorted = [...this.files].sort((a, b) => {
+    this.filteredFiles = this.files.filter(f => {
+      if (this._searchQuery) {
+        const q = this._searchQuery.toLowerCase();
+        if (!f.attributes.name.toLowerCase().includes(q)) return false;
+      }
+      if (this._filterTab === 'files') {
+        return f.attributes.mimetype !== 'inode/directory' && f.attributes.is_file;
+      }
+      if (this._filterTab === 'folders') {
+        return f.attributes.mimetype === 'inode/directory' || !f.attributes.is_file;
+      }
+      return true;
+    });
+
+    const sorted = [...this.filteredFiles].sort((a, b) => {
       const aDir = a.attributes.mimetype === 'inode/directory' || !a.attributes.is_file;
       const bDir = b.attributes.mimetype === 'inode/directory' || !b.attributes.is_file;
       if (aDir !== bDir) return aDir ? -1 : 1;
-      return a.attributes.name.localeCompare(b.attributes.name);
+      let cmp = 0;
+      if (this._sortBy === 'name') {
+        cmp = a.attributes.name.localeCompare(b.attributes.name);
+      } else if (this._sortBy === 'size') {
+        cmp = (a.attributes.size || 0) - (b.attributes.size || 0);
+      } else if (this._sortBy === 'date') {
+        cmp = new Date(a.attributes.modified_at || 0) - new Date(b.attributes.modified_at || 0);
+      }
+      return this._sortDir === 'asc' ? cmp : -cmp;
     });
 
-    this.files = sorted;
+    this.filteredFiles = sorted;
+
+    if (!sorted.length) {
+      list.innerHTML = '<div class="files-empty">' + (this.files.length ? 'No matching files' : 'This directory is empty') + '</div>';
+      this.updateinfocards();
+      return;
+    }
 
     list.innerHTML = sorted.map((f, i) => {
       const a = f.attributes;
@@ -215,22 +252,31 @@ const ServerFiles = {
       const name = a.name;
       const icon = this.geticon(name, isDir);
       const size = !isDir ? this.formatsize(a.size) : '—';
-      const modified = a.modified_at ? new Date(a.modified_at).toLocaleDateString() : '—';
+      const modified = a.modified_at ? this.formatdatetime(a.modified_at) : '—';
+      const realIdx = this.files.indexOf(f);
 
-      return `<div class="file-item${this.selected.has(i) ? ' selected' : ''}" data-index="${i}">
+      return `<div class="file-item${isDir ? ' is-dir' : ''}${this.selected.has(realIdx) ? ' selected' : ''}" data-index="${realIdx}">
         <label class="file-checkbox" onclick="event.stopPropagation()">
-          <input type="checkbox" ${this.selected.has(i) ? 'checked' : ''} onchange="ServerFiles.toggleselect(${i}, this.checked)" />
+          <input type="checkbox" ${this.selected.has(realIdx) ? 'checked' : ''} onchange="ServerFiles.toggleselect(${realIdx}, this.checked)" />
+          <span class="file-checkbox-mark"></span>
         </label>
-        <div class="file-icon">${icon}</div>
-        <div class="file-name">${Utils.escape(name)}</div>
+        <div class="file-info">
+          <div class="file-icon">${icon}</div>
+          <div class="file-name">${Utils.escape(name)}</div>
+        </div>
         <div class="file-size">${size}</div>
         <div class="file-date">${modified}</div>
+        <button class="file-menu-btn" onclick="event.stopPropagation(); ServerFiles.showmenufor(event, ${realIdx})" title="Actions">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </button>
       </div>`;
     }).join('');
+
+    this.updateinfocards();
   },
 
   geticon(name, isDir) {
-    if (isDir) return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+    if (isDir) return `<svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
     if (this.isimage(name)) return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
     if (this.isvideo(name)) return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>`;
     if (this.isaudio(name)) return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
@@ -242,11 +288,14 @@ const ServerFiles = {
   renderbreadcrumb() {
     const bc = Utils.el('filesBreadcrumb');
     const parts = this.currentPath.split('/').filter(Boolean);
-    let html = `<span class="breadcrumb-item" data-bc-path="/">/</span>`;
+    let html = `<span class="breadcrumb-home" data-bc-path="/" title="Root">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </span>`;
     let acc = '';
-    parts.forEach((p) => {
+    parts.forEach((p, i) => {
       acc += '/' + p;
-      html += `<span class="breadcrumb-sep">/</span><span class="breadcrumb-item" data-bc-path="${Utils.escape(acc)}">${Utils.escape(p)}</span>`;
+      const isLast = i === parts.length - 1;
+      html += `<span class="breadcrumb-sep">/</span><span class="breadcrumb-item${isLast ? ' active' : ''}" data-bc-path="${Utils.escape(acc)}">${Utils.escape(p)}</span>`;
     });
     bc.innerHTML = html;
   },
@@ -347,7 +396,10 @@ const ServerFiles = {
     this._editingPath = path;
     this._editingName = name;
 
-    Utils.el('filesList').style.display = 'none';
+    Utils.el('filesInfoCards').style.display = 'none';
+    Utils.el('massActions').style.display = 'none';
+    Utils.el('filesActionBar').style.display = 'none';
+    Utils.el('filesTable').style.display = 'none';
     Utils.el('filesActions').style.display = 'none';
     const breadcrumb = Utils.el('filesBreadcrumb');
     breadcrumb.innerHTML = `<span style="font-size:13px;color:var(--text-muted);">/</span>${path.split('/').filter(Boolean).map(p => `<span class="breadcrumb-sep">/</span><span style="font-size:13px;">${Utils.escape(p)}</span>`).join('')}`;
@@ -418,7 +470,9 @@ const ServerFiles = {
     this._editingName = null;
 
     Utils.el('editorContainer').style.display = 'none';
-    Utils.el('filesList').style.display = '';
+    Utils.el('filesInfoCards').style.display = '';
+    Utils.el('filesActionBar').style.display = '';
+    Utils.el('filesTable').style.display = '';
     Utils.el('filesActions').style.display = '';
     Utils.el('filesBreadcrumb').style.pointerEvents = '';
     this.renderbreadcrumb();
@@ -1007,17 +1061,19 @@ const ServerFiles = {
     this.selected.clear();
     this.updatemassbar();
     Utils.el('filesList').querySelectorAll('.file-item.selected').forEach(el => el.classList.remove('selected'));
-    Utils.el('filesList').querySelectorAll('.file-checkbox input[type="checkbox"]').forEach(cb => cb.checked = false);
   },
 
   updatemassbar() {
     const bar = Utils.el('massActions');
     const count = Utils.el('massActionsCount');
+    const selCount = Utils.el('filesSelectionCount');
     if (this.selected.size > 0) {
       bar.style.display = 'flex';
       count.textContent = `${this.selected.size} selected`;
+      if (selCount) selCount.textContent = `${this.selected.size} selected`;
     } else {
       bar.style.display = 'none';
+      if (selCount) selCount.textContent = '0 selected';
     }
   },
 
@@ -1130,5 +1186,103 @@ const ServerFiles = {
       this.clearselection();
       this.doreload();
     } catch (e) {}
+  },
+
+  onsearch(value) {
+    this._searchQuery = value.trim();
+    this.render();
+  },
+
+  setfilter(tab) {
+    this._filterTab = tab;
+    document.querySelectorAll('.files-filter-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    this.render();
+  },
+
+  setsort(field) {
+    if (this._sortBy === field) {
+      this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this._sortBy = field;
+      this._sortDir = 'asc';
+    }
+    document.querySelectorAll('.files-sort-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.sort === field);
+    });
+    this.updatesortdiricon();
+    this.render();
+  },
+
+  togglesortdir() {
+    this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+    this.updatesortdiricon();
+    this.render();
+  },
+
+  updatesortdiricon() {
+    const icon = Utils.el('filesSortDirIcon');
+    if (!icon) return;
+    if (this._sortDir === 'asc') {
+      icon.innerHTML = '<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>';
+    } else {
+      icon.innerHTML = '<path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>';
+    }
+  },
+
+  showmenufor(e, idx) {
+    const f = this.files[idx];
+    if (!f) return;
+    const isDir = f.attributes.mimetype === 'inode/directory' || !f.attributes.is_file;
+    const isArc = this.isarchive(f.attributes.name);
+    this.showcontextmenu(e.clientX, e.clientY, f, isDir, isArc);
+  },
+
+  toggleselectall(checked) {
+    if (checked) {
+      this.filteredFiles.forEach((f) => {
+        const realIdx = this.files.indexOf(f);
+        if (realIdx >= 0) this.selected.add(realIdx);
+      });
+    } else {
+      this.selected.clear();
+    }
+    this.updatemassbar();
+    this.render();
+  },
+
+  formatdatetime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now - d;
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + 'm ago';
+    if (hours < 24) return hours + 'h ago';
+    if (days < 7) return days + 'd ago';
+    return d.toLocaleDateString();
+  },
+
+  updateinfocards() {
+    const root = Utils.el('filesInfoRoot');
+    const count = Utils.el('filesInfoCount');
+    const sub = Utils.el('filesInfoCountSub');
+    const size = Utils.el('filesInfoSize');
+    if (root) root.textContent = this.currentPath || '/';
+    if (count) count.textContent = this.files.length;
+    const fileCount = this.files.filter(f => f.attributes.mimetype !== 'inode/directory' && f.attributes.is_file).length;
+    const folderCount = this.files.length - fileCount;
+    if (sub) sub.textContent = `${fileCount} files · ${folderCount} folders`;
+    if (size) {
+      const total = this.files.reduce((sum, f) => {
+        if (f.attributes.mimetype === 'inode/directory' || !f.attributes.is_file) return sum;
+        return sum + (f.attributes.size || 0);
+      }, 0);
+      size.textContent = this.formatsize(total);
+    }
   },
 };

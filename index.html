@@ -14,6 +14,14 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="update-banner" id="updateBanner" style="display:none;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span class="update-banner-text">This version of program is outdated. Update now to get better experience!</span>
+    <button class="update-banner-btn" onclick="window.electronAPI.openexternal('https://github.com/CTRLServers/app/releases')">Update</button>
+    <button class="update-banner-close" onclick="document.getElementById('updateBanner').style.display='none'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
   <div class="app">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
@@ -133,6 +141,22 @@
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
           <span>Activity</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="plugins" data-pterodactyl style="display:none;" id="navplugins">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
+          </svg>
+          <span>Plugins</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="mods" data-pterodactyl style="display:none;" id="navmods">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
+          </svg>
+          <span>Mods</span>
         </a>
         <a href="#" class="nav-item hidden" data-server-page="vpsConsole" data-vps>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -356,14 +380,21 @@
           <div class="server-page" id="serverPage">
             <div class="server-page-tab" id="tabConsole">
               <div class="console-container">
-                <div class="console-empty" id="consoleEmpty">
+                <div class="console-empty" id="consoleEmpty" style="display:none;">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"/>
                     <line x1="12" y1="8" x2="12" y2="12"/>
                     <line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
                   <h3>Oops... Seems like its empty here!</h3>
-                  <p>There can be several reasons why console is empty: for example, because the server is offline, or the websocket is not outputing the console, or there was a error, and muuuuuuuuuuuuuuch more reasons!</p>
+                  <p>There can be several reasons why console is empty: for example, because the server is offline, or the websocket is not outputing the console, or there was a error, and much more reasons!</p>
+                </div>
+                <div class="console-connecting" id="consoleConnecting">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="spin-icon">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.568"/>
+                  </svg>
+                  <h3>Connecting...</h3>
+                  <p>We are still connecting to your console. Please wait.</p>
                 </div>
                 <div class="console-offline" id="consoleOffline" style="display:none;">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -389,14 +420,42 @@
               <div class="files-container" id="filesContainer">
                 <div class="files-toolbar" id="filesToolbar">
                   <div class="files-breadcrumb" id="filesBreadcrumb"></div>
+                  <div class="files-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" class="files-search-input" id="filesSearchInput" placeholder="Search files..." oninput="ServerFiles.onsearch(this.value)" />
+                  </div>
                   <div class="files-actions" id="filesActions">
                     <input type="file" id="fileUploadInput" style="display:none;" multiple />
-                    <button class="btn btn-secondary btn-sm" onclick="Utils.el('fileUploadInput').click()">Upload</button>
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfolder()">New Folder</button>
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfile()">New File</button>
+                    <button class="btn btn-upload" onclick="Utils.el('fileUploadInput').click()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      Upload
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfolder()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                      New Folder
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfile()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                      New File
+                    </button>
                     <button class="btn btn-secondary btn-sm" onclick="ServerFiles.doreload()" title="Refresh">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
+                  </div>
+                </div>
+                <div class="files-info-cards" id="filesInfoCards">
+                  <div class="files-info-card">
+                    <div class="files-info-card-value" id="filesInfoRoot">/</div>
+                    <div class="files-info-card-label">Root Directory</div>
+                  </div>
+                  <div class="files-info-card">
+                    <div class="files-info-card-value" id="filesInfoCount">0</div>
+                    <div class="files-info-card-sub" id="filesInfoCountSub">0 files · 0 folders</div>
+                    <div class="files-info-card-label">Items</div>
+                  </div>
+                  <div class="files-info-card">
+                    <div class="files-info-card-value" id="filesInfoSize">0 B</div>
+                    <div class="files-info-card-label">Total Size</div>
                   </div>
                 </div>
                 <div class="mass-actions" id="massActions" style="display:none;">
@@ -417,7 +476,41 @@
                     <button class="btn btn-secondary btn-sm" onclick="ServerFiles.clearselection()">Cancel</button>
                   </div>
                 </div>
-                <div class="files-list" id="filesList"></div>
+                <div class="files-action-bar" id="filesActionBar">
+                  <div class="files-action-bar-left">
+                    <label class="file-checkbox file-checkbox-selectall" onclick="event.stopPropagation()">
+                      <input type="checkbox" id="filesSelectAll" onchange="ServerFiles.toggleselectall(this.checked)" />
+                      <span class="file-checkbox-mark"></span>
+                    </label>
+                    <span class="files-selection-count" id="filesSelectionCount">0 selected</span>
+                    <div class="files-filter-tabs">
+                      <button class="files-filter-btn active" data-tab="all" onclick="ServerFiles.setfilter('all')">All</button>
+                      <button class="files-filter-btn" data-tab="files" onclick="ServerFiles.setfilter('files')">Files</button>
+                      <button class="files-filter-btn" data-tab="folders" onclick="ServerFiles.setfilter('folders')">Folders</button>
+                    </div>
+                  </div>
+                  <div class="files-action-bar-right">
+                    <div class="files-sort-group">
+                      <span class="files-sort-label">Sort by:</span>
+                      <button class="files-sort-btn active" data-sort="name" onclick="ServerFiles.setsort('name')">Name</button>
+                      <button class="files-sort-btn" data-sort="size" onclick="ServerFiles.setsort('size')">Size</button>
+                      <button class="files-sort-btn" data-sort="date" onclick="ServerFiles.setsort('date')">Modified</button>
+                    </div>
+                    <button class="files-sort-dir-btn" onclick="ServerFiles.togglesortdir()" title="Toggle sort direction">
+                      <svg id="filesSortDirIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="files-table" id="filesTable">
+                  <div class="files-table-head">
+                    <div class="files-th files-th-check"></div>
+                    <div class="files-th files-th-name">Name</div>
+                    <div class="files-th files-th-size">Size</div>
+                    <div class="files-th files-th-date">Modified</div>
+                    <div class="files-th files-th-actions"></div>
+                  </div>
+                  <div class="files-list" id="filesList"></div>
+                </div>
                 <div class="editor-container" id="editorContainer" style="display:none;">
                   <div class="editor-header" id="editorHeader">
                     <button class="btn btn-secondary btn-sm" onclick="ServerFiles.closeeditor()">
@@ -442,6 +535,34 @@
             <div class="server-page-tab" id="tabStartup" style="display:none;"></div>
             <div class="server-page-tab" id="tabSettings" style="display:none;"></div>
             <div class="server-page-tab" id="tabActivity" style="display:none;"></div>
+            <div class="server-page-tab" id="tabPlugins" style="display:none;flex-direction:column;gap:16px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="position:relative;flex:1;max-width:400px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" class="form-input" id="pluginsearchinput" placeholder="Search plugins on Modrinth..." style="padding-left:32px;" />
+                </div>
+                <select class="form-input" id="pluginversionselect" style="width:auto;min-width:130px;">
+                  <option value="">Loading...</option>
+                </select>
+              </div>
+              <div id="pluginstatus" style="font-size:13px;color:var(--text-muted);min-height:18px;"></div>
+              <div id="pluginresults" class="plugins-grid" style="display:none;"></div>
+              <div id="pluginempty" style="display:flex;"></div>
+            </div>
+            <div class="server-page-tab" id="tabMods" style="display:none;flex-direction:column;gap:16px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="position:relative;flex:1;max-width:400px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" class="form-input" id="modsearchinput" placeholder="Search mods on Modrinth..." style="padding-left:32px;" />
+                </div>
+                <select class="form-input" id="modversionselect" style="width:auto;min-width:130px;">
+                  <option value="">Loading...</option>
+                </select>
+              </div>
+              <div id="modstatus" style="font-size:13px;color:var(--text-muted);min-height:18px;"></div>
+              <div id="modresults" class="plugins-grid" style="display:none;"></div>
+              <div id="modempty" style="display:flex;"></div>
+            </div>
             <div class="server-page-tab" id="tabVPSConsole" style="display:none;">
               <div class="vps-console-wrap" id="vpsConsoleWrap"></div>
             </div>
@@ -566,6 +687,7 @@
   <script src="js/docker.js"></script>
   <script src="js/nginx.js"></script>
   <script src="js/sftp.js"></script>
+  <script src="js/plugins.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -39,6 +39,7 @@ const ServerConsole = {
           case 'auth success':
             this.connected = true;
             this.log('system', 'Authenticated');
+            this._updateconsolestate();
             window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send logs', args: [null] }));
             window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send stats', args: [null] }));
             break;
@@ -78,6 +79,7 @@ const ServerConsole = {
       if (id !== this.wsId) return;
       this.connected = false;
       this.log('system', 'Disconnected (code: ' + code + ')');
+      this._updateconsolestate();
       if (this.server) {
         setTimeout(() => this.connect(), 5000);
       }
@@ -252,17 +254,32 @@ const ServerConsole = {
   _updateconsolestate() {
     const empty = Utils.el('consoleEmpty');
     const offline = Utils.el('consoleOffline');
+    const connecting = Utils.el('consoleConnecting');
     if (!empty || !offline) return;
 
     if (this._hasOutput) {
+      if (connecting) connecting.style.display = 'none';
       empty.style.display = 'none';
       offline.style.display = 'none';
       return;
     }
 
     const isOffline = this.server && this.server.status !== 'running';
-    empty.style.display = isOffline ? 'none' : '';
-    offline.style.display = isOffline ? '' : 'none';
+    const isConnecting = this.server && this.server.status === 'running' && !this.connected && !this._hasOutput;
+
+    if (isOffline) {
+      if (connecting) connecting.style.display = 'none';
+      empty.style.display = 'none';
+      offline.style.display = '';
+    } else if (isConnecting) {
+      empty.style.display = 'none';
+      offline.style.display = 'none';
+      if (connecting) connecting.style.display = '';
+    } else {
+      if (connecting) connecting.style.display = 'none';
+      empty.style.display = '';
+      offline.style.display = 'none';
+    }
   },
 
   async power(signal) {

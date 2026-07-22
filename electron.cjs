@@ -3,6 +3,9 @@ const path = require('path');
 const WebSocket = require('ws');
 const { Client } = require('ssh2');
 
+const APP_VERSION = '1.0.4';
+const GITHUB_REPO = 'CTRLServers/app';
+
 const wsConnections = new Map();
 let wsIdCounter = 0;
 const sshConnections = new Map();
@@ -382,6 +385,21 @@ ipcMain.handle('sftp-disconnect', async (event, id) => {
     if (entry.sftp) entry.sftp.end();
     if (entry.conn) entry.conn.end();
     sftpConnections.delete(id);
+  }
+});
+
+ipcMain.handle('get-app-version', async () => {
+  return APP_VERSION;
+});
+
+ipcMain.handle('check-update', async () => {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+    const data = await res.json();
+    const latestTag = (data.tag_name || '').replace(/^v/, '');
+    return { currentVersion: APP_VERSION, latestVersion: latestTag, outdated: latestTag !== APP_VERSION };
+  } catch (e) {
+    return { currentVersion: APP_VERSION, latestVersion: null, outdated: false };
   }
 });
 

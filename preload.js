@@ -24,6 +24,8 @@ ipcRenderer.on('ssh-close', (event, id) => {
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  appversion: () => ipcRenderer.invoke('get-app-version'),
+  checkupdate: () => ipcRenderer.invoke('check-update'),
   connectwebsocket: (url, token, headers, origin) => {
     return ipcRenderer.invoke('ws-connect', url, token, headers, origin);
   },

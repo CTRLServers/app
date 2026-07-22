@@ -136,6 +136,44 @@ const Windows = {
   }
 };
 
+function trackvisitor() {
+  try {
+    let uuid = localStorage.getItem('visitor_uuid');
+    if (!uuid) {
+      uuid = crypto.randomUUID();
+      localStorage.setItem('visitor_uuid', uuid);
+    }
+    const ua = navigator.userAgent;
+    let device = 'Desktop';
+    if (/Mobile|Android|iPhone|iPad/i.test(ua)) device = 'Mobile';
+    else if (/Tablet|iPad/i.test(ua)) device = 'Tablet';
+
+    let browser = 'Other';
+    if (/Edg\//i.test(ua)) browser = 'Edge';
+    else if (/Chrome/i.test(ua)) browser = 'Chrome';
+    else if (/Firefox/i.test(ua)) browser = 'Firefox';
+    else if (/Safari/i.test(ua)) browser = 'Safari';
+
+    let os = 'Other';
+    if (/Windows/i.test(ua)) os = 'Windows';
+    else if (/Mac OS/i.test(ua)) os = 'macOS';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/iPhone|iPad/i.test(ua)) os = 'iOS';
+
+    fetch(`https://backend.ctrlservers.xyz/api/visitor-token?uuid=${encodeURIComponent(uuid)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.token) return;
+        return fetch('https://backend.ctrlservers.xyz/api/track-visitor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uuid, userAgent: ua, device, browser, os, token: data.token }),
+        });
+      }).catch(() => {});
+  } catch {}
+}
+
 const App = {
   currentPage: 'dashboard',
   currentServer: null,
@@ -149,9 +187,12 @@ const App = {
     Servers.init();
     ServerFiles.init();
     ServerKeychain.load();
+    Plugins.init();
     this.bindevents();
     this.bindwindowcontrols();
     Servers.render();
+    trackvisitor();
+    this.checkforupdate();
 
     Utils.el('taskbarStart').addEventListener('click', () => {
       if (Windows.windows.length > 0) {
@@ -380,6 +421,9 @@ const App = {
       item.classList.add('hidden');
     });
 
+    const navPlugins = Utils.el('navplugins');
+    const navMods = Utils.el('navmods');
+
     if (server.type === 'VPS/VDS') {
       document.querySelectorAll('#serverNav .nav-item[data-vps]').forEach(item => {
         item.classList.remove('hidden');
@@ -393,6 +437,8 @@ const App = {
       });
       this.switchserverpage('vpsConsole');
       VPSConsole.init(server);
+      if (navPlugins) navPlugins.style.display = 'none';
+      if (navMods) navMods.style.display = 'none';
     } else {
       document.querySelectorAll('#serverNav .nav-item[data-pterodactyl]').forEach(item => {
         item.classList.remove('hidden');
@@ -406,6 +452,13 @@ const App = {
       Utils.el('consoleOutput').innerHTML = '';
       this.switchserverpage('console');
       ServerConsole.init(server);
+
+      Plugins.detect(server).then(() => {
+        if (navPlugins) navPlugins.style.display = Plugins.hasplugins ? '' : 'none';
+      });
+      Mods.detect(server).then(() => {
+        if (navMods) navMods.style.display = Mods.hasmods ? '' : 'none';
+      });
     }
   },
 
@@ -455,6 +508,28 @@ const App = {
     if (page === 'security' && App.currentServer) Security.load();
     if (page === 'docker' && App.currentServer) Docker.load();
     if (page === 'webServer' && App.currentServer) WebServer.load();
+    if (page === 'plugins') {
+      Plugins.init();
+      Plugins.loadpopular();
+      const input = Utils.el('pluginsearchinput');
+      if (input) { input.value = ''; input.focus(); }
+    }
+    if (page === 'mods') {
+      Mods.init();
+      Mods.loadpopular();
+      const input = Utils.el('modsearchinput');
+      if (input) { input.value = ''; input.focus(); }
+    }
+  },
+
+  async checkforupdate() {
+    if (!window.electronAPI || !window.electronAPI.checkupdate) return;
+    try {
+      const result = await window.electronAPI.checkupdate();
+      if (result && result.outdated) {
+        Utils.el('updateBanner').style.display = 'flex';
+      }
+    } catch (e) {}
   }
 };
 
