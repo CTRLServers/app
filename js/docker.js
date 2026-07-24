@@ -15,8 +15,8 @@ const Docker = {
     this.render();
 
     try {
-      const check = await this.exec('command -v docker && docker --version');
-      this.installed = check.exitCode === 0 && check.stdout.includes('Docker');
+      const check = await this.exec('docker info --format "{{.ServerVersion}}" 2>/dev/null || docker.io info --format "{{.ServerVersion}}" 2>/dev/null || systemctl is-active docker 2>/dev/null || service docker status 2>/dev/null | grep -qi running');
+      this.installed = check.exitCode === 0 && (check.stdout.trim().length > 0 || check.stdout.toLowerCase().includes('active') || check.stdout.toLowerCase().includes('running'));
       if (this.installed) {
         await this.fetchall();
       }
@@ -119,6 +119,86 @@ const Docker = {
     return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
   },
 
+  showcreatecontainer() {
+    Modal.open('Create Container', `
+      <div class="form-group">
+        <label class="form-label">Container Name</label>
+        <input class="form-input" type="text" id="dkrName" placeholder="my-container" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Image</label>
+        <input class="form-input" type="text" id="dkrImage" placeholder="nginx:latest" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ports (optional)</label>
+        <input class="form-input" type="text" id="dkrPorts" placeholder="8080:80, 443:443" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Volumes (optional)</label>
+        <input class="form-input" type="text" id="dkrVolumes" placeholder="/host/path:/container/path" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Environment (optional)</label>
+        <input class="form-input" type="text" id="dkrEnv" placeholder="KEY=value, KEY2=value2" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Restart Policy</label>
+        <select class="form-input" id="dkrRestart">
+          <option value="no">No</option>
+          <option value="always">Always</option>
+          <option value="unless-stopped">Unless Stopped</option>
+          <option value="on-failure">On Failure</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button class="btn btn-primary" onclick="Docker.createcontainer()">Create</button>
+      </div>
+    `);
+  },
+
+  async createcontainer() {
+    const name = Utils.el('dkrName').value.trim();
+    const image = Utils.el('dkrImage').value.trim();
+    const ports = Utils.el('dkrPorts').value.trim();
+    const volumes = Utils.el('dkrVolumes').value.trim();
+    const env = Utils.el('dkrEnv').value.trim();
+    const restart = Utils.el('dkrRestart').value;
+
+    if (!name || !image) return;
+
+    let cmd = `docker run -d --name ${name.replace(/[^a-zA-Z0-9_.-]/g, '')}`;
+    if (restart && restart !== 'no') cmd += ` --restart ${restart}`;
+    if (ports) {
+      for (const p of ports.split(',')) {
+        const pp = p.trim();
+        if (pp) cmd += ` -p ${pp}`;
+      }
+    }
+    if (volumes) {
+      for (const v of volumes.split(',')) {
+        const vv = v.trim();
+        if (vv) cmd += ` -v ${vv}`;
+      }
+    }
+    if (env) {
+      for (const e of env.split(',')) {
+        const ee = e.trim();
+        if (ee) cmd += ` -e ${ee}`;
+      }
+    }
+    cmd += ` ${image}`;
+
+    Modal.close();
+    this.loading = true;
+    this.render();
+
+    await this.exec(cmd);
+    await this.fetchall();
+    this.loading = false;
+    this.render();
+  },
+
   setactivetab(tab) {
     this.activeTab = tab;
     this.render();
@@ -155,7 +235,13 @@ const Docker = {
       </div>`;
 
     if (this.activeTab === 'containers') {
-      html += `<div class="dkr-list">`;
+      html += `<div class="dkr-header-row">
+        <button class="btn btn-primary btn-sm" onclick="Docker.showcreatecontainer()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Container
+        </button>
+      </div>
+      <div class="dkr-list">`;
       for (const c of this.containers) {
         const statusClass = c.running ? 'svc-active' : 'svc-inactive';
         html += `<div class="dkr-card">

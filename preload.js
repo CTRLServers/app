@@ -2,6 +2,14 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const wsCallbacks = { message: [], close: [], error: [] };
 const sshCallbacks = { data: [], close: [] };
+const wsCallbackIds = new Map();
+const sshDataCallbackIds = new Map();
+const sshCloseCallbackIds = new Map();
+let wsMsgId = 0;
+let wsCloseId = 0;
+let wsErrorId = 0;
+let sshDataId = 0;
+let sshCloseId = 0;
 
 ipcRenderer.on('ws-message', (event, id, data) => {
   wsCallbacks.message.forEach(cb => cb(id, data));
@@ -16,11 +24,11 @@ ipcRenderer.on('ws-error', (event, id, err) => {
 });
 
 ipcRenderer.on('ssh-data', (event, id, data) => {
-  sshCallbacks.data.forEach(cb => cb(id, data));
+  sshCallbacks.data.forEach(c => c.cb(id, data));
 });
 
 ipcRenderer.on('ssh-close', (event, id) => {
-  sshCallbacks.close.forEach(cb => cb(id));
+  sshCallbacks.close.forEach(c => c.cb(id));
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -36,7 +44,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('ws-close', id);
   },
   onwsmessage: (callback) => {
+    const id = ++wsMsgId;
+    wsCallbackIds.set(callback, id);
     wsCallbacks.message.push(callback);
+    return id;
   },
   offwsmessage: (callback) => {
     const idx = wsCallbacks.message.indexOf(callback);
@@ -75,18 +86,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('ssh-exec', config, command);
   },
   onsshdata: (callback) => {
-    sshCallbacks.data.push(callback);
+    const id = ++sshDataId;
+    sshDataCallbackIds.set(id, callback);
+    sshCallbacks.data.push({ id, cb: callback });
+    return id;
   },
-  offsshdata: (callback) => {
-    const idx = sshCallbacks.data.indexOf(callback);
+  offsshdata: (id) => {
+    const idx = sshCallbacks.data.findIndex(c => c.id === id);
     if (idx !== -1) sshCallbacks.data.splice(idx, 1);
+    sshDataCallbackIds.delete(id);
   },
   onsshclose: (callback) => {
-    sshCallbacks.close.push(callback);
+    const id = ++sshCloseId;
+    sshCloseCallbackIds.set(id, callback);
+    sshCallbacks.close.push({ id, cb: callback });
+    return id;
   },
-  offsshclose: (callback) => {
-    const idx = sshCallbacks.close.indexOf(callback);
+  offsshclose: (id) => {
+    const idx = sshCallbacks.close.findIndex(c => c.id === id);
     if (idx !== -1) sshCallbacks.close.splice(idx, 1);
+    sshCloseCallbackIds.delete(id);
   },
   sftpconnect: (config) => {
     return ipcRenderer.invoke('sftp-connect', config);
@@ -126,5 +145,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   sftpdisconnect: (id) => {
     return ipcRenderer.invoke('sftp-disconnect', id);
+  },
+  toggledevtools: () => {
+    return ipcRenderer.invoke('toggle-devtools');
+  },
+  discordrpcconnect: () => {
+    return ipcRenderer.invoke('discord-rpc-connect');
+  },
+  discordrpcdisconnect: () => {
+    return ipcRenderer.invoke('discord-rpc-disconnect');
+  },
+  discordrpcsetactivity: (activity) => {
+    return ipcRenderer.invoke('discord-rpc-set-activity', activity);
   }
 });

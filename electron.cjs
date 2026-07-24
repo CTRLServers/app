@@ -2,8 +2,10 @@ const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const WebSocket = require('ws');
 const { Client } = require('ssh2');
+const net = require('net');
+const fs = require('fs');
 
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 const GITHUB_REPO = 'CTRLServers/app';
 
 const wsConnections = new Map();
@@ -403,7 +405,141 @@ ipcMain.handle('check-update', async () => {
   }
 });
 
+ipcMain.handle('toggle-devtools', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.webContents.toggleDevTools();
+  }
+});
+
+let rpcSocket = null;
+let rpcConnected = false;
+let rpcNonce = 0;
+let rpcCallbacks = {};
+
+function getdiscordipcpath() {
+  if (process.platform === 'win32') {
+    return '\\\\.\\pipe\\discord-ipc-0';
+  }
+  const prefix = 'discord-ipc-';
+  const dirs = [];
+  if (process.platform === 'darwin') {
+    dirs.push(path.join(process.env.HOME || '', 'Library', 'Application Support', 'discord'));
+  } else {
+    const xdg = process.env.XDG_RUNTIME_DIR || '/tmp';
+    dirs.push(path.join(xdg, 'discord'));
+    dirs.push('/tmp');
+  }
+  for (const dir of dirs) {
+    for (let i = 0; i < 10; i++) {
+      const p = path.join(dir, prefix + i);
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  return null;
+}
+
+function sendipcframe(socket, opcode, data) {
+  const payload = Buffer.from(data, 'utf8');
+  const header = Buffer.alloc(8);
+  header.writeUInt32LE(opcode, 0);
+  header.writeUInt32LE(payload.length, 4);
+  socket.write(Buffer.concat([header, payload]));
+}
+
+function ipcconnect(clientId) {
+  return new Promise((resolve) => {
+    const pidpath = getdiscordipcpath();
+    if (!pidpath) return resolve(false);
+    const socket = net.createConnection(pidpath);
+    socket.setTimeout(3000);
+    socket.on('error', () => resolve(false));
+    socket.on('timeout', () => { socket.destroy(); resolve(false); });
+    let resolved = false;
+    socket.once('connect', () => {
+      socket.setTimeout(0);
+      sendipcframe(socket, 0, JSON.stringify({ v: 1, client_id: clientId }));
+      let pending = Buffer.alloc(0);
+      const ondata = (chunk) => {
+        pending = Buffer.concat([pending, chunk]);
+        while (pending.length >= 8) {
+          const opcode = pending.readUInt32LE(0);
+          const len = pending.readUInt32LE(4);
+          if (pending.length < 8 + len) break;
+          const payload = pending.slice(8, 8 + len).toString('utf8');
+          pending = pending.slice(8 + len);
+          if (opcode === 1) {
+            try {
+              const msg = JSON.parse(payload);
+              if (msg.evt === 'READY' && !resolved) {
+                resolved = true;
+                socket.removeListener('data', ondata);
+                rpcSocket = socket;
+                rpcConnected = true;
+                let buf2 = Buffer.alloc(0);
+                socket.on('data', (c) => {
+                  buf2 = Buffer.concat([buf2, c]);
+                  while (buf2.length >= 8) {
+                    const op = buf2.readUInt32LE(0);
+                    const ln = buf2.readUInt32LE(4);
+                    if (buf2.length < 8 + ln) break;
+                    const pl = buf2.slice(8, 8 + ln).toString('utf8');
+                    buf2 = buf2.slice(8 + ln);
+                    if (op === 1) {
+                      try {
+                        const m = JSON.parse(pl);
+                        if (m.nonce && rpcCallbacks[m.nonce]) {
+                          rpcCallbacks[m.nonce](m);
+                          delete rpcCallbacks[m.nonce];
+                        }
+                      } catch (e) {}
+                    }
+                  }
+                });
+                socket.on('close', () => { rpcConnected = false; rpcSocket = null; rpcCallbacks = {}; });
+                socket.on('error', () => { rpcConnected = false; rpcSocket = null; rpcCallbacks = {}; });
+                resolve(true);
+              } else if (msg.evt === 'ERROR' && !resolved) {
+                resolved = true;
+                socket.destroy();
+                resolve(false);
+              }
+            } catch (e) {}
+          }
+        }
+      };
+      socket.on('data', ondata);
+      socket.on('close', () => { if (!resolved) resolve(false); });
+    });
+  });
+}
+
+ipcMain.handle('discord-rpc-connect', async () => {
+  if (rpcConnected) return true;
+  const clientId = '1529664717117984888';
+  return await ipcconnect(clientId);
+});
+
+ipcMain.handle('discord-rpc-disconnect', async () => {
+  rpcConnected = false;
+  rpcCallbacks = {};
+  if (rpcSocket) {
+    try { rpcSocket.destroy(); } catch (e) {}
+    rpcSocket = null;
+  }
+});
+
+ipcMain.handle('discord-rpc-set-activity', async (event, activity) => {
+  if (!rpcConnected || !rpcSocket) return;
+  const nonce = 'n' + (++rpcNonce);
+  return new Promise((resolve) => {
+    rpcCallbacks[nonce] = () => resolve();
+    const payload = JSON.stringify({ cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity }, nonce });
+    sendipcframe(rpcSocket, 1, payload);
+    setTimeout(() => { delete rpcCallbacks[nonce]; resolve(); }, 2000);
+  });
+});
+
 app.whenReady().then(() => {
   createwindow();
-  const win = BrowserWindow.getAllWindows()[0];
 });

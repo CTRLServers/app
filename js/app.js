@@ -184,6 +184,7 @@ const App = {
   init() {
     Theme.init();
     Modal.init();
+    AppSettings.load();
     Servers.init();
     ServerFiles.init();
     ServerKeychain.load();
@@ -193,6 +194,7 @@ const App = {
     Servers.render();
     trackvisitor();
     this.checkforupdate();
+    DiscordRPC.init();
 
     Utils.el('taskbarStart').addEventListener('click', () => {
       if (Windows.windows.length > 0) {
@@ -203,11 +205,21 @@ const App = {
       this.showserverlist();
     });
 
+    Utils.el('appSettingsBtn').addEventListener('click', () => {
+      this.navigateto('appsettings');
+    });
+
     if (Servers.list.length > 0) {
       Servers.fetchallfromapi().then(() => Servers.pollresources());
     }
 
-    this._pollInterval = setInterval(() => Servers.pollresources(), 10000);
+    this.startpolling();
+  },
+
+  startpolling() {
+    if (this._pollInterval) clearInterval(this._pollInterval);
+    const interval = AppSettings.get('pollInterval') || 10;
+    this._pollInterval = setInterval(() => Servers.pollresources(), interval * 1000);
   },
 
   bindwindowcontrols() {
@@ -299,6 +311,22 @@ const App = {
       if (e.key === 'Escape' && ServerFiles.editor) {
         ServerFiles.closeeditor();
       }
+      if (this.currentPage === 'dashboard' && !this.currentServer) {
+        if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+          e.preventDefault();
+          const filtered = Servers._filterlist();
+          const idx = parseInt(e.key, 10) - 1;
+          if (idx < filtered.length) {
+            const server = filtered[idx];
+            const real = Servers.list.indexOf(server);
+            if (real >= 0) this.openserver(real);
+          }
+        }
+        if (e.ctrlKey && (e.key === 'r' || e.key === 'R')) {
+          e.preventDefault();
+          Servers.fetchallfromapi();
+        }
+      }
     });
 
     document.addEventListener('click', () => {
@@ -315,10 +343,13 @@ const App = {
     Utils.el('sidebar').classList.remove('open');
     Utils.el('topbarResources').style.display = 'none';
     Utils.el('serversGrid').style.display = page === 'dashboard' ? 'grid' : 'none';
+    Utils.el('dashboardFilterBar').style.display = page === 'dashboard' ? '' : 'none';
     Utils.el('emptyState').style.display = (page === 'dashboard' && Servers.list.length === 0) ? 'flex' : 'none';
     Utils.el('dashboardKeychain').style.display = page === 'keychain' ? 'flex' : 'none';
     Utils.el('tabSftp').style.display = page === 'sftp' ? '' : 'none';
     Utils.el('tabMinecraft').style.display = page === 'minecraft' ? '' : 'none';
+    Utils.el('tabappsettings').style.display = page === 'appsettings' ? '' : 'none';
+    if (page === 'appsettings') AppSettings.render();
     if (page === 'keychain') ServerKeychain.renderdashboard();
     if (page === 'sftp') SFTP.load();
     if (page === 'minecraft') {
@@ -339,12 +370,13 @@ const App = {
   },
 
   getpagetitle(page) {
-    return { dashboard: 'Dashboard', keychain: 'KeyChain', minecraft: 'Minecraft Plugin', sftp: 'SFTP' }[page] || 'Dashboard';
+    return { dashboard: 'Dashboard', keychain: 'KeyChain', minecraft: 'Minecraft Plugin', sftp: 'SFTP', appsettings: 'App Settings' }[page] || 'Dashboard';
   },
 
   showserverlist() {
     if (ServerFiles.editor) ServerFiles.closeeditor();
     this.currentServer = null;
+    Servers._didrag = false;
     ServerConsole.destroy();
     VPSConsole.destroy();
     const detail = Utils.el('serverDetail');
@@ -362,6 +394,7 @@ const App = {
     Utils.el('topbarResources').style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
     Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
+    Utils.el('pinnedServers').style.display = 'none';
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('topbarActions').style.display = '';
     Utils.el('topbarServerActions').style.display = 'none';
@@ -369,10 +402,16 @@ const App = {
     Utils.el('content').classList.remove('server-view');
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabappsettings').style.display = 'none';
+    const searchInput = Utils.el('dashboardSearchInput');
+    if (searchInput) { searchInput.value = ''; Servers._search = ''; Servers._filtertag = ''; Servers._filterfolder = ''; }
+    Servers.renderfilterbar();
+    DiscordRPC.clearservers();
     this.currentPage = 'dashboard';
   },
 
   openserver(index) {
+    if (Servers._didrag) { Servers._didrag = false; return; }
     const server = Servers.list[index];
     if (!server) return;
     if (server.type === 'Link') {
@@ -409,6 +448,7 @@ const App = {
     Utils.el('serverNav').style.display = '';
     Utils.el('emptyState').style.display = 'none';
     Utils.el('serversGrid').style.display = 'none';
+    Utils.el('dashboardFilterBar').style.display = 'none';
     Utils.el('serverDetail').style.display = '';
     Utils.el('pageTitle').textContent = server.name;
     Utils.el('sidebar').classList.remove('open');
@@ -416,6 +456,8 @@ const App = {
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabappsettings').style.display = 'none';
+    DiscordRPC.updateserver(server.name);
 
     document.querySelectorAll('#serverNav .nav-item').forEach(item => {
       item.classList.add('hidden');

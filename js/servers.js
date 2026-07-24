@@ -1,6 +1,12 @@
 const Servers = {
   list: [],
+  folders: [],
   resources: {},
+  _search: '',
+  _filtertag: '',
+  _filterfolder: '',
+  _dragidx: -1,
+  _didrag: false,
 
   init() {
     this.load();
@@ -15,10 +21,13 @@ const Servers = {
   load() {
     const data = localStorage.getItem('ctrl_servers');
     this.list = data ? JSON.parse(data) : [];
+    const fd = localStorage.getItem('ctrl_folders');
+    this.folders = fd ? JSON.parse(fd) : [];
   },
 
   save() {
     localStorage.setItem('ctrl_servers', JSON.stringify(this.list));
+    localStorage.setItem('ctrl_folders', JSON.stringify(this.folders));
   },
 
   geticon(server) {
@@ -66,9 +75,11 @@ const Servers = {
   render() {
     const grid = Utils.el('serversGrid');
     const empty = Utils.el('emptyState');
+    this.renderfilterbar();
     if (this.list.length === 0) {
       empty.style.display = 'flex';
       grid.style.display = 'none';
+      Utils.el('pinnedServers').style.display = 'none';
     } else {
       empty.style.display = 'none';
       grid.style.display = 'grid';
@@ -76,9 +87,167 @@ const Servers = {
     }
   },
 
+  onsearch(val) {
+    this._search = (val || '').toLowerCase();
+    this.rendercards();
+  },
+
+  togglepin(index) {
+    const server = this.list[index];
+    if (!server) return;
+    server.pinned = !server.pinned;
+    this.save();
+    this.rendercards();
+  },
+
+  _filterlist() {
+    let result = this.list;
+    if (this._filterfolder) {
+      result = result.filter(s => s.folder === this._filterfolder);
+    }
+    if (this._filtertag) {
+      result = result.filter(s => (s.tags || []).includes(this._filtertag));
+    }
+    if (this._search) {
+      const q = this._search;
+      result = result.filter(s => {
+        if (s.name.toLowerCase().includes(q)) return true;
+        if ((s.tags || []).some(t => t.toLowerCase().includes(q))) return true;
+        return false;
+      });
+    }
+    return result;
+  },
+
+  async quickpower(index, signal) {
+    const server = this.list[index];
+    if (!server || server.type !== 'Pterodactyl' || !server.apiKey || !server.panelUrl) return;
+    try {
+      await Api.power(server.panelUrl, server.apiKey, server.uuid, signal);
+      this.resources[server.uuid] = this.resources[server.uuid] || {};
+      this.resources[server.uuid].state = signal === 'start' || signal === 'restart' ? 'starting' : 'stopping';
+      this.updatecard(server.uuid);
+      if (signal === 'start' || signal === 'restart') {
+        this._pollafterpower(server.uuid, 0);
+      }
+    } catch (e) {}
+  },
+
+  _pollafterpower(uuid, attempt) {
+    if (attempt > 10) return;
+    const delays = [2000, 3000, 3000, 4000, 5000, 5000, 5000, 5000, 5000, 5000];
+    setTimeout(async () => {
+      const server = this.list.find(s => s.uuid === uuid);
+      if (!server || !server.apiKey || !server.panelUrl) return;
+      try {
+        const data = await Api.fetchresources(server.panelUrl, server.apiKey, uuid);
+        this.resources[uuid] = {
+          state: data.current_state,
+          memory_bytes: data.resources.memory_bytes,
+          cpu: data.resources.cpu_absolute,
+          disk_bytes: data.resources.disk_bytes,
+          uptime: data.resources.uptime
+        };
+        server.status = data.current_state;
+        this.save();
+        this.updatecard(uuid);
+        if (data.current_state === 'running' || data.current_state === 'stopped') return;
+        this._pollafterpower(uuid, attempt + 1);
+      } catch (e) {
+        this._pollafterpower(uuid, attempt + 1);
+      }
+    }, delays[attempt] || 5000);
+  },
+
+  _instdrag(grid) {
+    const cards = grid.querySelectorAll('.server-card');
+    cards.forEach((card) => {
+      card.addEventListener('dragstart', (e) => {
+        this._dragidx = parseInt(card.dataset.index, 10);
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.index);
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        this._dragidx = -1;
+        grid.querySelectorAll('.server-card').forEach(c => c.classList.remove('drag-over'));
+      });
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = card.getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        card.classList.remove('drag-over-left', 'drag-over-right');
+        if (e.clientX < midX) {
+          card.classList.add('drag-over-left');
+        } else {
+          card.classList.add('drag-over-right');
+        }
+      });
+      card.addEventListener('dragleave', () => {
+        card.classList.remove('drag-over-left', 'drag-over-right');
+      });
+      card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        card.classList.remove('drag-over-left', 'drag-over-right');
+        const from = this._dragidx;
+        const to = parseInt(card.dataset.index, 10);
+        if (from === -1 || from === to || isNaN(to)) return;
+        this._didrag = true;
+        const fromSrv = this.list[from];
+        const toSrv = this.list[to];
+        const fromPinned = fromSrv.pinned;
+        const toPinned = toSrv.pinned;
+        const rect = card.getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        const insertAfter = e.clientX >= midX;
+        if (fromPinned === toPinned) {
+          this.list.splice(from, 1);
+          let newIdx = this.list.indexOf(toSrv);
+          if (insertAfter) newIdx++;
+          this.list.splice(newIdx, 0, fromSrv);
+        } else {
+          fromSrv.pinned = toPinned;
+          this.list.splice(from, 1);
+          let newIdx = this.list.indexOf(toSrv);
+          if (insertAfter) newIdx++;
+          this.list.splice(newIdx, 0, fromSrv);
+        }
+        this.save();
+        this.rendercards();
+      });
+    });
+  },
+
   rendercards() {
     const grid = Utils.el('serversGrid');
-    grid.innerHTML = this.list.map((server, index) => {
+    const pinnedSection = Utils.el('pinnedServers');
+    const pinnedGrid = Utils.el('pinnedGrid');
+    const filtered = this._filterlist();
+    const pinned = filtered.filter(s => s.pinned);
+    const unpinned = filtered.filter(s => !s.pinned);
+
+    if (pinned.length > 0) {
+      pinnedSection.style.display = '';
+      pinnedGrid.innerHTML = pinned.map((server) => {
+        const realindex = this.list.indexOf(server);
+        return this._rendercard(server, realindex);
+      }).join('');
+      pinnedGrid.style.display = 'grid';
+    } else {
+      pinnedSection.style.display = 'none';
+    }
+
+    grid.innerHTML = unpinned.map((server) => {
+      const realindex = this.list.indexOf(server);
+      return this._rendercard(server, realindex);
+    }).join('');
+    this._instdrag(grid);
+    if (pinned.length > 0) this._instdrag(pinnedGrid);
+  },
+
+  _rendercard(server, index) {
       const res = this.resources[server.uuid] || {};
       const memUsed = res.memory_bytes || 0;
       const memTotal = (server.limits?.memory || 0) * 1024 * 1024;
@@ -90,7 +259,7 @@ const Servers = {
       const port = server.port || '';
 
       return `
-      <div class="server-card" data-uuid="${server.uuid || ''}" data-index="${index}" onclick="App.openserver(${index})" oncontextmenu="Servers.contextmenu(event, ${index})">
+      <div class="server-card" draggable="true" data-uuid="${server.uuid || ''}" data-index="${index}" onclick="App.openserver(${index})" oncontextmenu="Servers.contextmenu(event, ${index})">
         <div class="server-card-header">
           <div class="server-name-row">
             ${Servers.geticon(server)}
@@ -131,15 +300,28 @@ const Servers = {
             <div class="stat-value">${Utils.formatbytes(diskUsed)} / ${Utils.formatmb(server.limits?.disk)}</div>
           </div>
         </div>` : ''}
+        ${(server.tags && server.tags.length > 0) ? `<div class="server-card-tags">${server.tags.map(t => `<span class="server-tag" style="--tag-color:${this._tagcolor(t)}">${Utils.escape(t)}</span>`).join('')}</div>` : ''}
         <div class="server-card-footer">
           <div class="server-status">
             <span class="status-dot ${state}"></span>
             <span class="status-text">${Utils.statuslabel(state)}</span>
           </div>
-          ${res.uptime ? `<span class="status-uptime">${Utils.formatuptime(res.uptime)}</span>` : ''}
+          <div class="server-card-actions">
+            ${res.uptime ? `<span class="status-uptime">${Utils.formatuptime(res.uptime)}</span>` : ''}
+            ${server.type === 'Pterodactyl' && server.apiKey && server.panelUrl && (state === 'running' || state === 'stopped' || state === 'offline') ? `
+              <button class="card-action-btn" data-action="start" onclick="event.stopPropagation();Servers.quickpower(${index},'start')" title="Start" ${state === 'running' ? 'disabled' : ''}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </button>
+              <button class="card-action-btn" onclick="event.stopPropagation();Servers.quickpower(${index},'restart')" title="Restart">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+              <button class="card-action-btn" data-action="stop" onclick="event.stopPropagation();Servers.quickpower(${index},'stop')" title="Stop" ${state === 'stopped' || state === 'offline' ? 'disabled' : ''}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+              </button>
+            ` : ''}
+          </div>
         </div>
       </div>`;
-    }).join('');
   },
 
   async pollresources() {
@@ -209,6 +391,11 @@ const Servers = {
     const uptime = card.querySelector('.status-uptime');
     if (uptime) uptime.textContent = Utils.formatuptime(res.uptime);
 
+    const startbtn = card.querySelector('[data-action="start"]');
+    const stopbtn = card.querySelector('[data-action="stop"]');
+    if (startbtn) startbtn.disabled = state === 'running';
+    if (stopbtn) stopbtn.disabled = state === 'stopped' || state === 'offline';
+
     const server = this.list.find(s => s.uuid === uuid);
     if (!server || server.type !== 'Pterodactyl') return;
 
@@ -246,7 +433,40 @@ const Servers = {
       document.body.appendChild(menu);
     }
 
+    const server = this.list[index];
+    const tags = server ? (server.tags || []) : [];
+    const alltags = this._collecttags();
+    const taghtml = alltags.length > 0
+      ? alltags.map(t => `<button class="context-menu-item" onclick="Servers.toggletag(${index},'${Utils.escape(t)}')">
+          <span class="ctx-tag-dot" style="background:${this._tagcolor(t)}"></span>
+          ${tags.includes(t) ? '✓ ' : ''}${Utils.escape(t)}
+        </button>`).join('')
+      : '<div class="context-menu-label">No tags yet</div>';
+
+    const folderhtml = this.folders.length > 0
+      ? this.folders.map(f => `<button class="context-menu-item" onclick="Servers.movefolder(${index},'${Utils.escape(f)}')">
+          ${server.folder === f ? '✓ ' : ''}${Utils.escape(f)}
+        </button>`).join('') + `<button class="context-menu-item" onclick="Servers.movefolder(${index},'')">Remove from folder</button>`
+      : '';
+
     menu.innerHTML = `
+      <button class="context-menu-item" onclick="Servers.togglepin(${index})">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+        ${this.list[index]?.pinned ? 'Unpin' : 'Pin'}
+      </button>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-label">Tags</div>
+      ${taghtml}
+      <button class="context-menu-item" onclick="Servers.showaddtag(${index})">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        New tag
+      </button>
+      ${folderhtml ? '<div class="context-menu-separator"></div><div class="context-menu-label">Folder</div>' + folderhtml : ''}
+      <div class="context-menu-separator"></div>
       <button class="context-menu-item danger" onclick="Servers.deleteserver(${index})">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -265,6 +485,153 @@ const Servers = {
       }
     };
     setTimeout(() => document.addEventListener('click', close), 0);
+  },
+
+  _collecttags() {
+    const tags = new Set();
+    this.list.forEach(s => (s.tags || []).forEach(t => tags.add(t)));
+    return [...tags].sort();
+  },
+
+  _tagcolor(tag) {
+    const palette = ['#3b82f6','#ef4444','#22c55e','#f59e0b','#a855f7','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16'];
+    let h = 0;
+    for (let i = 0; i < tag.length; i++) h = tag.charCodeAt(i) + ((h << 5) - h);
+    return palette[Math.abs(h) % palette.length];
+  },
+
+  toggletag(index, tag) {
+    document.querySelectorAll('.context-menu.active').forEach(m => m.classList.remove('active'));
+    const server = this.list[index];
+    if (!server) return;
+    if (!server.tags) server.tags = [];
+    const i = server.tags.indexOf(tag);
+    if (i >= 0) server.tags.splice(i, 1); else server.tags.push(tag);
+    this.save();
+    this.rendercards();
+  },
+
+  showaddtag(index) {
+    document.querySelectorAll('.context-menu.active').forEach(m => m.classList.remove('active'));
+    Modal.open('New Tag', `
+      <div class="form-group">
+        <label class="form-label">Tag name</label>
+        <input class="form-input" type="text" id="newTagInput" placeholder="e.g. production" autofocus />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button class="btn btn-primary" onclick="Servers.addtag(${index})">Add</button>
+      </div>
+    `);
+    setTimeout(() => { const inp = Utils.el('newTagInput'); if (inp) inp.focus(); }, 50);
+  },
+
+  addtag(index) {
+    const val = Utils.el('newTagInput').value.trim().toLowerCase();
+    if (!val) return;
+    const server = this.list[index];
+    if (!server) return;
+    if (!server.tags) server.tags = [];
+    if (!server.tags.includes(val)) server.tags.push(val);
+    this.save();
+    this.renderfilterbar();
+    this.rendercards();
+    Modal.close();
+  },
+
+  movefolder(index, folder) {
+    document.querySelectorAll('.context-menu.active').forEach(m => m.classList.remove('active'));
+    const server = this.list[index];
+    if (!server) return;
+    server.folder = folder || undefined;
+    this.save();
+    this.renderfilterbar();
+    this.rendercards();
+  },
+
+  showcreatefolder() {
+    Modal.open('New Folder', `
+      <div class="form-group">
+        <label class="form-label">Folder name</label>
+        <input class="form-input" type="text" id="newFolderInput" placeholder="e.g. Game Servers" autofocus />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button class="btn btn-primary" onclick="Servers.createfolder()">Create</button>
+      </div>
+    `);
+    setTimeout(() => { const inp = Utils.el('newFolderInput'); if (inp) inp.focus(); }, 50);
+  },
+
+  createfolder() {
+    const val = Utils.el('newFolderInput').value.trim();
+    if (!val) return;
+    if (!this.folders.includes(val)) this.folders.push(val);
+    this.save();
+    this.renderfilterbar();
+    Modal.close();
+  },
+
+  setfiltertag(tag) {
+    this._filtertag = this._filtertag === tag ? '' : tag;
+    this.renderfilterbar();
+    this.rendercards();
+  },
+
+  setfilterfolder(folder) {
+    this._filterfolder = this._filterfolder === folder ? '' : folder;
+    this.renderfilterbar();
+    this.rendercards();
+  },
+
+  deletefolder(folder) {
+    this.folders = this.folders.filter(f => f !== folder);
+    this.list.forEach(s => { if (s.folder === folder) s.folder = undefined; });
+    if (this._filterfolder === folder) this._filterfolder = '';
+    this.save();
+    this.renderfilterbar();
+    this.rendercards();
+  },
+
+  deletetag(tag) {
+    this.list.forEach(s => {
+      if (s.tags) s.tags = s.tags.filter(t => t !== tag);
+    });
+    if (this._filtertag === tag) this._filtertag = '';
+    this.save();
+    this.renderfilterbar();
+    this.rendercards();
+  },
+
+  renderfilterbar() {
+    const bar = Utils.el('dashboardFilterBar');
+    if (!bar) return;
+    bar.style.display = '';
+    const tags = this._collecttags();
+    const folders = this.folders;
+    let html = '';
+    if (folders.length > 0) {
+      html += folders.map(f =>
+        `<button class="filter-pill${this._filterfolder === f ? ' active' : ''}" onclick="Servers.setfilterfolder('${Utils.escape(f)}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          ${Utils.escape(f)}
+          <span class="filter-pill-x" onclick="event.stopPropagation();Servers.deletefolder('${Utils.escape(f)}')" title="Delete folder">&times;</span>
+        </button>`
+      ).join('');
+    }
+    if (tags.length > 0) {
+      html += tags.map(t =>
+        `<button class="filter-pill tag-pill${this._filtertag === t ? ' active' : ''}" onclick="Servers.setfiltertag('${Utils.escape(t)}')">
+          <span class="filter-pill-dot" style="background:${this._tagcolor(t)}"></span>
+          ${Utils.escape(t)}
+          <span class="filter-pill-x" onclick="event.stopPropagation();Servers.deletetag('${Utils.escape(t)}')" title="Delete tag">&times;</span>
+        </button>`
+      ).join('');
+    }
+    html += `<button class="filter-pill filter-pill-add" onclick="Servers.showcreatefolder()" title="New folder">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>`;
+    bar.innerHTML = html;
   },
 
   deleteserver(index) {
@@ -545,5 +912,60 @@ const Servers = {
     if (!name || !url) return;
     this.list.push({ id: Date.now(), type: 'Link', name, host: url, status: 'offline' });
     this.save(); this.render(); Modal.close();
+  },
+
+  exportlist() {
+    const data = { servers: this.list, folders: this.folders };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ctrlservers-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  importlist() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (data.servers && Array.isArray(data.servers)) {
+            let added = 0;
+            for (const s of data.servers) {
+              if (!this.list.find(x => x.uuid && x.uuid === s.uuid || x.id && x.id === s.id)) {
+                this.list.push(s);
+                added++;
+              }
+            }
+            if (data.folders && Array.isArray(data.folders)) {
+              for (const f of data.folders) {
+                if (!this.folders.includes(f)) this.folders.push(f);
+              }
+            }
+            this.save();
+            this.render();
+            Modal.open('Import Complete', `
+              <p style="text-align:center;padding:20px 0;color:var(--text-secondary);">Added ${added} server(s)</p>
+              <div class="modal-actions"><button class="btn btn-primary" onclick="Modal.close()">OK</button></div>
+            `);
+          }
+        } catch (e) {
+          Modal.open('Import Error', `
+            <p style="text-align:center;padding:20px 0;color:var(--text-secondary);">Invalid JSON file</p>
+            <div class="modal-actions"><button class="btn btn-primary" onclick="Modal.close()">OK</button></div>
+          `);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   }
 };
