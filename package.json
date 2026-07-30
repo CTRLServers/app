@@ -19,6 +19,7 @@
   "build": {
     "appId": "xyz.ctrlservers.desktop",
     "productName": "CTRLServers",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "asar": true,
     "npmRebuild": false,
     "buildDependenciesFromSource": false,
@@ -34,15 +35,18 @@
     ],
     "win": {
       "target": "portable",
-      "icon": "src/assets/icon.ico"
+      "icon": "src/assets/icon.ico",
+      "artifactName": "${productName}.${ext}"
     },
     "mac": {
       "target": "dmg",
-      "icon": "src/assets/icon.icns"
+      "icon": "src/assets/icon.icns",
+      "artifactName": "${productName}.${ext}"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "src/assets/logo.png"
+      "icon": "src/assets/logo.png",
+      "artifactName": "${productName}.${ext}"
     }
   },
   "dependencies": {

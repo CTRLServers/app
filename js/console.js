@@ -4,12 +4,39 @@ const ServerConsole = {
   serverInfo: null,
   connected: false,
   _listenersSetup: false,
+  _history: [],
+  _historyidx: -1,
+  _fontsize: 13,
+  _timestamps: false,
+  _filter: 'all',
+  _searchmarks: [],
+  _searchidx: -1,
+  _graphHistory: { cpu: [], ram: [], disk: [] },
+  _graphMax: 60,
+  _cache: {},
 
   init(server) {
+    const cached = this._cache[server.uuid];
+    if (cached) {
+      this.wsId = cached.wsId;
+      this.server = server;
+      this.connected = cached.connected;
+      this._hasOutput = cached.hasOutput;
+      const output = Utils.el('consoleOutput');
+      if (output && cached.outputHtml) output.innerHTML = cached.outputHtml;
+      this._updateconsolestate();
+      this._updatebuttons(server.status || 'offline');
+      this._applyfilter();
+      return;
+    }
     this.destroy();
     this.server = server;
     this.connected = false;
     this._hasOutput = false;
+    this._historyidx = -1;
+    this._searchmarks = [];
+    this._searchidx = -1;
+    this._graphHistory = { cpu: [], ram: [], disk: [] };
     if (!this._listenersSetup) {
       this.setuplisteners();
       this._listenersSetup = true;
@@ -18,6 +45,24 @@ const ServerConsole = {
     this.loadserverinfo();
     this._updateconsolestate();
     this._updatebuttons(server.status || 'offline');
+    this._applyfilter();
+  },
+
+  detach() {
+    if (this.server && this.wsId !== null) {
+      const output = Utils.el('consoleOutput');
+      this._cache[this.server.uuid] = {
+        wsId: this.wsId,
+        connected: this.connected,
+        hasOutput: this._hasOutput,
+        outputHtml: output ? output.innerHTML : ''
+      };
+      this.wsId = null;
+      this.server = null;
+      this.connected = false;
+      return true;
+    }
+    return false;
   },
 
   destroy() {
@@ -89,6 +134,22 @@ const ServerConsole = {
       if (id !== this.wsId) return;
       this.log('error', 'Error: ' + err);
     });
+
+    document.addEventListener('keydown', (e) => {
+      if (App.currentServerPage !== 'console') return;
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        this.showsearch();
+      }
+      if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        this.changefontsize(1);
+      }
+      if (e.ctrlKey && e.key === '-') {
+        e.preventDefault();
+        this.changefontsize(-1);
+      }
+    });
   },
 
   async loadserverinfo() {
@@ -136,6 +197,65 @@ const ServerConsole = {
       uptimeRing.style.strokeDashoffset = 0;
       uptimeRing.style.stroke = 'var(--text-muted)';
     }
+
+    this._updateconsolegraph(cpuPct, ramPct, diskPct, memUsed, memTotal, diskUsed, diskTotal);
+  },
+
+  _updateconsolegraph(cpuPct, ramPct, diskPct, memUsed, memTotal, diskUsed, diskTotal) {
+    const gh = this._graphHistory;
+    gh.cpu.push(cpuPct);
+    gh.ram.push(ramPct);
+    gh.disk.push(diskPct);
+    if (gh.cpu.length > this._graphMax) gh.cpu.shift();
+    if (gh.ram.length > this._graphMax) gh.ram.shift();
+    if (gh.disk.length > this._graphMax) gh.disk.shift();
+
+    Utils.el('consoleCpuVal').textContent = cpuPct.toFixed(1) + '%';
+    Utils.el('consoleRamVal').textContent = Utils.formatbytes(memUsed) + ' / ' + Utils.formatmb(this.server.limits?.memory);
+    Utils.el('consoleDiskVal').textContent = Utils.formatbytes(diskUsed) + ' / ' + Utils.formatmb(this.server.limits?.disk);
+
+    this._drawresgraph('consoleCpuCanvas', gh.cpu, '#f97316');
+    this._drawresgraph('consoleRamCanvas', gh.ram, '#3b82f6');
+    this._drawresgraph('consoleDiskCanvas', gh.disk, '#a855f7');
+  },
+
+  _drawresgraph(canvasId, data, color) {
+    const canvas = Utils.el(canvasId);
+    if (!canvas || data.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const w = rect.width;
+    const h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const maxVal = 100;
+    const step = w / (this._graphMax - 1);
+
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    for (let i = 0; i < data.length; i++) {
+      const x = (this._graphMax - data.length + i) * step;
+      const y = h - (data[i] / maxVal) * (h - 4) - 2;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo((this._graphMax - data.length + data.length) * step, h);
+    ctx.closePath();
+    ctx.fillStyle = color + '18';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < data.length; i++) {
+      const x = (this._graphMax - data.length + i) * step;
+      const y = h - (data[i] / maxVal) * (h - 4) - 2;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   },
 
   _loadcolor(pct) {
@@ -228,6 +348,9 @@ const ServerConsole = {
     const cmd = input.value.trim();
     if (!cmd || !this.connected || this.wsId === null) return;
     window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send command', args: [cmd] }));
+    this._history.push(cmd);
+    if (this._history.length > 200) this._history.shift();
+    this._historyidx = -1;
     input.value = '';
   },
 
@@ -235,13 +358,25 @@ const ServerConsole = {
     const output = Utils.el('consoleOutput');
     const line = document.createElement('div');
     line.className = 'console-line console-' + type;
+    line.dataset.logtype = type;
+    line.dataset.rawtext = text;
+
+    let content = '';
+    if (this._timestamps) {
+      const now = new Date();
+      const ts = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      content += `<span class="console-timestamp">[${ts}]</span> `;
+    }
+
     if (type === 'output') {
       let html = Utils.ansitohtml(text);
       html = html.replace(/^[^<]*?\[/, '[');
-      line.innerHTML = html;
+      content += html;
     } else {
-      line.textContent = text;
+      content += Utils.escape(text);
     }
+
+    line.innerHTML = content;
     output.appendChild(line);
     output.scrollTop = output.scrollHeight;
 
@@ -249,6 +384,9 @@ const ServerConsole = {
       this._hasOutput = true;
       this._updateconsolestate();
     }
+
+    this._applyfiltertoline(line);
+    if (this._searchmarks.length > 0) this._highlightsearch();
   },
 
   _updateconsolestate() {
@@ -286,7 +424,7 @@ const ServerConsole = {
     if (!this.server) return;
     if (signal === 'kill') {
       Modal.confirm('Force Stop', 'Kill may corrupt server files. Are you sure?', () => {
-        this.sendpower('kill');
+        this.sendpower('signal');
       });
       return;
     }
@@ -303,5 +441,197 @@ const ServerConsole = {
 
   confirmkill() {
     this.power('kill');
+  },
+
+  showsearch() {
+    const wrap = Utils.el('consoleSearchWrap');
+    if (!wrap) return;
+    wrap.style.display = '';
+    const input = Utils.el('consoleSearchInput');
+    if (input) { input.focus(); input.select(); }
+  },
+
+  closesearch() {
+    const wrap = Utils.el('consoleSearchWrap');
+    if (wrap) wrap.style.display = 'none';
+    this._clearsearchhighlights();
+    this._searchmarks = [];
+    this._searchidx = -1;
+    const count = Utils.el('consoleSearchCount');
+    if (count) count.textContent = '';
+  },
+
+  onsearch(query) {
+    this._clearsearchhighlights();
+    this._rebuildlinesforsearch();
+    this._searchmarks = [];
+    this._searchidx = -1;
+    const count = Utils.el('consoleSearchCount');
+    if (!query) { if (count) count.textContent = ''; return; }
+
+    const output = Utils.el('consoleOutput');
+    const lines = output.querySelectorAll('.console-line');
+    const q = query.toLowerCase();
+
+    lines.forEach((line) => {
+      const text = (line.dataset.rawtext || '').toLowerCase();
+      if (!text.includes(q)) return;
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        if (node.textContent.toLowerCase().includes(q)) {
+          const span = document.createElement('span');
+          span.innerHTML = node.textContent.replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), (m) => `<mark class="console-search-highlight">${m}</mark>`);
+          node.parentNode.replaceChild(span, node);
+        }
+      }
+    });
+
+    this._searchmarks = Array.from(output.querySelectorAll('mark.console-search-highlight'));
+    if (this._searchmarks.length > 0) {
+      this._searchidx = 0;
+      this._scrolltomatch();
+    }
+    if (count) count.textContent = this._searchmarks.length > 0 ? `${this._searchidx + 1}/${this._searchmarks.length}` : 'No results';
+  },
+
+  searchnext() {
+    if (this._searchmarks.length === 0) return;
+    this._searchidx = (this._searchidx + 1) % this._searchmarks.length;
+    this._scrolltomatch();
+    this._updatecount();
+  },
+
+  searchprev() {
+    if (this._searchmarks.length === 0) return;
+    this._searchidx = (this._searchidx - 1 + this._searchmarks.length) % this._searchmarks.length;
+    this._scrolltomatch();
+    this._updatecount();
+  },
+
+  _updatecount() {
+    const count = Utils.el('consoleSearchCount');
+    if (count) count.textContent = `${this._searchidx + 1}/${this._searchmarks.length}`;
+  },
+
+  _scrolltomatch() {
+    if (this._searchidx < 0 || this._searchidx >= this._searchmarks.length) return;
+    this._searchmarks.forEach((m) => m.classList.remove('current'));
+    this._searchmarks[this._searchidx].classList.add('current');
+    this._searchmarks[this._searchidx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  },
+
+  _clearsearchhighlights() {
+    const output = Utils.el('consoleOutput');
+    if (!output) return;
+    output.querySelectorAll('mark.console-search-highlight').forEach((m) => {
+      m.replaceWith(document.createTextNode(m.textContent));
+    });
+    output.querySelectorAll('span').forEach((s) => {
+      if (s.classList.contains('console-search-highlight')) return;
+      if (s.parentNode && s.parentNode === output) return;
+      if (s.childNodes.length === 1 && s.childNodes[0].nodeType === 3) {
+        s.replaceWith(document.createTextNode(s.textContent));
+      }
+    });
+  },
+
+  _rebuildlinesforsearch() {
+    const output = Utils.el('consoleOutput');
+    if (!output) return;
+    output.querySelectorAll('.console-line').forEach((line) => {
+      const text = line.dataset.rawtext || '';
+      const type = line.dataset.logtype || 'output';
+      let content = '';
+      if (type === 'output') {
+        let html = Utils.ansitohtml(text);
+        html = html.replace(/^[^<]*?\[/, '[');
+        content += html;
+      } else {
+        content += Utils.escape(text);
+      }
+      line.innerHTML = content;
+    });
+  },
+
+  _highlightsearch() {
+    const input = Utils.el('consoleSearchInput');
+    if (input && input.value) this.onsearch(input.value);
+  },
+
+  changefontsize(delta) {
+    this._fontsize = Math.max(10, Math.min(24, this._fontsize + delta));
+    document.documentElement.style.setProperty('--console-fontsize', this._fontsize + 'px');
+    const label = Utils.el('consoleFontsizeLabel');
+    if (label) label.textContent = this._fontsize + 'px';
+  },
+
+  toggletimestamps() {
+    this._timestamps = !this._timestamps;
+    const btn = Utils.el('consoleTimestampBtn');
+    if (btn) btn.classList.toggle('active', this._timestamps);
+    this._rebuildalllines();
+  },
+
+  setfilter(val) {
+    this._filter = val;
+    this._applyfilter();
+  },
+
+  _applyfilter() {
+    const output = Utils.el('consoleOutput');
+    if (!output) return;
+    output.querySelectorAll('.console-line').forEach((line) => {
+      this._applyfiltertoline(line);
+    });
+  },
+
+  _applyfiltertoline(line) {
+    const logtype = line.dataset.logtype || 'output';
+    if (this._filter === 'all') {
+      line.style.display = '';
+      return;
+    }
+    if (this._filter === 'errors') {
+      line.style.display = (logtype === 'error') ? '' : 'none';
+      return;
+    }
+    if (this._filter === 'warnings') {
+      const raw = (line.dataset.rawtext || '').toLowerCase();
+      const iswarn = raw.includes('warn') || raw.includes('error') || raw.includes('fatal') || raw.includes('exception') || logtype === 'error';
+      line.style.display = iswarn ? '' : 'none';
+    }
+  },
+
+  _rebuildalllines() {
+    const output = Utils.el('consoleOutput');
+    if (!output) return;
+    output.querySelectorAll('.console-line').forEach((line) => {
+      const text = line.dataset.rawtext || '';
+      const type = line.dataset.logtype || 'output';
+      let content = '';
+      if (this._timestamps) {
+        const ts = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        content += `<span class="console-timestamp">[${ts}]</span> `;
+      }
+      if (type === 'output') {
+        let html = Utils.ansitohtml(text);
+        html = html.replace(/^[^<]*?\[/, '[');
+        content += html;
+      } else {
+        content += Utils.escape(text);
+      }
+      line.innerHTML = content;
+    });
+    this._applyfilter();
+  },
+
+  clearconsole() {
+    const output = Utils.el('consoleOutput');
+    if (output) output.innerHTML = '';
+    this._hasOutput = false;
+    this._searchmarks = [];
+    this._searchidx = -1;
+    this._updateconsolestate();
   }
 };

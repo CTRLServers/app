@@ -422,7 +422,7 @@ const ServerFiles = {
       return;
     }
 
-    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'material-darker' : 'default';
+    const theme = (document.documentElement.getAttribute('data-theme') === 'dark' || document.documentElement.getAttribute('data-theme') === 'oled') ? 'material-darker' : 'default';
 
     this.editor = CodeMirror(wrapper, {
       value: content,

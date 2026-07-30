@@ -9,10 +9,11 @@ const Modal = {
     });
   },
 
-  open(title, html) {
+  open(title, html, cls) {
     Utils.el('modalTitle').textContent = title;
     Utils.el('modalBody').innerHTML = html;
-    Utils.el('modalOverlay').classList.add('active');
+    const overlay = Utils.el('modalOverlay');
+    overlay.className = 'modal-overlay active' + (cls ? ' ' + cls : '');
   },
 
   close() {

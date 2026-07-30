@@ -61,6 +61,12 @@
           </svg>
           <span>SFTP</span>
         </a>
+        <a href="#" class="nav-item" data-page="multiterm">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <span>Multi Terminal</span>
+        </a>
       </nav>
 
       <nav class="sidebar-nav server-nav" id="serverNav" style="display:none;">
@@ -219,6 +225,53 @@
           </svg>
           <span>Security</span>
         </a>
+        <a href="#" class="nav-item hidden" data-server-page="processes" data-vps>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+          <span>Processes</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="logs" data-vps>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+          <span>Logs</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="disk" data-vps>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3" />
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+          </svg>
+          <span>Disk</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="vpsNet" data-vps>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+            <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+            <line x1="12" y1="20" x2="12.01" y2="20" />
+          </svg>
+          <span>Network</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="ssl" data-vps>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <span>SSL</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="securityscore" data-vps>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <span>Security</span>
+        </a>
         <a href="#" class="nav-item hidden" data-server-page="docker" data-vps>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
@@ -246,7 +299,18 @@
         </a>
       </nav>
 
-      <div class="sidebar-footer">
+      <div class="sidebar-footer" id="sidebarFooter">
+        <button class="theme-toggle" id="cliToggle" title="Terminal (Ctrl+`)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+        </button>
+        <button class="theme-toggle" id="lockAppBtn" title="Lock App" onclick="LockScreen.lock()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </button>
         <button class="theme-toggle" id="appSettingsBtn" title="App Settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -371,6 +435,7 @@
         <div id="dashboardKeychain" style="display:none;"></div>
         <div id="tabSftp" style="display:none;"></div>
         <div id="tabMinecraft" style="display:none;"></div>
+        <div id="tabMultiTerm" style="display:none;"></div>
         <div id="tabappsettings" style="display:none;"></div>
 
         <div class="server-detail" id="serverDetail" style="display:none;">
@@ -418,6 +483,65 @@
                   </svg>
                   <h3>The server is offline!</h3>
                   <p>Console will stay empty until you will power the server.</p>
+                </div>
+                <div class="console-resgraphs" id="consoleResgraphs">
+                  <div class="console-resgraph">
+                    <div class="console-resgraph-header">
+                      <span class="console-resgraph-label console-resgraph-cpu">CPU</span>
+                      <span class="console-resgraph-val" id="consoleCpuVal">—</span>
+                    </div>
+                    <canvas class="console-resgraph-canvas" id="consoleCpuCanvas" width="200" height="40"></canvas>
+                  </div>
+                  <div class="console-resgraph">
+                    <div class="console-resgraph-header">
+                      <span class="console-resgraph-label console-resgraph-ram">RAM</span>
+                      <span class="console-resgraph-val" id="consoleRamVal">—</span>
+                    </div>
+                    <canvas class="console-resgraph-canvas" id="consoleRamCanvas" width="200" height="40"></canvas>
+                  </div>
+                  <div class="console-resgraph">
+                    <div class="console-resgraph-header">
+                      <span class="console-resgraph-label console-resgraph-disk">Disk</span>
+                      <span class="console-resgraph-val" id="consoleDiskVal">—</span>
+                    </div>
+                    <canvas class="console-resgraph-canvas" id="consoleDiskCanvas" width="200" height="40"></canvas>
+                  </div>
+                </div>
+                <div class="console-toolbar" id="consoleToolbar">
+                  <div class="console-search-wrap" id="consoleSearchWrap" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" class="console-search-input" id="consoleSearchInput" placeholder="Search..." oninput="ServerConsole.onsearch(this.value)" />
+                    <span class="console-search-count" id="consoleSearchCount"></span>
+                    <button class="console-search-btn" onclick="ServerConsole.searchprev()" title="Previous">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                    <button class="console-search-btn" onclick="ServerConsole.searchnext()" title="Next">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <button class="console-search-btn" onclick="ServerConsole.closesearch()" title="Close">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  <div class="console-toolbar-right">
+                    <select class="console-filter-select" id="consoleFilterSelect" onchange="ServerConsole.setfilter(this.value)">
+                      <option value="all">All logs</option>
+                      <option value="warnings">Warnings</option>
+                      <option value="errors">Errors</option>
+                    </select>
+                    <button class="console-tool-btn" id="consoleTimestampBtn" onclick="ServerConsole.toggletimestamps()" title="Toggle timestamps">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </button>
+                    <button class="console-tool-btn" onclick="ServerConsole.changefontsize(-1)" title="Decrease font size">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                    <span class="console-fontsize-label" id="consoleFontsizeLabel">14px</span>
+                    <button class="console-tool-btn" onclick="ServerConsole.changefontsize(1)" title="Increase font size">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                    <button class="console-tool-btn" onclick="ServerConsole.clearconsole()" title="Clear console">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  </div>
                 </div>
                 <div class="console-output" id="consoleOutput"></div>
                 <div class="console-input-wrap">
@@ -583,6 +707,12 @@
             <div class="server-page-tab" id="tabCron" style="display:none;"></div>
             <div class="server-page-tab" id="tabServices" style="display:none;"></div>
             <div class="server-page-tab" id="tabSecurity" style="display:none;"></div>
+            <div class="server-page-tab" id="tabProcesses" style="display:none;"></div>
+            <div class="server-page-tab" id="tabLogs" style="display:none;"></div>
+            <div class="server-page-tab" id="tabDisk" style="display:none;"></div>
+            <div class="server-page-tab" id="tabVpsNet" style="display:none;"></div>
+            <div class="server-page-tab" id="tabSSL" style="display:none;"></div>
+            <div class="server-page-tab" id="tabSecurity" style="display:none;"></div>
             <div class="server-page-tab" id="tabDocker" style="display:none;"></div>
             <div class="server-page-tab" id="tabWebServer" style="display:none;"></div>
           </div>
@@ -611,6 +741,22 @@
         </button>
       </div>
       <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="lockscreen-overlay" id="lockScreenOverlay" style="display:none">
+    <div class="lockscreen-card">
+      <div class="lockscreen-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <h2 class="lockscreen-title">CTRLServers</h2>
+      <p class="lockscreen-subtitle">Enter your passcode to unlock</p>
+      <input type="password" class="lockscreen-input" id="lockScreenInput" placeholder="Passcode" autocomplete="off" />
+      <p class="lockscreen-error" id="lockScreenError"></p>
+      <button class="btn btn-primary lockscreen-btn" id="lockScreenBtn" onclick="LockScreen.submit()">Unlock</button>
     </div>
   </div>
 
@@ -687,6 +833,11 @@
   <script src="js/schedules.js"></script>
   <script src="js/keychain.js"></script>
   <script src="js/vps.js"></script>
+  <script src="js/vps-processes.js"></script>
+  <script src="js/vps-logs.js"></script>
+  <script src="js/vps-disk.js"></script>
+  <script src="js/vps-net.js"></script>
+  <script src="js/vps-ssl.js"></script>
   <script src="js/packages.js"></script>
   <script src="js/info.js"></script>
   <script src="js/firewall.js"></script>
@@ -699,7 +850,12 @@
   <script src="js/sftp.js"></script>
   <script src="js/plugins.js"></script>
   <script src="js/appsettings.js"></script>
+  <script src="js/lockscreen.js"></script>
   <script src="js/discord.js"></script>
+  <script src="js/cli.js"></script>
+  <script src="js/cheatsheet.js"></script>
+  <script src="js/multiterm.js"></script>
+  <script src="js/securityscore.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

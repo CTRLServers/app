@@ -1,12 +1,14 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification, Tray, Menu } = require('electron');
 const path = require('path');
 const WebSocket = require('ws');
 const { Client } = require('ssh2');
 const net = require('net');
 const fs = require('fs');
+const os = require('os');
 
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 const GITHUB_REPO = 'CTRLServers/app';
+app.setAppUserModelId('com.ctrlservers.app');
 
 const wsConnections = new Map();
 let wsIdCounter = 0;
@@ -15,8 +17,21 @@ let sshIdCounter = 0;
 const sftpConnections = new Map();
 let sftpIdCounter = 0;
 
+let monitorInterval = null;
+let monitorServers = [];
+let monitorTick = 10000;
+let monitorPrevStatus = {};
+let monitorNotified = new Set();
+let monitorAlerts = [];
+let alertBreachStart = {};
+let alertCooldown = {};
+
+let mainWindow = null;
+let tray = null;
+let isQuitting = false;
+
 function createwindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     autoHideMenuBar: true,
@@ -27,10 +42,58 @@ function createwindow() {
       nodeIntegration: false
     }
   });
-  win.setMenu(null);
-  win.maximize();
-  win.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.setMenu(null);
+  mainWindow.maximize();
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+
+  mainWindow.on('close', (e) => {
+    if (monitorInterval && !isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+      if (tray) {
+        new Notification({
+          title: 'CTRLServers',
+          body: 'App is running in the background for server monitoring.',
+          silent: true,
+        }).show();
+      }
+      return false;
+    }
+  });
 }
+
+function createtray() {
+  const iconPath = path.join(__dirname, 'src', 'assets', 'logo.png');
+  tray = new Tray(iconPath);
+  tray.setToolTip('CTRLServers');
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.focus();
+      } else {
+        mainWindow.show();
+      }
+    }
+  });
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Open CTRLServers', click: () => { if (mainWindow) mainWindow.show(); } },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
+  ]);
+  tray.setContextMenu(contextMenu);
+}
+
+app.on('window-all-closed', () => {
+  if (!monitorInterval) app.quit();
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
+  if (monitorInterval) {
+    clearInterval(monitorInterval);
+    monitorInterval = null;
+  }
+});
 
 ipcMain.handle('ws-connect', async (event, url, token, headers, origin) => {
   const id = ++wsIdCounter;
@@ -92,6 +155,40 @@ ipcMain.handle('ws-close', async (event, id) => {
 ipcMain.handle('open-external', async (event, url) => {
   await shell.openexternal(url);
 });
+
+ipcMain.on('get-platform', (event) => {
+  const plat = process.platform;
+  const arch = process.arch;
+  if (plat === 'win32') {
+    const ver = os.release();
+    const major = parseInt(ver.split('.')[0]) || 0;
+    const build = parseInt(ver.split('.')[2]) || 0;
+    let name = 'Windows';
+    if (major >= 10) {
+      if (build >= 22000) name = 'Windows 11';
+      else name = 'Windows 10';
+    } else if (major >= 6) {
+      if (parseInt(ver.split('.')[1]) >= 2) name = 'Windows 8';
+      else name = 'Windows 7';
+    }
+    event.returnValue = name + ' ' + arch;
+  } else if (plat === 'darwin') {
+    const ver = os.release();
+    const major = parseInt(ver.split('.')[0]) || 0;
+    const minor = parseInt(ver.split('.')[1]) || 0;
+    const names = { 24: 'Sequoia', 23: 'Sonoma', 22: 'Ventura', 21: 'Monterey', 20: 'Big Sur', 19: 'Catalina', 18: 'Mojave' };
+    const name = names[minor] || 'macOS';
+    event.returnValue = name + ' ' + arch;
+  } else if (plat === 'linux') {
+    event.returnValue = (os.type() || 'Linux') + ' ' + arch;
+  } else {
+    event.returnValue = plat + ' ' + arch;
+  }
+});
+ipcMain.on('get-app-version', (event) => { event.returnValue = APP_VERSION; });
+ipcMain.on('get-electron-version', (event) => { event.returnValue = process.versions.electron || 'N/A'; });
+ipcMain.on('get-chrome-version', (event) => { event.returnValue = process.versions.chrome || 'N/A'; });
+ipcMain.on('get-node-version', (event) => { event.returnValue = process.versions.node || 'N/A'; });
 
 ipcMain.handle('ssh-connect', async (event, config) => {
   const id = ++sshIdCounter;
@@ -540,6 +637,228 @@ ipcMain.handle('discord-rpc-set-activity', async (event, activity) => {
   });
 });
 
+async function checkserverstatus(server) {
+  if (server.type === 'VPS/VDS') {
+    return checkvpsstatus(server);
+  }
+  if (!server.panelUrl || !server.apiKey || !server.uuid) return 'unknown';
+  try {
+    const url = server.panelUrl.replace(/\/$/, '') + '/api/client/servers/' + server.uuid + '/resources';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'Authorization': 'Bearer ' + server.apiKey,
+        'Accept': 'application/vnd.pterodactyl.v1+json',
+      }
+    });
+    clearTimeout(timer);
+    if (res.status === 200) {
+      try {
+        const json = await res.json();
+        return json.attributes?.current_state || 'running';
+      } catch (e) { return 'running'; }
+    }
+    if (res.status === 401 || res.status === 403) return 'running';
+    return 'offline';
+  } catch (e) {
+    return 'offline';
+  }
+}
+
+function checkvpsstatus(server) {
+  return new Promise((resolve) => {
+    const host = server.host;
+    const port = parseInt(server.port) || 22;
+    const socket = new net.Socket();
+    let resolved = false;
+    const done = (status) => {
+      if (resolved) return;
+      resolved = true;
+      try { socket.destroy(); } catch (e) {}
+      resolve(status);
+    };
+    socket.setTimeout(5000);
+    socket.on('connect', () => done('online'));
+    socket.on('timeout', () => done('offline'));
+    socket.on('error', () => done('offline'));
+    socket.connect(port, host);
+  });
+}
+
+function runmonitorcheck() {
+  if (!monitorServers.length) return;
+  monitorServers.forEach(async (server) => {
+    const status = await checkserverstatus(server);
+    const prev = monitorPrevStatus[server.id];
+    monitorPrevStatus[server.id] = status;
+
+    if (prev !== 'initial' && prev !== status) {
+      if (prev !== 'offline' && status === 'offline') {
+        if (!monitorNotified.has(server.id)) {
+          monitorNotified.add(server.id);
+          new Notification({ title: 'Server Offline', body: `${server.name} has gone offline.`, silent: false }).show();
+        }
+      } else if (prev === 'offline' && status !== 'offline') {
+        monitorNotified.delete(server.id);
+        new Notification({ title: 'Server Online', body: `${server.name} is back online.`, silent: false }).show();
+      }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('server-status', { id: server.id, status });
+      }
+    }
+
+    if (monitorAlerts.length && status !== 'offline') {
+      checkserveralerts(server);
+    }
+  });
+}
+
+async function checkserveralerts(server) {
+  let stats = null;
+  if (server.type === 'Pterodactyl' && server.panelUrl && server.apiKey && server.uuid) {
+    try {
+      const url = server.panelUrl.replace(/\/$/, '') + '/api/client/servers/' + server.uuid + '/resources';
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const resp = await fetch(url, { signal: controller.signal, headers: { 'Authorization': 'Bearer ' + server.apiKey, 'Accept': 'application/vnd.pterodactyl.v1+json' } });
+      clearTimeout(timer);
+      if (resp.ok) {
+        const data = await resp.json();
+        const r = data.attributes || {};
+        const res = r.resources || {};
+        const memLimit = (r.limits?.memory || 0) * 1024 * 1024;
+        const diskLimit = (r.limits?.disk || 0) * 1024 * 1024;
+        stats = {
+          cpu: Math.max(0, Math.min(100, res.cpu_absolute || 0)),
+          ram: memLimit > 0 ? Math.min(100, (res.memory_bytes || 0) / memLimit * 100) : 0,
+          disk: diskLimit > 0 ? Math.min(100, (res.disk_bytes || 0) / diskLimit * 100) : 0,
+        };
+      }
+    } catch (e) {}
+  } else if (server.type === 'VPS/VDS' && server.host) {
+    try {
+      const cfg = { host: server.host, port: parseInt(server.port) || 22, username: server.username || 'root' };
+      if (server.authType === 'key' && server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = server.privateKey; }
+      else { cfg.authType = 'password'; cfg.password = server.password || ''; }
+      const result = await new Promise((resolve, reject) => {
+        const conn = new Client();
+        conn.on('ready', () => {
+          conn.exec("free | awk '/Mem:/{print $2,$3} /Swap:/{print $2,$3}' && df / | awk 'NR==2{print $2,$3}' && nproc", (err, stream) => {
+            if (err) { conn.end(); reject(err); return; }
+            let out = '';
+            stream.on('close', () => { conn.end(); resolve(out); });
+            stream.on('data', (d) => { out += d.toString(); });
+          });
+        });
+        conn.on('error', reject);
+        const connectConfig = { host: cfg.host, port: cfg.port, username: cfg.username, readyTimeout: 10000 };
+        if (cfg.authType === 'password') connectConfig.password = cfg.password;
+        else if (cfg.authType === 'privateKey') connectConfig.privateKey = cfg.privateKey;
+        conn.connect(connectConfig);
+      });
+      const lines = result.trim().split('\n');
+      const mem = lines[0]?.split(/\s+/) || [];
+      const disk = lines[1]?.split(/\s+/) || [];
+      const memTotal = parseInt(mem[0]) || 1;
+      const memUsed = parseInt(mem[1]) || 0;
+      const diskTotal = parseInt(disk[0]) || 1;
+      const diskUsed = parseInt(disk[1]) || 0;
+      stats = { cpu: 0, ram: memTotal > 0 ? memUsed / memTotal * 100 : 0, disk: diskTotal > 0 ? diskUsed / diskTotal * 100 : 0 };
+    } catch (e) {}
+  }
+
+  if (!stats) return;
+  const now = Date.now();
+
+  for (const rule of monitorAlerts) {
+    if (!rule.enabled) continue;
+    const value = stats[rule.metric];
+    if (value === undefined) continue;
+    const key = server.id + ':' + rule.id;
+    const breached = value > rule.threshold;
+
+    if (breached) {
+      if (!alertBreachStart[key]) {
+        alertBreachStart[key] = now;
+      }
+      const elapsed = (now - alertBreachStart[key]) / 60000;
+      const requiredMin = rule.duration || 0;
+      if (elapsed >= requiredMin) {
+        if (!alertCooldown[key] || (now - alertCooldown[key]) > 300000) {
+          alertCooldown[key] = now;
+          const labels = { cpu: 'CPU', ram: 'RAM', disk: 'Disk' };
+          new Notification({
+            title: `Alert: ${server.name}`,
+            body: `${labels[rule.metric]} is ${value.toFixed(1)}% (threshold: ${rule.threshold}%)`,
+            silent: false,
+          }).show();
+        }
+      }
+    } else {
+      alertBreachStart[key] = null;
+    }
+  }
+}
+
+ipcMain.handle('monitor-start', async (event, servers, tick, alerts) => {
+  if (monitorInterval) clearInterval(monitorInterval);
+  monitorServers = servers || [];
+  monitorTick = (tick || 10) * 1000;
+  monitorAlerts = alerts || [];
+  monitorPrevStatus = {};
+  monitorNotified = new Set();
+  alertBreachStart = {};
+  alertCooldown = {};
+  monitorServers.forEach(s => { monitorPrevStatus[s.id] = 'initial'; });
+  runmonitorcheck();
+  monitorInterval = setInterval(runmonitorcheck, monitorTick);
+  return { ok: true, pid: process.pid, tick: monitorTick / 1000 };
+});
+
+ipcMain.handle('monitor-stop', async () => {
+  if (monitorInterval) { clearInterval(monitorInterval); monitorInterval = null; }
+  monitorServers = [];
+  monitorPrevStatus = {};
+  monitorNotified = new Set();
+  monitorAlerts = [];
+  alertBreachStart = {};
+  alertCooldown = {};
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+  return { ok: true };
+});
+
+ipcMain.handle('monitor-status', async () => {
+  return {
+    running: !!monitorInterval,
+    pid: monitorInterval ? process.pid : null,
+    tick: monitorTick / 1000,
+    serverCount: monitorServers.length,
+  };
+});
+
+ipcMain.handle('checkvps', async (event, host, port) => {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let resolved = false;
+    const done = (status) => {
+      if (resolved) return;
+      resolved = true;
+      try { socket.destroy(); } catch (e) {}
+      resolve(status);
+    };
+    socket.setTimeout(5000);
+    socket.on('connect', () => done('online'));
+    socket.on('timeout', () => done('offline'));
+    socket.on('error', () => done('offline'));
+    socket.connect(parseInt(port) || 22, host);
+  });
+});
+
 app.whenReady().then(() => {
   createwindow();
+  createtray();
 });

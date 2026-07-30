@@ -36,6 +36,7 @@ const Utils = {
       running: 'Running',
       starting: 'Starting',
       stopping: 'Stopping',
+      online: 'Online',
       offline: 'Offline'
     };
     return map[state] || state || 'Unknown';

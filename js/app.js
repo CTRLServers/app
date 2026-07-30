@@ -2,6 +2,7 @@ const Windows = {
   windows: [],
   activeId: null,
   _nextId: 1,
+  _closed: [],
 
   open(serverIndex) {
     const server = Servers.list[serverIndex];
@@ -44,7 +45,7 @@ const Windows = {
       this.activeId = null;
       const next = this.windows.find(w => !w.minimized && w.id !== id);
       if (next) this.focus(next.id);
-      else App.showserverlist();
+      else this._hidewindow();
     }
     this.rendertaskbar();
   },
@@ -59,7 +60,19 @@ const Windows = {
   close(id) {
     const win = this.windows.find(w => w.id === id);
     if (!win) return;
+    this._closed.push({ serverIndex: win.serverIndex, title: win.title });
+    if (this._closed.length > 20) this._closed.shift();
+    const server = Servers.list[win.serverIndex];
     this.windows = this.windows.filter(w => w.id !== id);
+    if (server) {
+      if (server.type !== 'VPS/VDS') {
+        delete ServerConsole._cache[server.uuid];
+        if (ServerConsole.server && ServerConsole.server.uuid === server.uuid) ServerConsole.destroy();
+      } else {
+        delete VPSConsole._cache[server.host];
+        if (VPSConsole.server && VPSConsole.server.host === server.host) VPSConsole.destroy();
+      }
+    }
     if (this.activeId === id) {
       this.activeId = null;
       const next = this.windows.find(w => !w.minimized);
@@ -83,6 +96,51 @@ const Windows = {
 
   closeactive() {
     if (this.activeId) this.close(this.activeId);
+  },
+
+  _hidewindow() {
+    if (App.currentServer) {
+      if (App.currentServer.type === 'VPS/VDS') VPSConsole.detach();
+      else if (App.currentServer.panelUrl) ServerConsole.detach();
+    }
+    App.currentServer = null;
+    Servers._didrag = false;
+    const detail = Utils.el('serverDetail');
+    detail.style.display = 'none';
+    detail.classList.remove('windowed');
+    detail.style.left = '';
+    detail.style.top = '';
+    detail.style.width = '';
+    detail.style.height = '';
+    detail.style.right = '';
+    detail.style.bottom = '';
+    detail.dataset.max = '0';
+    Utils.el('mainNav').style.display = '';
+    Utils.el('serverNav').style.display = 'none';
+    Utils.el('sidebarFooter').style.display = '';
+    Utils.el('topbarResources').style.display = 'none';
+    Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
+    Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
+    Utils.el('pinnedServers').style.display = 'none';
+    Utils.el('dashboardKeychain').style.display = 'none';
+    Utils.el('topbarActions').style.display = '';
+    Utils.el('topbarServerActions').style.display = 'none';
+    Utils.el('pageTitle').textContent = 'Dashboard';
+    Utils.el('content').classList.remove('server-view');
+    Utils.el('tabSftp').style.display = 'none';
+    Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabMultiTerm').style.display = 'none';
+    Utils.el('tabappsettings').style.display = 'none';
+    Utils.el('dashboardFilterBar').style.display = Servers.list.length > 0 ? '' : 'none';
+    if (Utils.el('dashboardFilterBar').style.display !== 'none') Servers.renderfilterbar();
+  },
+
+  reopen() {
+    const last = this._closed.pop();
+    if (!last) return;
+    if (last.serverIndex >= 0 && last.serverIndex < Servers.list.length) {
+      this.open(last.serverIndex);
+    }
   },
 
   _applywindow() {
@@ -181,14 +239,20 @@ const App = {
   _pollInterval: null,
   _dragging: false,
 
-  init() {
+  async init() {
     Theme.init();
     Modal.init();
     AppSettings.load();
+
+    const passcodeOk = await AppSettings.checkonstartup();
+    if (!passcodeOk) return;
+
     Servers.init();
     ServerFiles.init();
     ServerKeychain.load();
     Plugins.init();
+    CLI.init();
+    CheatSheet.init();
     this.bindevents();
     this.bindwindowcontrols();
     Servers.render();
@@ -304,12 +368,52 @@ const App = {
     });
 
     Utils.el('consoleInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') ServerConsole.send();
+      if (e.key === 'Enter') {
+        ServerConsole.send();
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (ServerConsole._history.length === 0) return;
+        if (ServerConsole._historyidx === -1) {
+          ServerConsole._historyidx = ServerConsole._history.length - 1;
+        } else if (ServerConsole._historyidx > 0) {
+          ServerConsole._historyidx--;
+        }
+        e.target.value = ServerConsole._history[ServerConsole._historyidx] || '';
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (ServerConsole._historyidx === -1) return;
+        if (ServerConsole._historyidx < ServerConsole._history.length - 1) {
+          ServerConsole._historyidx++;
+          e.target.value = ServerConsole._history[ServerConsole._historyidx] || '';
+        } else {
+          ServerConsole._historyidx = -1;
+          e.target.value = '';
+        }
+      }
     });
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && ServerFiles.editor) {
         ServerFiles.closeeditor();
+      }
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        Servers.openaddmodal();
+      }
+      if (e.ctrlKey && e.key === 'w') {
+        e.preventDefault();
+        Windows.closeactive();
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'T' || e.key === 't')) {
+        e.preventDefault();
+        Windows.reopen();
+      }
+      if (e.ctrlKey && e.key === '`') {
+        e.preventDefault();
+        CLI.toggle();
       }
       if (this.currentPage === 'dashboard' && !this.currentServer) {
         if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
@@ -348,10 +452,12 @@ const App = {
     Utils.el('dashboardKeychain').style.display = page === 'keychain' ? 'flex' : 'none';
     Utils.el('tabSftp').style.display = page === 'sftp' ? '' : 'none';
     Utils.el('tabMinecraft').style.display = page === 'minecraft' ? '' : 'none';
+    Utils.el('tabMultiTerm').style.display = page === 'multiterm' ? '' : 'none';
     Utils.el('tabappsettings').style.display = page === 'appsettings' ? '' : 'none';
     if (page === 'appsettings') AppSettings.render();
     if (page === 'keychain') ServerKeychain.renderdashboard();
     if (page === 'sftp') SFTP.load();
+    if (page === 'multiterm') MultiTerm.load();
     if (page === 'minecraft') {
       Utils.el('tabMinecraft').innerHTML =
         '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;gap:16px">' +
@@ -370,15 +476,21 @@ const App = {
   },
 
   getpagetitle(page) {
-    return { dashboard: 'Dashboard', keychain: 'KeyChain', minecraft: 'Minecraft Plugin', sftp: 'SFTP', appsettings: 'App Settings' }[page] || 'Dashboard';
+    return { dashboard: 'Dashboard', keychain: 'KeyChain', minecraft: 'Minecraft Plugin', sftp: 'SFTP', multiterm: 'Multi Terminal', appsettings: 'App Settings' }[page] || 'Dashboard';
   },
 
   showserverlist() {
     if (ServerFiles.editor) ServerFiles.closeeditor();
+    if (this.currentServer) {
+      if (this.currentServer.type === 'VPS/VDS') VPSConsole.detach();
+      else if (this.currentServer.panelUrl) ServerConsole.detach();
+    }
     this.currentServer = null;
     Servers._didrag = false;
-    ServerConsole.destroy();
-    VPSConsole.destroy();
+    if (this.windows.length === 0) {
+      ServerConsole.destroy();
+      VPSConsole.destroy();
+    }
     const detail = Utils.el('serverDetail');
     detail.style.display = 'none';
     detail.classList.remove('windowed');
@@ -391,6 +503,7 @@ const App = {
     detail.dataset.max = '0';
     Utils.el('mainNav').style.display = '';
     Utils.el('serverNav').style.display = 'none';
+    Utils.el('sidebarFooter').style.display = '';
     Utils.el('topbarResources').style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
     Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
@@ -402,6 +515,7 @@ const App = {
     Utils.el('content').classList.remove('server-view');
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
     const searchInput = Utils.el('dashboardSearchInput');
     if (searchInput) { searchInput.value = ''; Servers._search = ''; Servers._filtertag = ''; Servers._filterfolder = ''; }
@@ -443,9 +557,14 @@ const App = {
   },
 
   _showservercontent(server) {
+    if (this.currentServer && this.currentServer !== server) {
+      if (this.currentServer.type === 'VPS/VDS') VPSConsole.detach();
+      else if (this.currentServer.panelUrl) ServerConsole.detach();
+    }
     this.currentServer = server;
     Utils.el('mainNav').style.display = 'none';
     Utils.el('serverNav').style.display = '';
+    Utils.el('sidebarFooter').style.display = 'none';
     Utils.el('emptyState').style.display = 'none';
     Utils.el('serversGrid').style.display = 'none';
     Utils.el('dashboardFilterBar').style.display = 'none';
@@ -456,6 +575,7 @@ const App = {
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
     DiscordRPC.updateserver(server.name);
 
@@ -491,7 +611,8 @@ const App = {
       document.querySelectorAll('#serverNav .nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.serverPage === 'console');
       });
-      Utils.el('consoleOutput').innerHTML = '';
+      const isNewPtero = !ServerConsole.server || ServerConsole.server.uuid !== server.uuid || ServerConsole.wsId === null;
+      if (isNewPtero) Utils.el('consoleOutput').innerHTML = '';
       this.switchserverpage('console');
       ServerConsole.init(server);
 
@@ -512,6 +633,11 @@ const App = {
     if (page !== 'files' && ServerFiles.editor) {
       ServerFiles.closeeditor();
     }
+    if (page !== 'processes' && VPSProcesses.destroy) VPSProcesses.destroy();
+    if (page !== 'logs' && VPSLogs.destroy) VPSLogs.destroy();
+    if (page !== 'disk' && VPSDisk.destroy) VPSDisk.destroy();
+    if (page !== 'vpsNet' && VPSNet.destroy) VPSNet.destroy();
+    if (page !== 'ssl' && VPSSSL.destroy) VPSSSL.destroy();
     this.currentServerPage = page;
     document.querySelectorAll('#serverNav .nav-item').forEach(item => {
       item.classList.toggle('active', item.dataset.serverPage === page);
@@ -531,6 +657,13 @@ const App = {
 
     const tab = Utils.el('tab' + page.charAt(0).toUpperCase() + page.slice(1));
     if (tab) tab.style.display = 'flex';
+
+    const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL', securityscore: 'tabSecurity' };
+    if (vpsTabMap[page]) {
+      const vpsTab = Utils.el(vpsTabMap[page]);
+      if (vpsTab) vpsTab.style.display = 'flex';
+    }
+    if (page === 'securityscore' && App.currentServer) SecurityScore.load();
     if (page === 'files' && App.currentServer) ServerFiles.load(ServerFiles.currentPath || '/');
     if (page === 'activity' && App.currentServer) ServerActivity.load();
     if (page === 'users' && App.currentServer) ServerUsers.load();
@@ -548,6 +681,11 @@ const App = {
     if (page === 'cron' && App.currentServer) Cron.load();
     if (page === 'services' && App.currentServer) Services.load();
     if (page === 'security' && App.currentServer) Security.load();
+    if (page === 'processes' && App.currentServer) VPSProcesses.load();
+    if (page === 'logs' && App.currentServer) VPSLogs.load();
+    if (page === 'disk' && App.currentServer) VPSDisk.load();
+    if (page === 'vpsNet' && App.currentServer) VPSNet.load();
+    if (page === 'ssl' && App.currentServer) VPSSSL.load();
     if (page === 'docker' && App.currentServer) Docker.load();
     if (page === 'webServer' && App.currentServer) WebServer.load();
     if (page === 'plugins') {

@@ -70,6 +70,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openexternal: (url) => {
     return ipcRenderer.invoke('open-external', url);
   },
+  getplatform: () => {
+    return ipcRenderer.sendSync('get-platform');
+  },
+  getappversion: () => {
+    return ipcRenderer.sendSync('get-app-version');
+  },
+  getelectronversion: () => {
+    return ipcRenderer.sendSync('get-electron-version');
+  },
+  getchromeversion: () => {
+    return ipcRenderer.sendSync('get-chrome-version');
+  },
+  getnodeversion: () => {
+    return ipcRenderer.sendSync('get-node-version');
+  },
   sshconnect: (config) => {
     return ipcRenderer.invoke('ssh-connect', config);
   },
@@ -157,5 +172,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   discordrpcsetactivity: (activity) => {
     return ipcRenderer.invoke('discord-rpc-set-activity', activity);
+  },
+  monitorstart: (servers, tick, alerts) => {
+    return ipcRenderer.invoke('monitor-start', servers, tick, alerts);
+  },
+  monitorstop: () => {
+    return ipcRenderer.invoke('monitor-stop');
+  },
+  monitorstatus: () => {
+    return ipcRenderer.invoke('monitor-status');
+  },
+  checkvps: (host, port) => {
+    return ipcRenderer.invoke('checkvps', host, port);
+  },
+  onserverstatus: (callback) => {
+    return ipcRenderer.on('server-status', (event, data) => callback(data));
   }
 });

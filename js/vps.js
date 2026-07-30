@@ -8,11 +8,23 @@ const VPSConsole = {
   _closelistenerid: null,
   _resizeObserver: null,
   _ondata: null,
+  _keydownhandler: null,
+  _termDataCache: '',
+  _cache: {},
 
   init(server) {
+    const cached = this._cache[server.host];
+    if (cached) {
+      this.server = server;
+      this.sshId = cached.sshId;
+      this.connected = cached.connected;
+      this._recreateterm(cached);
+      return;
+    }
     this.destroy();
     this.server = server;
     this.connected = false;
+    this._termDataCache = '';
 
     const container = Utils.el('vpsConsoleWrap');
     container.innerHTML = '';
@@ -44,13 +56,14 @@ const VPSConsole = {
     this._datalistenerid = window.electronAPI.onsshdata((id, data) => {
       if (id !== this.sshId) return;
       this.term.write(data);
+      this._termDataCache += data;
     });
 
     this._closelistenerid = window.electronAPI.onsshclose((id) => {
       if (id !== this.sshId) return;
       this.connected = false;
       this.sshId = null;
-      this.term.writeln('\r\n\x1b[33mConnection closed.\x1b[0m');
+      if (this.term) this.term.writeln('\r\n\x1b[33mConnection closed.\x1b[0m');
     });
 
     this._keydownhandler = (e) => {
@@ -74,6 +87,108 @@ const VPSConsole = {
     container.addEventListener('keydown', this._keydownhandler);
 
     this.term.focus();
+  },
+
+  _recreateterm(cached) {
+    const container = Utils.el('vpsConsoleWrap');
+    container.innerHTML = '';
+
+    this.term = new Terminal({
+      theme: this._getxtermtheme(),
+      fontFamily: 'Cascadia Code, Fira Code, JetBrains Mono, monospace',
+      fontSize: 14,
+      lineHeight: 1.2,
+      cursorBlink: true,
+      scrollback: 10000
+    });
+
+    this.fitAddon = new FitAddon.FitAddon();
+    this.term.loadAddon(this.fitAddon);
+    this.term.open(container);
+
+    if (cached.termData) this.term.write(cached.termData);
+
+    setTimeout(() => {
+      this.fitAddon.fit();
+      if (this.sshId !== null) {
+        window.electronAPI.sshresize(this.sshId, this.term.cols, this.term.rows);
+      }
+    }, 100);
+
+    this._termDataCache = cached.termData || '';
+
+    this._ondata = this.term.onData((data) => {
+      if (this.connected && this.sshId !== null) {
+        window.electronAPI.sshdata(this.sshId, data);
+      }
+    });
+
+    this._datalistenerid = window.electronAPI.onsshdata((id, data) => {
+      if (id !== this.sshId) return;
+      this.term.write(data);
+      this._termDataCache += data;
+    });
+
+    this._closelistenerid = window.electronAPI.onsshclose((id) => {
+      if (id !== this.sshId) return;
+      this.connected = false;
+      this.sshId = null;
+      if (this.term) this.term.writeln('\r\n\x1b[33mConnection closed.\x1b[0m');
+    });
+
+    this._keydownhandler = (e) => {
+      if (e.ctrlKey && e.key === 'c') {
+        const sel = this.term.getSelection();
+        if (sel && sel.length > 0) {
+          e.preventDefault();
+          navigator.clipboard.writeText(sel);
+          this.term.clearSelection();
+        }
+      }
+      if (e.ctrlKey && e.key === 'v') {
+        e.preventDefault();
+        navigator.clipboard.readText().then((text) => {
+          if (text && this.connected && this.sshId !== null) {
+            window.electronAPI.sshdata(this.sshId, text);
+          }
+        }).catch(() => {});
+      }
+    };
+    container.addEventListener('keydown', this._keydownhandler);
+
+    this.term.focus();
+  },
+
+  detach() {
+    if (this.server && this.sshId !== null) {
+      this._cache[this.server.host] = {
+        sshId: this.sshId,
+        connected: this.connected,
+        termData: this._termDataCache
+      };
+      this._cleanupdom();
+      this.sshId = null;
+      this.server = null;
+      this.connected = false;
+      return true;
+    }
+    return false;
+  },
+
+  _cleanupdom() {
+    if (this._resizeObserver) { this._resizeObserver.disconnect(); this._resizeObserver = null; }
+    if (this._ondata) { this._ondata.dispose(); this._ondata = null; }
+    if (this._datalistenerid !== null) { window.electronAPI.offsshdata(this._datalistenerid); this._datalistenerid = null; }
+    if (this._closelistenerid !== null) { window.electronAPI.offsshclose(this._closelistenerid); this._closelistenerid = null; }
+    if (this._keydownhandler) {
+      const container = Utils.el('vpsConsoleWrap');
+      if (container) container.removeEventListener('keydown', this._keydownhandler);
+      this._keydownhandler = null;
+    }
+    if (this.term) { this.term.dispose(); this.term = null; }
+    this.fitAddon = null;
+    const container = Utils.el('vpsConsoleWrap');
+    if (container) container.innerHTML = '';
   },
 
   async connect() {
@@ -109,41 +224,11 @@ const VPSConsole = {
   },
 
   destroy() {
-    if (this._resizeObserver) {
-      this._resizeObserver.disconnect();
-      this._resizeObserver = null;
-    }
-    if (this._ondata) {
-      this._ondata.dispose();
-      this._ondata = null;
-    }
-    if (this._datalistenerid !== null) {
-      window.electronAPI.offsshdata(this._datalistenerid);
-      this._datalistenerid = null;
-    }
-    if (this._closelistenerid !== null) {
-      window.electronAPI.offsshclose(this._closelistenerid);
-      this._closelistenerid = null;
-    }
-    if (this._keydownhandler) {
-      const container = Utils.el('vpsConsoleWrap');
-      if (container) container.removeEventListener('keydown', this._keydownhandler);
-      this._keydownhandler = null;
-    }
-    if (this.sshId !== null) {
-      window.electronAPI.sshdisconnect(this.sshId);
-      this.sshId = null;
-    }
-    if (this.term) {
-      this.term.dispose();
-      this.term = null;
-    }
-    this.fitAddon = null;
-    this.connected = false;
+    this._cleanupdom();
+    this.sshId = null;
     this.server = null;
-
-    const container = Utils.el('vpsConsoleWrap');
-    if (container) container.innerHTML = '';
+    this.connected = false;
+    this._termDataCache = '';
   },
 
   _getxtermtheme() {
@@ -169,25 +254,8 @@ const VPSConsole = {
         cursor: '#ffffff',
         cursorAccent: '#000000',
         selectionBackground: 'rgba(255,255,255,0.2)',
-      },
+      }
     };
-    return Object.assign(themes[t] || themes.dark, {
-      black: '#000000',
-      red: '#e06060',
-      green: '#60d060',
-      yellow: '#d0b050',
-      blue: '#60a0e0',
-      magenta: '#d060d0',
-      cyan: '#50c0c0',
-      white: '#d0d0d0',
-      brightBlack: '#666666',
-      brightRed: '#ff7070',
-      brightGreen: '#70ff70',
-      brightYellow: '#ffe070',
-      brightBlue: '#70b0ff',
-      brightMagenta: '#ff70ff',
-      brightCyan: '#70ffff',
-      brightWhite: '#ffffff'
-    });
+    return themes[t] || themes.dark;
   }
 };

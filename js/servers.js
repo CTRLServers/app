@@ -2,11 +2,13 @@ const Servers = {
   list: [],
   folders: [],
   resources: {},
+  vpsstats: {},
   _search: '',
   _filtertag: '',
   _filterfolder: '',
   _dragidx: -1,
   _didrag: false,
+  _vpspollcount: 0,
 
   init() {
     this.load();
@@ -137,7 +139,7 @@ const Servers = {
     if (attempt > 10) return;
     const delays = [2000, 3000, 3000, 4000, 5000, 5000, 5000, 5000, 5000, 5000];
     setTimeout(async () => {
-      const server = this.list.find(s => s.uuid === uuid);
+    const server = this.list.find(s => s.uuid === uuid || String(s.id) === String(uuid));
       if (!server || !server.apiKey || !server.panelUrl) return;
       try {
         const data = await Api.fetchresources(server.panelUrl, server.apiKey, uuid);
@@ -245,6 +247,8 @@ const Servers = {
     }).join('');
     this._instdrag(grid);
     if (pinned.length > 0) this._instdrag(pinnedGrid);
+    clearTimeout(this._vpsfetchtimer);
+    this._vpsfetchtimer = setTimeout(() => this.fetchvpsstats(), 1500);
   },
 
   _rendercard(server, index) {
@@ -259,7 +263,7 @@ const Servers = {
       const port = server.port || '';
 
       return `
-      <div class="server-card" draggable="true" data-uuid="${server.uuid || ''}" data-index="${index}" onclick="App.openserver(${index})" oncontextmenu="Servers.contextmenu(event, ${index})">
+      <div class="server-card" draggable="true" data-uuid="${server.uuid || server.id || ''}" data-index="${index}" onclick="App.openserver(${index})" oncontextmenu="Servers.contextmenu(event, ${index})">
         <div class="server-card-header">
           <div class="server-name-row">
             ${Servers.geticon(server)}
@@ -300,6 +304,7 @@ const Servers = {
             <div class="stat-value">${Utils.formatbytes(diskUsed)} / ${Utils.formatmb(server.limits?.disk)}</div>
           </div>
         </div>` : ''}
+        ${server.type === 'VPS/VDS' && this.vpsstats[server.id] ? this._rendervpsstats(this.vpsstats[server.id]) : ''}
         ${(server.tags && server.tags.length > 0) ? `<div class="server-card-tags">${server.tags.map(t => `<span class="server-tag" style="--tag-color:${this._tagcolor(t)}">${Utils.escape(t)}</span>`).join('')}</div>` : ''}
         <div class="server-card-footer">
           <div class="server-status">
@@ -326,8 +331,9 @@ const Servers = {
 
   async pollresources() {
     if (App.currentPage !== 'dashboard' || App.currentServer) return;
-    const servers = this.list.filter(s => s.type === 'Pterodactyl' && s.apiKey && s.panelUrl);
-    for (const server of servers) {
+    const ptero = this.list.filter(s => s.type === 'Pterodactyl' && s.apiKey && s.panelUrl);
+    const vps = this.list.filter(s => s.type === 'VPS/VDS' && s.host && s.port);
+    for (const server of ptero) {
       try {
         const data = await Api.fetchresources(server.panelUrl, server.apiKey, server.uuid);
         this.resources[server.uuid] = {
@@ -344,6 +350,21 @@ const Servers = {
           ServerConsole.updateresources(server.uuid);
         }
       } catch (e) {}
+    }
+    for (const server of vps) {
+      try {
+        const status = await window.electronAPI.checkvps(server.host, server.port);
+        const prev = server.status;
+        server.status = status === 'online' ? 'online' : 'offline';
+        if (prev !== server.status) {
+          this.save();
+          this.updatecard(server.id);
+        }
+      } catch (e) {}
+    }
+    this._vpspollcount = (this._vpspollcount || 0) + 1;
+    if (this._vpspollcount % 6 === 0) {
+      this.fetchvpsstats();
     }
   },
 
@@ -381,7 +402,8 @@ const Servers = {
     const card = document.querySelector(`.server-card[data-uuid="${uuid}"]`);
     if (!card) return;
     const res = this.resources[uuid] || {};
-    const state = res.state || 'offline';
+    const server = this.list.find(s => s.uuid === uuid || String(s.id) === String(uuid));
+    const state = res.state || (server ? server.status : '') || 'offline';
 
     const dot = card.querySelector('.status-dot');
     const text = card.querySelector('.status-text');
@@ -396,9 +418,7 @@ const Servers = {
     if (startbtn) startbtn.disabled = state === 'running';
     if (stopbtn) stopbtn.disabled = state === 'stopped' || state === 'offline';
 
-    const server = this.list.find(s => s.uuid === uuid);
-    if (!server || server.type !== 'Pterodactyl') return;
-
+    if (server && server.type === 'Pterodactyl') {
     const bars = card.querySelectorAll('.stat-row');
     const memUsed = res.memory_bytes || 0;
     const memTotal = (server.limits?.memory || 0) * 1024 * 1024;
@@ -417,6 +437,84 @@ const Servers = {
     if (bars[2]) {
       bars[2].querySelector('.stat-bar').style.width = (diskTotal > 0 ? Math.min((diskUsed / diskTotal) * 100, 100) : 0) + '%';
       bars[2].querySelector('.stat-value').textContent = Utils.formatbytes(diskUsed) + ' / ' + Utils.formatmb(server.limits?.disk);
+    }
+    }
+
+    const vpsCard = card.querySelector('.vps-stats');
+    const st = this.vpsstats[server.id];
+    if (vpsCard && st) {
+      vpsCard.querySelector('.vps-stat-ram .vps-stat-val').textContent = Utils.formatbytes(st.memUsed) + ' / ' + Utils.formatbytes(st.memTotal);
+      vpsCard.querySelector('.vps-stat-ram .vps-stat-bar').style.width = (st.memTotal > 0 ? Math.min((st.memUsed / st.memTotal) * 100, 100) : 0) + '%';
+      vpsCard.querySelector('.vps-stat-disk .vps-stat-val').textContent = Utils.formatbytes(st.diskUsed) + ' / ' + Utils.formatbytes(st.diskTotal);
+      vpsCard.querySelector('.vps-stat-disk .vps-stat-bar').style.width = (st.diskTotal > 0 ? Math.min((st.diskUsed / st.diskTotal) * 100, 100) : 0) + '%';
+      vpsCard.querySelector('.vps-stat-swap .vps-stat-val').textContent = Utils.formatbytes(st.swapUsed) + ' / ' + Utils.formatbytes(st.swapTotal);
+      vpsCard.querySelector('.vps-stat-swap .vps-stat-bar').style.width = (st.swapTotal > 0 ? Math.min((st.swapUsed / st.swapTotal) * 100, 100) : 0) + '%';
+      vpsCard.querySelector('.vps-stat-load .vps-stat-val').textContent = st.load1.toFixed(2) + ' / ' + st.load5.toFixed(2) + ' / ' + st.load15.toFixed(2);
+    }
+  },
+
+  _rendervpsstats(st) {
+    return `
+      <div class="server-stats vps-stats">
+        <div class="stat-row vps-stat-ram">
+          <div class="stat-label">RAM</div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${st.memTotal > 0 ? Math.min((st.memUsed / st.memTotal) * 100, 100) : 0}%"></div></div>
+          <div class="vps-stat-val stat-value">${Utils.formatbytes(st.memUsed)} / ${Utils.formatbytes(st.memTotal)}</div>
+        </div>
+        <div class="stat-row vps-stat-disk">
+          <div class="stat-label">Disk</div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${st.diskTotal > 0 ? Math.min((st.diskUsed / st.diskTotal) * 100, 100) : 0}%"></div></div>
+          <div class="vps-stat-val stat-value">${Utils.formatbytes(st.diskUsed)} / ${Utils.formatbytes(st.diskTotal)}</div>
+        </div>
+        <div class="stat-row vps-stat-swap">
+          <div class="stat-label">Swap</div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${st.swapTotal > 0 ? Math.min((st.swapUsed / st.swapTotal) * 100, 100) : 0}%"></div></div>
+          <div class="vps-stat-val stat-value">${Utils.formatbytes(st.swapUsed)} / ${Utils.formatbytes(st.swapTotal)}</div>
+        </div>
+        <div class="stat-row vps-stat-load">
+          <div class="stat-label">Load</div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${Math.min((st.load1 / (st.cpus || 1)) * 100, 100)}%"></div></div>
+          <div class="vps-stat-val stat-value">${st.load1.toFixed(2)} / ${st.load5.toFixed(2)} / ${st.load15.toFixed(2)}</div>
+        </div>
+      </div>`;
+  },
+
+  async fetchvpsstats() {
+    const vps = this.list.filter(s => s.type === 'VPS/VDS' && s.host && s.port);
+    let changed = false;
+    for (const server of vps) {
+      try {
+        const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
+        if (server.authType === 'key' && server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = server.privateKey; }
+        else { cfg.authType = 'password'; cfg.password = server.password || ''; }
+        const cmd = "free -b | awk '/Mem:/{print $2,$3} /Swap:/{print $2,$3}' && df -B1 / | awk 'NR==2{print $2,$3}' && cat /proc/loadavg && nproc";
+        const result = await window.electronAPI?.sshexec?.(cfg, cmd);
+        if (result && result.stdout) {
+          const lines = result.stdout.trim().split('\n');
+          const mem = lines[0]?.split(/\s+/) || [];
+          const swap = lines[1]?.split(/\s+/) || [];
+          const disk = lines[2]?.split(/\s+/) || [];
+          const loadparts = lines[3]?.split(/\s+/) || [];
+          const cpus = parseInt(lines[4]) || 1;
+          this.vpsstats[server.id] = {
+            memTotal: parseInt(mem[0]) || 0,
+            memUsed: parseInt(mem[1]) || 0,
+            swapTotal: parseInt(swap[0]) || 0,
+            swapUsed: parseInt(swap[1]) || 0,
+            diskTotal: parseInt(disk[0]) || 0,
+            diskUsed: parseInt(disk[1]) || 0,
+            load1: parseFloat(loadparts[0]) || 0,
+            load5: parseFloat(loadparts[1]) || 0,
+            load15: parseFloat(loadparts[2]) || 0,
+            cpus: cpus,
+            updated: Date.now()
+          };
+          changed = true;
+        }
+      } catch (e) {}
+    }
+    if (changed && App.currentPage === 'dashboard' && !App.currentServer) {
+      this.rendercards();
     }
   },
 
@@ -467,6 +565,13 @@ const Servers = {
       </button>
       ${folderhtml ? '<div class="context-menu-separator"></div><div class="context-menu-label">Folder</div>' + folderhtml : ''}
       <div class="context-menu-separator"></div>
+      ${server.type === 'Pterodactyl' ? `
+      <button class="context-menu-item" onclick="Servers.cloneserver(${index})">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Clone
+      </button>` : ''}
       <button class="context-menu-item danger" onclick="Servers.deleteserver(${index})">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -682,6 +787,18 @@ const Servers = {
         </div>
       </div>
     `);
+  },
+
+  cloneserver(index) {
+    const server = this.list[index];
+    if (!server || server.type !== 'Pterodactyl') return;
+    this.showpterodactylform();
+    setTimeout(() => {
+      const urlEl = Utils.el('panelUrl');
+      const keyEl = Utils.el('apiKey');
+      if (urlEl) urlEl.value = server.panelUrl || '';
+      if (keyEl) keyEl.value = server.apiKey || '';
+    }, 50);
   },
 
   showpterodactylform() {
