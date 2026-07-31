@@ -42,5 +42,17 @@ const Modal = {
         }
       });
     }, 0);
+  },
+
+  alert(title, message) {
+    this.open(title, `
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;">${message}</p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="modalAlertBtn">OK</button>
+      </div>
+    `);
+    setTimeout(() => {
+      Utils.el('modalAlertBtn').addEventListener('click', () => this.close());
+    }, 0);
   }
 };

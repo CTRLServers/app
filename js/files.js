@@ -87,7 +87,7 @@ const ServerFiles = {
     });
 
     Utils.el('filesBreadcrumb').addEventListener('click', (e) => {
-      const item = e.target.closest('.breadcrumb-item');
+      const item = e.target.closest('.breadcrumb-item') || e.target.closest('.breadcrumb-home');
       if (!item) return;
       const path = item.dataset.bcPath;
       if (path) this.load(path);

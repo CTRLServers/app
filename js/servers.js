@@ -18,6 +18,7 @@ const Servers = {
       e.preventDefault();
       App.showserverlist();
     });
+    this.renderworkspaces();
   },
 
   load() {
@@ -388,8 +389,8 @@ const Servers = {
             saved.node = a.node;
             saved.limits = a.limits;
             saved.allocations = (a.relationships?.allocations?.data || []).map(x => ({ id: x.attributes.id, ip: x.attributes.ip, port: x.attributes.port }));
-            saved.host = saved.allocations[0]?.attributes?.ip || saved.host;
-            saved.port = saved.allocations[0]?.attributes?.port || saved.port;
+            saved.host = saved.allocations[0]?.ip || saved.host;
+            saved.port = saved.allocations[0]?.port || saved.port;
           }
         }
         this.save();
@@ -674,6 +675,7 @@ const Servers = {
     if (!this.folders.includes(val)) this.folders.push(val);
     this.save();
     this.renderfilterbar();
+    this.renderworkspaces();
     Modal.close();
   },
 
@@ -684,9 +686,14 @@ const Servers = {
   },
 
   setfilterfolder(folder) {
+    if (App.currentPage !== 'dashboard') {
+      Modal.alert('Workspace Filter', 'Go to the dashboard to filter by workspace.');
+      return;
+    }
     this._filterfolder = this._filterfolder === folder ? '' : folder;
     this.renderfilterbar();
     this.rendercards();
+    this.renderworkspaces();
   },
 
   deletefolder(folder) {
@@ -696,6 +703,32 @@ const Servers = {
     this.save();
     this.renderfilterbar();
     this.rendercards();
+    this.renderworkspaces();
+  },
+
+  renderworkspaces() {
+    const list = Utils.el('workspacesList');
+    if (!list) return;
+    if (!this.folders.length) {
+      list.innerHTML = '';
+      return;
+    }
+    list.innerHTML = this.folders.map(f => {
+      const count = this.list.filter(s => s.folder === f).length;
+      const active = this._filterfolder === f ? ' active' : '';
+      return `<div class="workspace-item${active}" onclick="Servers.setfilterfolder('${Utils.escape(f)}')">
+        <div class="workspace-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="workspace-info">
+          <div class="workspace-name">${Utils.escape(f)}</div>
+          <div class="workspace-count">${count} server${count !== 1 ? 's' : ''}</div>
+        </div>
+        <button class="workspace-delete" onclick="event.stopPropagation();Servers.deletefolder('${Utils.escape(f)}')" title="Delete workspace">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>`;
+    }).join('');
   },
 
   deletetag(tag) {
@@ -713,17 +746,7 @@ const Servers = {
     if (!bar) return;
     bar.style.display = '';
     const tags = this._collecttags();
-    const folders = this.folders;
     let html = '';
-    if (folders.length > 0) {
-      html += folders.map(f =>
-        `<button class="filter-pill${this._filterfolder === f ? ' active' : ''}" onclick="Servers.setfilterfolder('${Utils.escape(f)}')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          ${Utils.escape(f)}
-          <span class="filter-pill-x" onclick="event.stopPropagation();Servers.deletefolder('${Utils.escape(f)}')" title="Delete folder">&times;</span>
-        </button>`
-      ).join('');
-    }
     if (tags.length > 0) {
       html += tags.map(t =>
         `<button class="filter-pill tag-pill${this._filtertag === t ? ' active' : ''}" onclick="Servers.setfiltertag('${Utils.escape(t)}')">
@@ -733,9 +756,6 @@ const Servers = {
         </button>`
       ).join('');
     }
-    html += `<button class="filter-pill filter-pill-add" onclick="Servers.showcreatefolder()" title="New folder">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>`;
     bar.innerHTML = html;
   },
 
@@ -1032,7 +1052,11 @@ const Servers = {
   },
 
   exportlist() {
-    const data = { servers: this.list, folders: this.folders };
+    const data = {
+      servers: this.list,
+      folders: this.folders,
+      keychain: ServerKeychain.keys || []
+    };
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1056,9 +1080,11 @@ const Servers = {
           const data = JSON.parse(reader.result);
           if (data.servers && Array.isArray(data.servers)) {
             let added = 0;
+            const imported = [];
             for (const s of data.servers) {
               if (!this.list.find(x => x.uuid && x.uuid === s.uuid || x.id && x.id === s.id)) {
                 this.list.push(s);
+                imported.push(s);
                 added++;
               }
             }
@@ -1067,10 +1093,41 @@ const Servers = {
                 if (!this.folders.includes(f)) this.folders.push(f);
               }
             }
+            let keysAdded = 0;
+            if (data.keychain && Array.isArray(data.keychain)) {
+              for (const k of data.keychain) {
+                if (!ServerKeychain.keys.find(x => x.name === k.name)) {
+                  ServerKeychain.keys.push(k);
+                  keysAdded++;
+                }
+              }
+            }
+            for (const s of imported) {
+              if (s.privateKey && !ServerKeychain.keys.find(k => k.privateKey === s.privateKey)) {
+                const keyName = s.name + ' Key';
+                if (!ServerKeychain.keys.find(k => k.name === keyName)) {
+                  ServerKeychain.keys.push({
+                    name: keyName,
+                    publicKey: '',
+                    privateKey: s.privateKey,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now()
+                  });
+                  keysAdded++;
+                }
+              }
+            }
+            if (keysAdded > 0) {
+              ServerKeychain.save();
+              ServerKeychain.renderall();
+            }
             this.save();
             this.render();
+            this.renderworkspaces();
+            let msg = `Added ${added} server(s)`;
+            if (keysAdded > 0) msg += `, ${keysAdded} key(s)`;
             Modal.open('Import Complete', `
-              <p style="text-align:center;padding:20px 0;color:var(--text-secondary);">Added ${added} server(s)</p>
+              <p style="text-align:center;padding:20px 0;color:var(--text-secondary);">${msg}</p>
               <div class="modal-actions"><button class="btn btn-primary" onclick="Modal.close()">OK</button></div>
             `);
           }

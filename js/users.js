@@ -110,15 +110,16 @@ const ServerUsers = {
     for (let i = 0; i < this.users.length; i++) {
       const u = this.users[i];
       const attrs = u.attributes || u;
-      const userId = u.id || attrs.id;
+      const userId = attrs.uuid;
       const email = attrs.email || 'Unknown';
       const username = attrs.username || email.split('@')[0];
       const perms = attrs.permissions || [];
+      const avatarImg = attrs.image;
 
       html += `<div class="perm-user-card">
         <div class="perm-user-header">
           <div class="perm-user-info">
-            <div class="perm-user-avatar">${Utils.escape(username.charAt(0).toUpperCase())}</div>
+            <div class="perm-user-avatar">${avatarImg ? `<img src="${Utils.escape(avatarImg)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : Utils.escape(username.charAt(0).toUpperCase())}</div>
             <div>
               <div class="perm-user-name">${Utils.escape(username)}</div>
               <div class="perm-user-email">${Utils.escape(email)}</div>
@@ -209,14 +210,16 @@ const ServerUsers = {
     const u = this.users[idx];
     if (!u) return;
     const attrs = u.attributes || u;
-    const userId = u.id || attrs.id;
+    const userId = attrs.uuid;
     const email = attrs.email || '';
+    const username = attrs.username || email.split('@')[0];
     const perms = attrs.permissions || [];
+    const avatarImg = attrs.image;
 
     Modal.open('Edit Subuser', `
       <div class="perm-edit-header">
-        <div class="perm-user-avatar" style="width:36px;height:36px;font-size:14px;">${Utils.escape(email.charAt(0).toUpperCase())}</div>
-        <span style="font-size:14px;font-weight:500;">${Utils.escape(email)}</span>
+        <div class="perm-user-avatar" style="width:36px;height:36px;font-size:14px;">${avatarImg ? `<img src="${Utils.escape(avatarImg)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : Utils.escape(username.charAt(0).toUpperCase())}</div>
+        <span style="font-size:14px;font-weight:500;">${Utils.escape(username)}</span>
       </div>
       <div class="form-group">
         <label class="form-label">Quick Template</label>
@@ -291,7 +294,7 @@ const ServerUsers = {
     const u = this.users[idx];
     if (!u) return;
     const attrs = u.attributes || u;
-    const userId = u.id || attrs.id;
+    const userId = attrs.uuid;
     const email = attrs.email || 'Unknown';
     Modal.confirm('Remove Subuser', `Remove "${email}" from this server?`, async () => {
       const server = App.currentServer;

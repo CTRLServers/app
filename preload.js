@@ -187,5 +187,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onserverstatus: (callback) => {
     return ipcRenderer.on('server-status', (event, data) => callback(data));
-  }
+  },
+  winminimize: () => ipcRenderer.invoke('win-minimize'),
+  winmaximize: () => ipcRenderer.invoke('win-maximize'),
+  winclose: () => ipcRenderer.invoke('win-close'),
+  winismaximized: () => ipcRenderer.invoke('win-is-maximized'),
 });

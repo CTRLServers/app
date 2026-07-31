@@ -10,6 +10,30 @@ const APP_VERSION = '1.0.6';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
+const isPortable = process.env.PORTABLE_EXECUTABLE_DIR || process.argv.includes('--portable');
+if (isPortable) {
+  const portableDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
+  app.setPath('userData', path.join(portableDir, 'ctrlservers-data'));
+}
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(() => {
+    createwindow();
+    createtray();
+  });
+}
+
 const wsConnections = new Map();
 let wsIdCounter = 0;
 const sshConnections = new Map();
@@ -34,6 +58,7 @@ function createwindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false,
     autoHideMenuBar: true,
     icon: path.join(__dirname, 'src', 'assets', 'logo.png'),
     webPreferences: {
@@ -93,6 +118,21 @@ app.on('before-quit', () => {
     clearInterval(monitorInterval);
     monitorInterval = null;
   }
+  monitorServers = [];
+  monitorPrevStatus = {};
+  monitorNotified = new Set();
+  monitorAlerts = [];
+  alertBreachStart = {};
+  alertCooldown = {};
+});
+
+app.on('will-quit', () => {
+  wsConnections.forEach(ws => { try { ws.close(); } catch (e) {} });
+  wsConnections.clear();
+  sshConnections.forEach(ssh => { try { ssh.end(); } catch (e) {} });
+  sshConnections.clear();
+  sftpConnections.forEach(sftp => { try { sftp.end(); } catch (e) {} });
+  sftpConnections.clear();
 });
 
 ipcMain.handle('ws-connect', async (event, url, token, headers, origin) => {
@@ -509,6 +549,29 @@ ipcMain.handle('toggle-devtools', async (event) => {
   }
 });
 
+ipcMain.handle('win-minimize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.minimize();
+});
+
+ipcMain.handle('win-maximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+  }
+});
+
+ipcMain.handle('win-close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+});
+
+ipcMain.handle('win-is-maximized', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return win ? win.isMaximized() : false;
+});
+
 let rpcSocket = null;
 let rpcConnected = false;
 let rpcNonce = 0;
@@ -856,9 +919,4 @@ ipcMain.handle('checkvps', async (event, host, port) => {
     socket.on('error', () => done('offline'));
     socket.connect(parseInt(port) || 22, host);
   });
-});
-
-app.whenReady().then(() => {
-  createwindow();
-  createtray();
 });

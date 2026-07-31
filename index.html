@@ -14,6 +14,20 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="titlebar" id="titlebar">
+    <div class="titlebar-drag"></div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn" id="titlebarMinimize" title="Minimize">
+        <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1" fill="currentColor" rx="0.5"/></svg>
+      </button>
+      <button class="titlebar-btn" id="titlebarMaximize" title="Maximize">
+        <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+      </button>
+      <button class="titlebar-btn titlebar-btn-close" id="titlebarClose" title="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12"><line x1="2" y1="2" x2="10" y2="10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="10" y1="2" x2="2" y2="10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
   <div class="update-banner" id="updateBanner" style="display:none;">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     <span class="update-banner-text">This version of program is outdated. Update now to get better experience!</span>
@@ -29,6 +43,9 @@
           <img src="assets/logo.png" alt="CTRLServers" width="28" height="28" style="border-radius:8px;object-fit:cover" />
           <span class="logo-text">CTRLServers</span>
         </div>
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
       </div>
 
       <nav class="sidebar-nav" id="mainNav">
@@ -68,6 +85,18 @@
           <span>Multi Terminal</span>
         </a>
       </nav>
+
+      <div class="nav-separator" id="workspacesSeparator"></div>
+
+      <div class="sidebar-workspaces" id="sidebarWorkspaces">
+        <div class="workspaces-header">
+          <span class="workspaces-title">Workspaces</span>
+          <button class="workspaces-add" onclick="Servers.showcreatefolder()" title="New workspace">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="workspaces-list" id="workspacesList"></div>
+      </div>
 
       <nav class="sidebar-nav server-nav" id="serverNav" style="display:none;">
         <a href="#" class="nav-item" data-server-page="console" data-pterodactyl>
@@ -857,5 +886,10 @@
   <script src="js/multiterm.js"></script>
   <script src="js/securityscore.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    document.getElementById('titlebarMinimize').addEventListener('click', () => window.electronAPI.winminimize());
+    document.getElementById('titlebarMaximize').addEventListener('click', () => window.electronAPI.winmaximize());
+    document.getElementById('titlebarClose').addEventListener('click', () => window.electronAPI.winclose());
+  </script>
 </body>
 </html>

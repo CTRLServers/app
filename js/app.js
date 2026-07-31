@@ -118,6 +118,8 @@ const Windows = {
     Utils.el('mainNav').style.display = '';
     Utils.el('serverNav').style.display = 'none';
     Utils.el('sidebarFooter').style.display = '';
+    Utils.el('sidebarWorkspaces').style.display = '';
+    Utils.el('workspacesSeparator').style.display = '';
     Utils.el('topbarResources').style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
     Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
@@ -353,6 +355,10 @@ const App = {
       Utils.el('sidebar').classList.toggle('open');
     });
 
+    Utils.el('sidebarCollapseBtn').addEventListener('click', () => {
+      Utils.el('sidebar').classList.toggle('collapsed');
+    });
+
     document.querySelectorAll('#mainNav .nav-item').forEach(item => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
@@ -487,7 +493,7 @@ const App = {
     }
     this.currentServer = null;
     Servers._didrag = false;
-    if (this.windows.length === 0) {
+    if (Windows.windows.length === 0) {
       ServerConsole.destroy();
       VPSConsole.destroy();
     }
@@ -504,6 +510,8 @@ const App = {
     Utils.el('mainNav').style.display = '';
     Utils.el('serverNav').style.display = 'none';
     Utils.el('sidebarFooter').style.display = '';
+    Utils.el('sidebarWorkspaces').style.display = '';
+    Utils.el('workspacesSeparator').style.display = '';
     Utils.el('topbarResources').style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
     Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
@@ -565,6 +573,8 @@ const App = {
     Utils.el('mainNav').style.display = 'none';
     Utils.el('serverNav').style.display = '';
     Utils.el('sidebarFooter').style.display = 'none';
+    Utils.el('sidebarWorkspaces').style.display = 'none';
+    Utils.el('workspacesSeparator').style.display = 'none';
     Utils.el('emptyState').style.display = 'none';
     Utils.el('serversGrid').style.display = 'none';
     Utils.el('dashboardFilterBar').style.display = 'none';
