@@ -536,6 +536,9 @@ const App = {
     Servers.renderfilterbar();
     DiscordRPC.clearservers();
     this.currentPage = 'dashboard';
+    if (Servers.list.length > 0) {
+      Servers.fetchallfromapi().then(() => Servers.pollresources());
+    }
   },
 
   openserver(index) {

@@ -350,7 +350,9 @@ const Servers = {
         if (App.currentServer?.uuid === server.uuid) {
           ServerConsole.updateresources(server.uuid);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('pollresources error for', server.name, e);
+      }
     }
     for (const server of vps) {
       try {
@@ -371,32 +373,39 @@ const Servers = {
 
   async fetchallfromapi() {
     const ptero = this.list.filter(s => s.type === 'Pterodactyl' && s.apiKey && s.panelUrl);
-    const unique = new Map();
+    const panels = new Map();
     ptero.forEach(s => {
       const key = s.panelUrl + '|' + s.apiKey;
-      if (!unique.has(key)) unique.set(key, s);
+      if (!panels.has(key)) panels.set(key, []);
+      panels.get(key).push(s);
     });
 
-    for (const [, server] of unique) {
+    for (const [key, servers] of panels) {
+      const [panelUrl, apiKey] = key.split('|');
       try {
-        const apiServers = await Api.fetchservers(server.panelUrl, server.apiKey);
-        for (const saved of this.list.filter(s => s.panelUrl === server.panelUrl && s.apiKey === server.apiKey)) {
-          const api = apiServers.find(a => a.attributes.uuid === saved.uuid);
+        const apiServers = await Api.fetchservers(panelUrl, apiKey);
+        for (const saved of servers) {
+          const api = apiServers.find(a => a.attributes.uuid === saved.uuid || (saved.uuid && a.attributes.uuid.startsWith(saved.uuid)));
           if (api) {
             const a = api.attributes;
-            saved.name = a.name;
-            saved.description = a.description || '';
-            saved.node = a.node;
-            saved.limits = a.limits;
+            saved.name = a.name || saved.name;
+            saved.description = a.description || saved.description || '';
+            saved.node = a.node || saved.node || '';
+            saved.limits = a.limits || saved.limits;
             saved.allocations = (a.relationships?.allocations?.data || []).map(x => ({ id: x.attributes.id, ip: x.attributes.ip, port: x.attributes.port }));
-            saved.host = saved.allocations[0]?.ip || saved.host;
-            saved.port = saved.allocations[0]?.port || saved.port;
+            if (saved.allocations.length) {
+              saved.host = saved.allocations[0].ip || saved.host;
+              saved.port = saved.allocations[0].port || saved.port;
+            }
+            if (saved.uuid !== a.uuid) saved.uuid = a.uuid;
           }
         }
-        this.save();
-        this.render();
-      } catch (e) {}
+      } catch (e) {
+        console.error('fetchallfromapi error for panel', panelUrl, e);
+      }
     }
+    this.save();
+    this.render();
   },
 
   updatecard(uuid) {
@@ -765,7 +774,7 @@ const Servers = {
       this.list.splice(index, 1);
       this.save();
       this.render();
-      CTRLCloud.autosyncupload();
+      CTRLCloud.autosyncupload('delete');
     });
   },
 
@@ -922,7 +931,7 @@ const Servers = {
     this.save();
     this.render();
     this.fetchallfromapi();
-    CTRLCloud.autosyncupload();
+    CTRLCloud.autosyncupload('add');
     Modal.close();
   },
 
@@ -1031,7 +1040,7 @@ const Servers = {
     this.list.push(server);
     this.save();
     this.render();
-    CTRLCloud.autosyncupload();
+    CTRLCloud.autosyncupload('add');
     Modal.close();
   },
 
@@ -1051,7 +1060,7 @@ const Servers = {
     const url = Utils.el('linkUrl').value.trim();
     if (!name || !url) return;
     this.list.push({ id: Date.now(), type: 'Link', name, host: url, status: 'offline' });
-    this.save(); this.render(); CTRLCloud.autosyncupload(); Modal.close();
+    this.save(); this.render(); CTRLCloud.autosyncupload('add'); Modal.close();
   },
 
   exportlist() {
@@ -1127,6 +1136,7 @@ const Servers = {
             this.save();
             this.render();
             this.renderworkspaces();
+            this.fetchallfromapi();
             let msg = `Added ${added} server(s)`;
             if (keysAdded > 0) msg += `, ${keysAdded} key(s)`;
             Modal.open('Import Complete', `

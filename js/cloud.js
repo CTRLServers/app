@@ -374,9 +374,10 @@ const CTRLCloud = {
     }
   },
 
-  async autosyncupload() {
+  async autosyncupload(event) {
     if (!this.token) return;
-    if (!this.autosync.onServerAdd && !this.autosync.onServerDelete) return;
+    if (event === 'add' && !this.autosync.onServerAdd) return;
+    if (event === 'delete' && !this.autosync.onServerDelete) return;
     try {
       await this.api('POST', '/api/sync/upload', {
         servers: Servers.list,
