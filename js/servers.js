@@ -765,6 +765,7 @@ const Servers = {
       this.list.splice(index, 1);
       this.save();
       this.render();
+      CTRLCloud.autosyncupload();
     });
   },
 
@@ -921,6 +922,7 @@ const Servers = {
     this.save();
     this.render();
     this.fetchallfromapi();
+    CTRLCloud.autosyncupload();
     Modal.close();
   },
 
@@ -1029,6 +1031,7 @@ const Servers = {
     this.list.push(server);
     this.save();
     this.render();
+    CTRLCloud.autosyncupload();
     Modal.close();
   },
 
@@ -1048,7 +1051,7 @@ const Servers = {
     const url = Utils.el('linkUrl').value.trim();
     if (!name || !url) return;
     this.list.push({ id: Date.now(), type: 'Link', name, host: url, status: 'offline' });
-    this.save(); this.render(); Modal.close();
+    this.save(); this.render(); CTRLCloud.autosyncupload(); Modal.close();
   },
 
   exportlist() {
@@ -1062,7 +1065,7 @@ const Servers = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'ctrlservers-export.json';
+    a.download = 'ctrlservers-export.ctrlservers';
     a.click();
     URL.revokeObjectURL(url);
   },
@@ -1070,7 +1073,7 @@ const Servers = {
   importlist() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.ctrlservers,.json';
     input.onchange = () => {
       const file = input.files[0];
       if (!file) return;

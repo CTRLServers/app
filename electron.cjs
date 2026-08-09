@@ -248,7 +248,7 @@ ipcMain.handle('ssh-connect', async (event, config) => {
 
         stream.on('data', (data) => {
           if (win && !win.isDestroyed()) {
-            win.webContents.send('ssh-data', id, data.toString('binary'));
+            win.webContents.send('ssh-data', id, data.toString('utf8'));
           }
         });
 
@@ -262,7 +262,7 @@ ipcMain.handle('ssh-connect', async (event, config) => {
 
         stream.stderr.on('data', (data) => {
           if (win && !win.isDestroyed()) {
-            win.webContents.send('ssh-data', id, data.toString('binary'));
+            win.webContents.send('ssh-data', id, data.toString('utf8'));
           }
         });
 

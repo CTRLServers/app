@@ -129,6 +129,7 @@ const Windows = {
     Utils.el('topbarServerActions').style.display = 'none';
     Utils.el('pageTitle').textContent = 'Dashboard';
     Utils.el('content').classList.remove('server-view');
+    Utils.el('tabCloud').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
@@ -255,6 +256,7 @@ const App = {
     Plugins.init();
     CLI.init();
     CheatSheet.init();
+    CTRLCloud.init();
     this.bindevents();
     this.bindwindowcontrols();
     Servers.render();
@@ -280,6 +282,7 @@ const App = {
     }
 
     this.startpolling();
+    CTRLCloud.autosynconlaunch();
   },
 
   startpolling() {
@@ -456,12 +459,14 @@ const App = {
     Utils.el('dashboardFilterBar').style.display = page === 'dashboard' ? '' : 'none';
     Utils.el('emptyState').style.display = (page === 'dashboard' && Servers.list.length === 0) ? 'flex' : 'none';
     Utils.el('dashboardKeychain').style.display = page === 'keychain' ? 'flex' : 'none';
+    Utils.el('tabCloud').style.display = page === 'cloud' ? '' : 'none';
     Utils.el('tabSftp').style.display = page === 'sftp' ? '' : 'none';
     Utils.el('tabMinecraft').style.display = page === 'minecraft' ? '' : 'none';
     Utils.el('tabMultiTerm').style.display = page === 'multiterm' ? '' : 'none';
     Utils.el('tabappsettings').style.display = page === 'appsettings' ? '' : 'none';
     if (page === 'appsettings') AppSettings.render();
     if (page === 'keychain') ServerKeychain.renderdashboard();
+    if (page === 'cloud') CTRLCloud.render();
     if (page === 'sftp') SFTP.load();
     if (page === 'multiterm') MultiTerm.load();
     if (page === 'minecraft') {
@@ -482,7 +487,7 @@ const App = {
   },
 
   getpagetitle(page) {
-    return { dashboard: 'Dashboard', keychain: 'KeyChain', minecraft: 'Minecraft Plugin', sftp: 'SFTP', multiterm: 'Multi Terminal', appsettings: 'App Settings' }[page] || 'Dashboard';
+    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'Minecraft Plugin', sftp: 'SFTP', multiterm: 'Multi Terminal', appsettings: 'App Settings' }[page] || 'Dashboard';
   },
 
   showserverlist() {
@@ -521,6 +526,7 @@ const App = {
     Utils.el('topbarServerActions').style.display = 'none';
     Utils.el('pageTitle').textContent = 'Dashboard';
     Utils.el('content').classList.remove('server-view');
+    Utils.el('tabCloud').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
@@ -583,6 +589,7 @@ const App = {
     Utils.el('sidebar').classList.remove('open');
     Utils.el('content').classList.add('server-view');
     Utils.el('dashboardKeychain').style.display = 'none';
+    Utils.el('tabCloud').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
