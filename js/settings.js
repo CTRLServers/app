@@ -13,10 +13,11 @@ const ServerSettings = {
     if (!s || s.type !== 'Pterodactyl') return;
     this.loading = true;
     this.render();
+    const apiKey = await Servers.resolveapikey(s);
     try {
       const [details, account] = await Promise.all([
-        Api.getcachedserver(s.panelUrl, s.apiKey, s.uuid),
-        Api.fetchaccount(s.panelUrl, s.apiKey)
+        Api.getcachedserver(s.panelUrl, apiKey, s.uuid),
+        Api.fetchaccount(s.panelUrl, apiKey)
       ]);
       if (details.sftp_details) {
         this.sftpDetails = details.sftp_details;
@@ -40,10 +41,11 @@ const ServerSettings = {
     if (!this.serverName.trim()) return;
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     this.saving = true;
     this.render();
     try {
-      const ok = await Api.renameserver(s.panelUrl, s.apiKey, s.uuid, this.serverName, this.serverDescription);
+      const ok = await Api.renameserver(s.panelUrl, apiKey, s.uuid, this.serverName, this.serverDescription);
       if (ok) {
         s.name = this.serverName;
       }

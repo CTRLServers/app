@@ -7,8 +7,9 @@ const ServerDatabases = {
     if (!s || s.type !== 'Pterodactyl') return;
     this.loading = true;
     this.render();
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const data = await Api.fetchdatabases(s.panelUrl, s.apiKey, s.uuid);
+      const data = await Api.fetchdatabases(s.panelUrl, apiKey, s.uuid);
       this.databases = data.map(d => {
         const attrs = d.attributes || d;
         attrs._password = attrs.relationships?.password?.attributes?.password || '';
@@ -46,13 +47,14 @@ const ServerDatabases = {
       if (btn) btn.addEventListener('click', async () => {
         const s = App.currentServer;
         if (!s) return;
+        const apiKey = await Servers.resolveapikey(s);
         const name = document.getElementById('dbName').value.trim();
         const remote = document.getElementById('dbRemote').value.trim();
         if (!name) return;
         btn.disabled = true;
         btn.textContent = 'Creating...';
         try {
-          const ok = await Api.createdatabase(s.panelUrl, s.apiKey, s.uuid, name, remote || '%');
+          const ok = await Api.createdatabase(s.panelUrl, apiKey, s.uuid, name, remote || '%');
           if (ok) {
             Modal.close();
             await this.load();
@@ -131,8 +133,9 @@ const ServerDatabases = {
     Modal.confirm('Rotate Password', 'Are you sure you want to rotate this database password? The old password will stop working immediately.', async () => {
       const s = App.currentServer;
       if (!s) return;
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        await Api.rotatedatabasepassword(s.panelUrl, s.apiKey, s.uuid, db._id || db.id);
+        await Api.rotatedatabasepassword(s.panelUrl, apiKey, s.uuid, db._id || db.id);
         await this.load();
       } catch (e) {
         console.error(e);
@@ -146,8 +149,9 @@ const ServerDatabases = {
     Modal.confirm('Delete Database', 'Are you sure you want to delete this database? All data will be permanently lost.', async () => {
       const s = App.currentServer;
       if (!s) return;
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        await Api.deletedatabase(s.panelUrl, s.apiKey, s.uuid, db._id || db.id);
+        await Api.deletedatabase(s.panelUrl, apiKey, s.uuid, db._id || db.id);
         await this.load();
       } catch (e) {
         console.error(e);

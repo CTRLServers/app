@@ -277,19 +277,20 @@ const ModrinthBrowser = {
 
       const s = App.currentServer;
       if (!s) throw new Error('No server selected');
+      const apiKey = await Servers.resolveapikey(s);
 
       if (status) status.textContent = 'Uploading to server...';
 
-      const files = await Api.listfiles(s.panelUrl, s.apiKey, s.uuid, '/');
+      const files = await Api.listfiles(s.panelUrl, apiKey, s.uuid, '/');
       const hasdir = files.some(d => d.attributes.mimetype === 'inode/directory' && d.attributes.name === cfg.folder);
 
       if (!hasdir) {
         if (status) status.textContent = 'Creating ' + cfg.folder + ' directory...';
-        await Api.createfolder(s.panelUrl, s.apiKey, s.uuid, cfg.folder, '/');
+        await Api.createfolder(s.panelUrl, apiKey, s.uuid, cfg.folder, '/');
       }
 
       if (status) status.textContent = 'Uploading to ' + cfg.folder + ' folder...';
-      await Api.uploadfiles(s.panelUrl, s.apiKey, s.uuid, '/' + cfg.folder, [{ file: jarfile, relPath: file.filename }]);
+      await Api.uploadfiles(s.panelUrl, apiKey, s.uuid, '/' + cfg.folder, [{ file: jarfile, relPath: file.filename }]);
 
       if (status) status.textContent = 'Installed successfully!';
       Modal.close();
@@ -365,8 +366,9 @@ const Plugins = {
     this.hasplugins = false;
     this.jarfiles = [];
     if (!server || server.type !== 'Pterodactyl' || !server.apiKey) return;
+    const apiKey = await Servers.resolveapikey(server);
     try {
-      const files = await Api.listfiles(server.panelUrl, server.apiKey, server.uuid, '/');
+      const files = await Api.listfiles(server.panelUrl, apiKey, server.uuid, '/');
       const hasdir = files.some(f => f.attributes.mimetype === 'inode/directory' && f.attributes.name === 'plugins');
       const jars = files.filter(f => f.attributes.is_file && f.attributes.name.toLowerCase().endsWith('.jar'));
       this.hasplugins = hasdir && jars.length > 0;
@@ -401,8 +403,9 @@ const Mods = {
     this.hasmods = false;
     this.jarfiles = [];
     if (!server || server.type !== 'Pterodactyl' || !server.apiKey) return;
+    const apiKey = await Servers.resolveapikey(server);
     try {
-      const files = await Api.listfiles(server.panelUrl, server.apiKey, server.uuid, '/');
+      const files = await Api.listfiles(server.panelUrl, apiKey, server.uuid, '/');
       const hasdir = files.some(f => f.attributes.mimetype === 'inode/directory' && f.attributes.name === 'mods');
       const jars = files.filter(f => f.attributes.is_file && f.attributes.name.toLowerCase().endsWith('.jar'));
       this.hasmods = hasdir && jars.length > 0;

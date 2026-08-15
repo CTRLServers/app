@@ -254,6 +254,7 @@ const App = {
     ServerFiles.init();
     ServerKeychain.load();
     Plugins.init();
+    PluginLoader.init();
     CLI.init();
     CheatSheet.init();
     CTRLCloud.init();
@@ -449,6 +450,9 @@ const App = {
 
   navigateto(page) {
     this.currentPage = page;
+    if (typeof CTRLPlugin !== 'undefined') {
+      CTRLPlugin.emit('page:navigate', { page });
+    }
     document.querySelectorAll('#mainNav .nav-item').forEach(item => {
       item.classList.toggle('active', item.dataset.page === page);
     });
@@ -463,7 +467,29 @@ const App = {
     Utils.el('tabSftp').style.display = page === 'sftp' ? '' : 'none';
     Utils.el('tabMinecraft').style.display = page === 'minecraft' ? '' : 'none';
     Utils.el('tabMultiTerm').style.display = page === 'multiterm' ? '' : 'none';
+    Utils.el('tabPluginsGlobal').style.display = page === 'plugins' ? '' : 'none';
     Utils.el('tabappsettings').style.display = page === 'appsettings' ? '' : 'none';
+
+    document.querySelectorAll('[id^="tabPluginPage-"]').forEach(el => el.style.display = 'none');
+    if (page && page.startsWith('plugin-')) {
+      const pageId = page.slice(7);
+      const pageConfig = CTRLPlugin._pages.find(p => p.id === pageId);
+      if (pageConfig) {
+        let container = Utils.el('tabPluginPage-' + pageId);
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'tabPluginPage-' + pageId;
+          container.style.padding = '20px';
+          Utils.el('serversGrid').parentElement.insertBefore(container, Utils.el('serverDetail'));
+        }
+        container.style.display = '';
+        if (typeof pageConfig.render === 'function') {
+          container.innerHTML = pageConfig.render();
+        }
+      }
+    }
+
+    if (page === 'plugins') PluginLoader.render();
     if (page === 'appsettings') AppSettings.render();
     if (page === 'keychain') ServerKeychain.renderdashboard();
     if (page === 'cloud') CTRLCloud.render();
@@ -487,7 +513,12 @@ const App = {
   },
 
   getpagetitle(page) {
-    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'Minecraft Plugin', sftp: 'SFTP', multiterm: 'Multi Terminal', appsettings: 'App Settings' }[page] || 'Dashboard';
+    if (page && page.startsWith('plugin-')) {
+      const pageId = page.slice(7);
+      const pageConfig = CTRLPlugin._pages.find(p => p.id === pageId);
+      return pageConfig ? pageConfig.label || pageId : 'Plugin';
+    }
+    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'Minecraft Plugin', sftp: 'SFTP', multiterm: 'Multi Terminal', plugins: 'Plugins', appsettings: 'App Settings' }[page] || 'Dashboard';
   },
 
   showserverlist() {
@@ -579,6 +610,9 @@ const App = {
       else if (this.currentServer.panelUrl) ServerConsole.detach();
     }
     this.currentServer = server;
+    if (typeof CTRLPlugin !== 'undefined') {
+      CTRLPlugin.emit('server:select', { server });
+    }
     Utils.el('mainNav').style.display = 'none';
     Utils.el('serverNav').style.display = '';
     Utils.el('sidebarFooter').style.display = 'none';
@@ -659,10 +693,43 @@ const App = {
     if (page !== 'vpsNet' && VPSNet.destroy) VPSNet.destroy();
     if (page !== 'ssl' && VPSSSL.destroy) VPSSSL.destroy();
     this.currentServerPage = page;
+    if (typeof CTRLPlugin !== 'undefined') {
+      CTRLPlugin.emit('page:serverpage', { page, server: this.currentServer });
+    }
     document.querySelectorAll('#serverNav .nav-item').forEach(item => {
       item.classList.toggle('active', item.dataset.serverPage === page);
     });
     document.querySelectorAll('.server-page-tab').forEach(tab => tab.style.display = 'none');
+    document.querySelectorAll('[id^="tabServerPluginPage-"]').forEach(el => el.style.display = 'none');
+
+    if (page && page.startsWith('plugin-')) {
+      const pageId = page.slice(7);
+      const pageConfig = CTRLPlugin._serverpages.find(p => p.id === pageId);
+      if (pageConfig) {
+        let container = Utils.el('tabServerPluginPage-' + pageId);
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'tabServerPluginPage-' + pageId;
+          container.className = 'server-page-tab plugin-page-container';
+          container.style.padding = '20px';
+          Utils.el('serverPage').appendChild(container);
+        }
+        container.className = 'server-page-tab plugin-page-container';
+        container.style.padding = '20px';
+        container.style.display = 'block';
+        const cards = CardManager.getCards(pageId);
+        if (cards.length > 0) {
+          container.innerHTML = CardManager.renderPage(pageId, App.currentServer);
+          CardManager.initPageEvents(pageId);
+        } else if (typeof pageConfig.render === 'function') {
+          container.innerHTML = pageConfig.render(App.currentServer);
+          if (typeof pageConfig.onRender === 'function') {
+            setTimeout(() => pageConfig.onRender(container, App.currentServer), 0);
+          }
+        }
+      }
+      return;
+    }
 
     if (page === 'vpsConsole') {
       const tab = Utils.el('tabVPSConsole');

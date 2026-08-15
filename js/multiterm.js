@@ -134,8 +134,8 @@ const MultiTerm = {
 
   async _runvps(server, cmd) {
     const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
-    if (server.authType === 'key' && server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = server.privateKey; }
-    else { cfg.authType = 'password'; cfg.password = server.password || ''; }
+    if (server.authType === 'key') { const pk = await Servers.resolvevpsprivatekey(server); if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; } }
+    if (!cfg.authType) { cfg.authType = 'password'; cfg.password = server.password || ''; }
     const result = await window.electronAPI?.sshexec?.(cfg, cmd);
     const stdout = result?.stdout || '';
     const stderr = result?.stderr || '';
@@ -144,7 +144,8 @@ const MultiTerm = {
   },
 
   async _runpterodactyl(server, cmd) {
-    const data = await Api.fetchwebsocket(server.panelUrl, server.apiKey, server.uuid);
+    const apiKey = await Servers.resolveapikey(server);
+    const data = await Api.fetchwebsocket(server.panelUrl, apiKey, server.uuid);
     if (!data || !data.socket || !data.token) throw new Error('Invalid WebSocket response');
 
     return new Promise((resolve, reject) => {
@@ -203,7 +204,7 @@ const MultiTerm = {
       }, 15000);
 
       window.electronAPI.connectwebsocket(data.socket, data.token, {
-        'Authorization': 'Bearer ' + server.apiKey,
+        'Authorization': 'Bearer ' + apiKey,
         'Accept': 'application/vnd.pterodactyl.v1+json'
       }, server.panelUrl).then(id => {
         wsId = id;

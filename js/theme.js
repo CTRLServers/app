@@ -22,14 +22,21 @@ const Theme = {
     localStorage.setItem('ctrl_theme', next);
     this.updateicon(next);
     this.applytoeditor(next);
+    if (typeof CTRLPlugin !== 'undefined') {
+      CTRLPlugin.emit('theme:change', { theme: next, previous: current });
+    }
   },
 
   settheme(theme) {
     if (!this.themes.includes(theme)) return;
+    const current = document.documentElement.getAttribute('data-theme');
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('ctrl_theme', theme);
     this.updateicon(theme);
     this.applytoeditor(theme);
+    if (typeof CTRLPlugin !== 'undefined') {
+      CTRLPlugin.emit('theme:change', { theme, previous: current });
+    }
   },
 
   updateicon(theme) {

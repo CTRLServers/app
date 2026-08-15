@@ -7,8 +7,9 @@ const ServerNetwork = {
     if (!s || s.type !== 'Pterodactyl') return;
     this.loading = true;
     this.render();
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const data = await Api.fetchnetwork(s.panelUrl, s.apiKey, s.uuid);
+      const data = await Api.fetchnetwork(s.panelUrl, apiKey, s.uuid);
       this.allocations = data.map(a => {
         const attrs = a.attributes || a;
         attrs.id = a.id || attrs.id;
@@ -26,8 +27,9 @@ const ServerNetwork = {
   async create() {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      await Api.createallocation(s.panelUrl, s.apiKey, s.uuid);
+      await Api.createallocation(s.panelUrl, apiKey, s.uuid);
       await this.load();
     } catch (e) {
       console.error(e);
@@ -37,8 +39,9 @@ const ServerNetwork = {
   async setprimary(id) {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      await Api.setprimaryallocation(s.panelUrl, s.apiKey, s.uuid, id);
+      await Api.setprimaryallocation(s.panelUrl, apiKey, s.uuid, id);
       await this.load();
     } catch (e) {
       console.error(e);
@@ -49,8 +52,9 @@ const ServerNetwork = {
     Modal.confirm('Remove Allocation', 'Are you sure you want to remove this allocation? The server must be stopped.', async () => {
       const s = App.currentServer;
       if (!s) return;
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        await Api.deleteallocation(s.panelUrl, s.apiKey, s.uuid, id);
+        await Api.deleteallocation(s.panelUrl, apiKey, s.uuid, id);
         await this.load();
       } catch (e) {
         console.error(e);
@@ -79,9 +83,10 @@ const ServerNetwork = {
       if (btn) btn.addEventListener('click', async () => {
         const s = App.currentServer;
         if (!s || !this._editingAlloc) return;
+        const apiKey = await Servers.resolveapikey(s);
         const val = document.getElementById('allocNotes').value;
         try {
-          await Api.setallocationnotes(s.panelUrl, s.apiKey, s.uuid, this._editingAlloc.id, val);
+          await Api.setallocationnotes(s.panelUrl, apiKey, s.uuid, this._editingAlloc.id, val);
           Modal.close();
           await this.load();
         } catch (e) {

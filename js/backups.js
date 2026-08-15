@@ -7,8 +7,9 @@ const ServerBackups = {
     if (!s || s.type !== 'Pterodactyl') return;
     this.loading = true;
     this.render();
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const data = await Api.fetchbackups(s.panelUrl, s.apiKey, s.uuid);
+      const data = await Api.fetchbackups(s.panelUrl, apiKey, s.uuid);
       this.backups = data.map(b => {
         const attrs = b.attributes || b;
         attrs.id = b.id || attrs.id;
@@ -52,13 +53,14 @@ const ServerBackups = {
       if (btn) btn.addEventListener('click', async () => {
         const s = App.currentServer;
         if (!s) return;
+        const apiKey = await Servers.resolveapikey(s);
         const name = document.getElementById('backupName').value.trim();
         const ignored = document.getElementById('backupIgnored').value.trim();
         const locked = document.getElementById('backupLocked').checked;
         btn.disabled = true;
         btn.textContent = 'Creating...';
         try {
-          const ok = await Api.createbackup(s.panelUrl, s.apiKey, s.uuid, name, ignored, locked);
+          const ok = await Api.createbackup(s.panelUrl, apiKey, s.uuid, name, ignored, locked);
           if (ok) {
             Modal.close();
             await this.load();
@@ -87,8 +89,9 @@ const ServerBackups = {
     Modal.confirm('Delete Backup', `Delete backup "${backup.name}"? This cannot be undone.`, async () => {
       const s = App.currentServer;
       if (!s) return;
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        await Api.deletebackup(s.panelUrl, s.apiKey, s.uuid, backup.uuid);
+        await Api.deletebackup(s.panelUrl, apiKey, s.uuid, backup.uuid);
         await this.load();
       } catch (e) {
         console.error(e);
@@ -102,8 +105,9 @@ const ServerBackups = {
     Modal.confirm('Restore Backup', `Restore server from backup "${backup.name}"? Current files will be truncated.`, async () => {
       const s = App.currentServer;
       if (!s) return;
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        await Api.restorebackup(s.panelUrl, s.apiKey, s.uuid, backup.uuid);
+        await Api.restorebackup(s.panelUrl, apiKey, s.uuid, backup.uuid);
         await this.load();
       } catch (e) {
         console.error(e);
@@ -116,8 +120,9 @@ const ServerBackups = {
     if (!backup) return;
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const url = await Api.downloadbackup(s.panelUrl, s.apiKey, s.uuid, backup.uuid);
+      const url = await Api.downloadbackup(s.panelUrl, apiKey, s.uuid, backup.uuid);
       if (url) {
         window.open(url, '_blank');
       } else {
@@ -133,8 +138,9 @@ const ServerBackups = {
     if (!backup) return;
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      await Api.togglebackuplock(s.panelUrl, s.apiKey, s.uuid, backup.uuid);
+      await Api.togglebackuplock(s.panelUrl, apiKey, s.uuid, backup.uuid);
       await this.load();
     } catch (e) {
       console.error(e);

@@ -537,23 +537,40 @@ const AppSettings = {
       if (s.type === 'Pterodactyl') return s.panelUrl && s.apiKey && s.uuid;
       if (s.type === 'VPS/VDS') return s.host && s.port;
       return false;
-    }).map(s => ({
-      id: s.id,
-      name: s.name,
-      type: s.type,
-      host: s.host,
-      port: s.port,
-      panelUrl: s.panelUrl,
-      apiKey: s.apiKey,
-      uuid: s.uuid,
-    }));
-    if (!servers.length) {
+    });
+    const resolved = [];
+    for (const s of servers) {
+      const entry = {
+        id: s.id,
+        name: s.name,
+        type: s.type,
+        host: s.host,
+        port: s.port,
+        panelUrl: s.panelUrl,
+        apiKey: s.apiKey,
+        uuid: s.uuid,
+      };
+      if (s.type === 'Pterodactyl') {
+        entry.apiKey = await Servers.resolveapikey(s);
+      }
+      if (s.type === 'VPS/VDS') {
+        entry.username = s.username || 'root';
+        entry.authType = s.authType;
+        if (s.authType === 'key') {
+          entry.privateKey = await Servers.resolvevpsprivatekey(s);
+        } else {
+          entry.password = s.password || '';
+        }
+      }
+      resolved.push(entry);
+    }
+    if (!resolved.length) {
       Modal.alert('No Servers', 'Add at least one server to monitor.');
       return;
     }
     const tick = parseInt(Utils.el('monitorInterval')?.value) || 10;
     const alerts = this.getalertrules();
-    await window.electronAPI?.monitorstart?.(servers, tick, alerts);
+    await window.electronAPI?.monitorstart?.(resolved, tick, alerts);
   },
 
   async stopmonitor() {

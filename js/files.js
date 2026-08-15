@@ -153,9 +153,10 @@ const ServerFiles = {
   async fetchasblob(path) {
     const s = App.currentServer;
     if (!s) return '';
+    const apiKey = await Servers.resolveapikey(s);
     const url = this.getdownloadurl(path);
     const res = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + s.apiKey, 'Accept': 'application/vnd.pterodactyl.v1+json' },
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Accept': 'application/vnd.pterodactyl.v1+json' },
       redirect: 'follow'
     });
     if (!res.ok) throw new Error('Download failed: ' + res.status);
@@ -191,8 +192,9 @@ const ServerFiles = {
     const s = App.currentServer;
     if (!s || s.type !== 'Pterodactyl') return;
     this.closeeditor();
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      this.files = await Api.listfiles(s.panelUrl, s.apiKey, s.uuid, this.currentPath);
+      this.files = await Api.listfiles(s.panelUrl, apiKey, s.uuid, this.currentPath);
       this.files.sort((a, b) => {
         const aDir = a.attributes.mimetype === 'inode/directory' || !a.attributes.is_file;
         const bDir = b.attributes.mimetype === 'inode/directory' || !b.attributes.is_file;
@@ -363,8 +365,9 @@ const ServerFiles = {
     }
 
     if (this.istextfile(name, size)) {
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        const content = await Api.readfile(s.panelUrl, s.apiKey, s.uuid, path);
+        const content = await Api.readfile(s.panelUrl, apiKey, s.uuid, path);
         this.showeditor(path, name, content);
       } catch (e) {
         Modal.open(name, `
@@ -493,9 +496,10 @@ const ServerFiles = {
     if (!this.editor || !this._editingPath) return;
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     const content = this.editor.getValue();
     try {
-      await Api.writefile(s.panelUrl, s.apiKey, s.uuid, this._editingPath, content);
+      await Api.writefile(s.panelUrl, apiKey, s.uuid, this._editingPath, content);
     } catch (e) {}
   },
 
@@ -516,8 +520,9 @@ const ServerFiles = {
     const name = Utils.el('newFolderName').value.trim();
     const s = App.currentServer;
     if (!name || !s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      await Api.createfolder(s.panelUrl, s.apiKey, s.uuid, name, this.currentPath);
+      await Api.createfolder(s.panelUrl, apiKey, s.uuid, name, this.currentPath);
       Modal.close();
       this.load(this.currentPath);
     } catch (e) {}
@@ -545,10 +550,11 @@ const ServerFiles = {
     const ext = Utils.el('newFileExt').value.trim();
     const s = App.currentServer;
     if (!name || !s) return;
+    const apiKey = await Servers.resolveapikey(s);
     const file = ext ? `${name}.${ext}` : name;
     const path = this.currentPath === '/' ? `/${file}` : `${this.currentPath}/${file}`;
     try {
-      await Api.writefile(s.panelUrl, s.apiKey, s.uuid, path, '');
+      await Api.writefile(s.panelUrl, apiKey, s.uuid, path, '');
       Modal.close();
       this.load(this.currentPath);
     } catch (e) {}
@@ -726,6 +732,7 @@ const ServerFiles = {
     if (!items || !items.length) return;
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
 
     const progress = Utils.el('uploadProgress');
     const bar = Utils.el('uploadProgressBar');
@@ -756,7 +763,7 @@ const ServerFiles = {
       bar.style.width = ((created / (totalDirs + 1)) * 100) + '%';
       const name = dir.split('/').pop();
       const parent = dir.replace(/\/[^/]+$/, '') || '/';
-      try { await Api.createfolder(s.panelUrl, s.apiKey, s.uuid, name, parent); } catch (e) {}
+      try { await Api.createfolder(s.panelUrl, apiKey, s.uuid, name, parent); } catch (e) {}
       created++;
     }
     const groups = {};
@@ -780,7 +787,7 @@ const ServerFiles = {
       count.textContent = `${uploaded}/${totalFiles} files`;
       bar.style.width = ((uploaded / totalFiles) * 100) + '%';
       try {
-        await Api.uploadfiles(s.panelUrl, s.apiKey, s.uuid, dir, files);
+        await Api.uploadfiles(s.panelUrl, apiKey, s.uuid, dir, files);
         uploaded += files.length;
       } catch (e) {
         failed += files.length;
@@ -891,8 +898,9 @@ const ServerFiles = {
     if (!newName || newName === oldName) { Modal.close(); return; }
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      await Api.renamefile(s.panelUrl, s.apiKey, s.uuid, dir, oldName, newName);
+      await Api.renamefile(s.panelUrl, apiKey, s.uuid, dir, oldName, newName);
       Modal.close();
       this.doreload();
     } catch (e) {}
@@ -920,10 +928,11 @@ const ServerFiles = {
     if (!dir) { Modal.close(); return; }
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
       const root = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
       const destName = dir + '/' + name;
-      await Api.renamefile(s.panelUrl, s.apiKey, s.uuid, root, name, destName);
+      await Api.renamefile(s.panelUrl, apiKey, s.uuid, root, name, destName);
       Modal.close();
       this.doreload();
     } catch (e) {}
@@ -951,10 +960,11 @@ const ServerFiles = {
     if (!dir) { Modal.close(); return; }
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
       const name = filePath.split('/').pop();
       const destPath = dir + '/' + name;
-      await Api.copyfile(s.panelUrl, s.apiKey, s.uuid, destPath);
+      await Api.copyfile(s.panelUrl, apiKey, s.uuid, destPath);
       Modal.close();
       this.doreload();
     } catch (e) {}
@@ -989,10 +999,11 @@ const ServerFiles = {
     if (!mode) { Modal.close(); return; }
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
       const root = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
       const name = filePath.split('/').pop();
-      await Api.changefilepermissions(s.panelUrl, s.apiKey, s.uuid, root, name, mode);
+      await Api.changefilepermissions(s.panelUrl, apiKey, s.uuid, root, name, mode);
       Modal.close();
       this.doreload();
     } catch (e) {}
@@ -1001,10 +1012,11 @@ const ServerFiles = {
   async doarchive(filePath) {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
       const root = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
       const name = filePath.split('/').pop();
-      await Api.compressfiles(s.panelUrl, s.apiKey, s.uuid, root, [name], this.currentPath, null);
+      await Api.compressfiles(s.panelUrl, apiKey, s.uuid, root, [name], this.currentPath, null);
       this.doreload();
     } catch (e) {}
   },
@@ -1012,10 +1024,11 @@ const ServerFiles = {
   async dounarchive(filePath) {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
       const root = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
       const name = filePath.split('/').pop();
-      await Api.decompressfile(s.panelUrl, s.apiKey, s.uuid, root, name);
+      await Api.decompressfile(s.panelUrl, apiKey, s.uuid, root, name);
       this.doreload();
     } catch (e) {}
   },
@@ -1037,10 +1050,11 @@ const ServerFiles = {
   async dodelete(filePath) {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
       const root = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
       const name = filePath.split('/').pop();
-      await Api.deletefiles(s.panelUrl, s.apiKey, s.uuid, root, [name]);
+      await Api.deletefiles(s.panelUrl, apiKey, s.uuid, root, [name]);
       Modal.close();
       this.doreload();
     } catch (e) {}
@@ -1107,6 +1121,7 @@ const ServerFiles = {
   async domassdelete() {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     const items = this.getselectedpaths();
     try {
       const grouped = {};
@@ -1115,7 +1130,7 @@ const ServerFiles = {
         grouped[root].push(name);
       });
       for (const [root, names] of Object.entries(grouped)) {
-        await Api.deletefiles(s.panelUrl, s.apiKey, s.uuid, root, names);
+        await Api.deletefiles(s.panelUrl, apiKey, s.uuid, root, names);
       }
       Modal.close();
       this.clearselection();
@@ -1145,13 +1160,14 @@ const ServerFiles = {
   async domassmove() {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     const dir = Utils.el('massMoveInput').value.trim();
     if (!dir) { Modal.close(); return; }
     const items = this.getselectedpaths();
     try {
       for (const { name, root } of items) {
         const destName = dir + '/' + name;
-        await Api.renamefile(s.panelUrl, s.apiKey, s.uuid, root, name, destName);
+        await Api.renamefile(s.panelUrl, apiKey, s.uuid, root, name, destName);
       }
       Modal.close();
       this.clearselection();
@@ -1177,10 +1193,11 @@ const ServerFiles = {
   async domassarchive() {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     const items = this.getselectedpaths();
     try {
       for (const { name, root } of items) {
-        await Api.compressfiles(s.panelUrl, s.apiKey, s.uuid, root, [name], this.currentPath, null);
+        await Api.compressfiles(s.panelUrl, apiKey, s.uuid, root, [name], this.currentPath, null);
       }
       Modal.close();
       this.clearselection();

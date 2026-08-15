@@ -124,10 +124,14 @@ const Security = {
       port: this.server.port || 22,
       username: this.server.username || 'root'
     };
-    if (this.server.authType === 'key' && this.server.privateKey) {
-      cfg.authType = 'privateKey';
-      cfg.privateKey = this.server.privateKey;
-    } else {
+    if (this.server.authType === 'key') {
+      const pk = await Servers.resolvevpsprivatekey(this.server);
+      if (pk) {
+        cfg.authType = 'privateKey';
+        cfg.privateKey = pk;
+      }
+    }
+    if (!cfg.authType) {
       cfg.authType = 'password';
       cfg.password = this.server.password || '';
     }
@@ -312,8 +316,8 @@ const Security = {
         const cfg = {
           host: server.host, port: server.port || 22, username: server.username || 'root'
         };
-        if (server.authType === 'key' && server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = server.privateKey; }
-        else { cfg.authType = 'password'; cfg.password = server.password || ''; }
+        if (server.authType === 'key') { const pk = await Servers.resolvevpsprivatekey(server); if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; } }
+        if (!cfg.authType) { cfg.authType = 'password'; cfg.password = server.password || ''; }
         await window.electronAPI.sshexec(cfg, `echo '${(server.password || '').replace(/'/g, "'\\''")}' | sudo -S sh -c 'apt-get install -y fail2ban 2>/dev/null || dnf install -y fail2ban 2>/dev/null || pacman -S --noconfirm fail2ban 2>/dev/null' 2>/dev/null`);
         this.load();
       }

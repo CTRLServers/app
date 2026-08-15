@@ -154,7 +154,8 @@ const ServerConsole = {
 
   async loadserverinfo() {
     try {
-      this.serverInfo = await Api.getcachedserver(this.server.panelUrl, this.server.apiKey, this.server.uuid);
+      const apiKey = await Servers.resolveapikey(this.server);
+      this.serverInfo = await Api.getcachedserver(this.server.panelUrl, apiKey, this.server.uuid);
     } catch (e) {}
   },
 
@@ -265,11 +266,14 @@ const ServerConsole = {
   },
 
   async connect() {
-    if (!this.server || !this.server.apiKey || !this.server.panelUrl) return;
+    if (!this.server || !this.server.panelUrl) return;
     if (this.connected) return;
 
+    const apiKey = await Servers.resolveapikey(this.server);
+    if (!apiKey) return;
+
     try {
-      const data = await Api.fetchwebsocket(this.server.panelUrl, this.server.apiKey, this.server.uuid);
+      const data = await Api.fetchwebsocket(this.server.panelUrl, apiKey, this.server.uuid);
       if (!data || !data.socket || !data.token) {
         this.log('error', 'Invalid WebSocket response');
         return;
@@ -277,7 +281,7 @@ const ServerConsole = {
 
       this.log('system', 'Connecting...');
       const id = await window.electronAPI.connectwebsocket(data.socket, data.token, {
-        'Authorization': 'Bearer ' + this.server.apiKey,
+        'Authorization': 'Bearer ' + apiKey,
         'Accept': 'application/vnd.pterodactyl.v1+json'
       }, this.server.panelUrl);
       this.wsId = id;
@@ -308,6 +312,7 @@ const ServerConsole = {
   },
 
   handlestatus(state) {
+    const prevState = this.server.status;
     this.server.status = state;
     if (Servers.resources[this.server.uuid]) {
       Servers.resources[this.server.uuid].state = state;
@@ -316,6 +321,9 @@ const ServerConsole = {
     this.updateresources(this.server.uuid);
     this._updateconsolestate();
     this._updatebuttons(state);
+    if (typeof CTRLPlugin !== 'undefined' && prevState !== state) {
+      CTRLPlugin.emit('server:statuschange', { server: this.server, uuid: this.server.uuid, state, previousState: prevState });
+    }
   },
 
   _updatebuttons(state) {
@@ -424,18 +432,22 @@ const ServerConsole = {
     if (!this.server) return;
     if (signal === 'kill') {
       Modal.confirm('Force Stop', 'Kill may corrupt server files. Are you sure?', () => {
-        this.sendpower('signal');
+        this.sendpower('kill');
       });
       return;
     }
     this.sendpower(signal);
   },
 
-  sendpower(signal) {
+  async sendpower(signal) {
     if (this.connected && this.wsId !== null) {
       window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'set state', args: [signal] }));
     } else {
-      Api.power(this.server.panelUrl, this.server.apiKey, this.server.uuid, signal);
+      const apiKey = await Servers.resolveapikey(this.server);
+      if (apiKey) Api.power(this.server.panelUrl, apiKey, this.server.uuid, signal);
+    }
+    if (typeof CTRLPlugin !== 'undefined') {
+      CTRLPlugin.emit('server:' + signal, { server: this.server, uuid: this.server.uuid });
     }
   },
 

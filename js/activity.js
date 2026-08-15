@@ -30,8 +30,9 @@ const ServerActivity = {
     this.loading = true;
     this.page = page;
     this.render();
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const data = await Api.fetchactivity(s.panelUrl, s.apiKey, s.uuid, page);
+      const data = await Api.fetchactivity(s.panelUrl, apiKey, s.uuid, page);
       if (data.data) {
         this.activities = data.data.map(item => ({
           id: item.attributes.timestamp,
@@ -253,10 +254,11 @@ const ServerActivity = {
     let page = 1;
     let total = 1;
     const circumference = 125.6;
+    const apiKey = await Servers.resolveapikey(s);
 
     while (page <= total) {
       try {
-        const data = await Api.fetchactivity(s.panelUrl, s.apiKey, s.uuid, page);
+        const data = await Api.fetchactivity(s.panelUrl, apiKey, s.uuid, page);
         if (data.data) {
           all = all.concat(data.data.map(item => ({
             id: item.attributes.timestamp,

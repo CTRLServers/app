@@ -15,8 +15,9 @@ const ServerSchedules = {
     this.selected = null;
     this.tasks = [];
     this.render();
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const data = await Api.fetchschedules(s.panelUrl, s.apiKey, s.uuid);
+      const data = await Api.fetchschedules(s.panelUrl, apiKey, s.uuid);
       this.schedules = data.map(s => {
         const attrs = s.attributes || s;
         attrs.id = s.id || attrs.id;
@@ -39,8 +40,9 @@ const ServerSchedules = {
     this.render();
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const detail = await Api.fetchscheduledetail(s.panelUrl, s.apiKey, s.uuid, schedule.id);
+      const detail = await Api.fetchscheduledetail(s.panelUrl, apiKey, s.uuid, schedule.id);
       this.selected = { ...schedule, ...detail };
       const relTasks = detail.relationships?.tasks?.data;
       if (Array.isArray(relTasks)) {
@@ -70,8 +72,9 @@ const ServerSchedules = {
     this.render();
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      await Api.executeschedule(s.panelUrl, s.apiKey, s.uuid, id);
+      await Api.executeschedule(s.panelUrl, apiKey, s.uuid, id);
       await this.load();
     } catch (e) {
       console.error(e);
@@ -85,8 +88,9 @@ const ServerSchedules = {
     Modal.confirm('Delete Schedule', 'Are you sure you want to delete this schedule?', async () => {
       const s = App.currentServer;
       if (!s) return;
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        await Api.deleteschedule(s.panelUrl, s.apiKey, s.uuid, id);
+        await Api.deleteschedule(s.panelUrl, apiKey, s.uuid, id);
         if (this.selected?.id === id) this.backtolist();
         await this.load();
       } catch (e) {
@@ -144,6 +148,7 @@ const ServerSchedules = {
       if (btn) btn.addEventListener('click', async () => {
         const s = App.currentServer;
         if (!s) return;
+        const apiKey = await Servers.resolveapikey(s);
         const name = document.getElementById('schedName').value.trim();
         if (!name) return;
         const payload = {
@@ -159,7 +164,7 @@ const ServerSchedules = {
         btn.disabled = true;
         btn.textContent = 'Saving...';
         try {
-          const ok = await Api.updateschedule(s.panelUrl, s.apiKey, s.uuid, sched.id, payload);
+          const ok = await Api.updateschedule(s.panelUrl, apiKey, s.uuid, sched.id, payload);
           if (ok) {
             Modal.close();
             await this.opendetail({ id: sched.id });
@@ -224,6 +229,7 @@ const ServerSchedules = {
       if (btn) btn.addEventListener('click', async () => {
         const s = App.currentServer;
         if (!s) return;
+        const apiKey = await Servers.resolveapikey(s);
         const name = document.getElementById('schedName').value.trim();
         if (!name) return;
         const payload = {
@@ -239,7 +245,7 @@ const ServerSchedules = {
         btn.disabled = true;
         btn.textContent = 'Creating...';
         try {
-          const ok = await Api.createschedule(s.panelUrl, s.apiKey, s.uuid, payload);
+          const ok = await Api.createschedule(s.panelUrl, apiKey, s.uuid, payload);
           if (ok) {
             Modal.close();
             await this.load();
@@ -301,6 +307,7 @@ const ServerSchedules = {
       if (btn) btn.addEventListener('click', async () => {
         const s = App.currentServer;
         if (!s) return;
+        const apiKey = await Servers.resolveapikey(s);
         const action = document.getElementById('taskAction').value;
         const payload = document.getElementById('taskPayload').value;
         const timeOffset = parseInt(document.getElementById('taskOffset').value) || 0;
@@ -308,7 +315,7 @@ const ServerSchedules = {
         btn.disabled = true;
         btn.textContent = 'Creating...';
         try {
-          const ok = await Api.createscheduletask(s.panelUrl, s.apiKey, s.uuid, scheduleId, {
+          const ok = await Api.createscheduletask(s.panelUrl, apiKey, s.uuid, scheduleId, {
             action,
             payload: payload || undefined,
             time_offset: timeOffset,
@@ -336,8 +343,9 @@ const ServerSchedules = {
     Modal.confirm('Delete Task', 'Are you sure you want to delete this task?', async () => {
       const s = App.currentServer;
       if (!s || !this.selected) return;
+      const apiKey = await Servers.resolveapikey(s);
       try {
-        await Api.deletescheduletask(s.panelUrl, s.apiKey, s.uuid, this.selected.id, taskId);
+        await Api.deletescheduletask(s.panelUrl, apiKey, s.uuid, this.selected.id, taskId);
         await this.opendetail(this.selected);
       } catch (e) {
         console.error(e);

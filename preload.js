@@ -188,6 +188,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onserverstatus: (callback) => {
     return ipcRenderer.on('server-status', (event, data) => callback(data));
   },
+  cryptoencrypt: (plaintext) => {
+    return ipcRenderer.invoke('crypto-encrypt', plaintext);
+  },
+  cryptodecrypt: (data) => {
+    return ipcRenderer.invoke('crypto-decrypt', data);
+  },
+  plugindir: () => {
+    return ipcRenderer.invoke('plugin-dir');
+  },
+  pluginlist: () => {
+    return ipcRenderer.invoke('plugin-list');
+  },
+  pluginreadmanifest: (folder) => {
+    return ipcRenderer.invoke('plugin-read-manifest', folder);
+  },
+  pluginreadentry: (folder, entry) => {
+    return ipcRenderer.invoke('plugin-read-entry', folder, entry);
+  },
   winminimize: () => ipcRenderer.invoke('win-minimize'),
   winmaximize: () => ipcRenderer.invoke('win-maximize'),
   winclose: () => ipcRenderer.invoke('win-close'),

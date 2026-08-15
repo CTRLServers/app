@@ -45,16 +45,41 @@ const ServerKeychain = {
         const publicKey = document.getElementById('keyPublic').value.trim();
         const privateKey = document.getElementById('keyPrivate').value.trim();
         if (!name) return;
+        const keyData = {
+          name,
+          publicKey,
+          privateKey,
+          createdAt: existing ? existing.createdAt : Date.now(),
+          updatedAt: Date.now()
+        };
         if (isEdit) {
-          this.keys[editIdx] = { name, publicKey, privateKey, updatedAt: Date.now() };
+          this.keys[editIdx] = keyData;
         } else {
-          this.keys.push({ name, publicKey, privateKey, createdAt: Date.now(), updatedAt: Date.now() });
+          this.keys.push(keyData);
         }
         this.save();
         Modal.close();
         this.renderall();
       });
     }, 0);
+  },
+
+  getprivatekey(idx) {
+    const key = this.keys[idx];
+    if (!key) return '';
+    return key.privateKey || '';
+  },
+
+  getpublickey(idx) {
+    const key = this.keys[idx];
+    if (!key) return '';
+    return key.publicKey || '';
+  },
+
+  copyfield(idx, field) {
+    const key = this.keys[idx];
+    if (!key) return;
+    navigator.clipboard.writeText(key[field] || '').catch(() => {});
   },
 
   remove(idx) {
@@ -157,11 +182,5 @@ const ServerKeychain = {
     }
     html += '</div></div>';
     return html;
-  },
-
-  copyfield(idx, field) {
-    const key = this.keys[idx];
-    if (!key) return;
-    navigator.clipboard.writeText(key[field] || '').catch(() => {});
   },
 };

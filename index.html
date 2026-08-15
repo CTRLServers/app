@@ -90,6 +90,12 @@
           </svg>
           <span>Multi Terminal</span>
         </a>
+        <a href="#" class="nav-item" data-page="plugins">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          <span>Plugins</span>
+        </a>
       </nav>
 
       <div class="nav-separator" id="workspacesSeparator"></div>
@@ -472,6 +478,7 @@
         <div id="tabSftp" style="display:none;"></div>
         <div id="tabMinecraft" style="display:none;"></div>
         <div id="tabMultiTerm" style="display:none;"></div>
+        <div id="tabPluginsGlobal" style="display:none;padding:20px;"></div>
         <div id="tabappsettings" style="display:none;"></div>
 
         <div class="server-detail" id="serverDetail" style="display:none;">
@@ -893,6 +900,9 @@
   <script src="js/cheatsheet.js"></script>
   <script src="js/multiterm.js"></script>
   <script src="js/securityscore.js"></script>
+  <script src="js/pluginapi.js"></script>
+  <script src="js/cardmanager.js"></script>
+  <script src="js/pluginloader.js"></script>
   <script src="js/app.js"></script>
   <script>
     document.getElementById('titlebarMinimize').addEventListener('click', () => window.electronAPI.winminimize());

@@ -76,8 +76,9 @@ const ServerUsers = {
   async load() {
     const server = App.currentServer;
     if (!server || server.type !== 'Pterodactyl') return;
+    const apiKey = await Servers.resolveapikey(server);
     try {
-      this.users = await Api.fetchsubusers(server.panelUrl, server.apiKey, server.uuid);
+      this.users = await Api.fetchsubusers(server.panelUrl, apiKey, server.uuid);
     } catch (e) {
       this.users = [];
     }
@@ -195,8 +196,9 @@ const ServerUsers = {
         const err = document.getElementById('subuserError');
         if (!email) { err.innerHTML = '<div class="error-msg">Email required</div>'; return; }
         const server = App.currentServer;
+        const apiKey = await Servers.resolveapikey(server);
         try {
-          await Api.invitesubuser(server.panelUrl, server.apiKey, server.uuid, email, perms);
+          await Api.invitesubuser(server.panelUrl, apiKey, server.uuid, email, perms);
           Modal.close();
           this.load();
         } catch (e) {
@@ -247,8 +249,9 @@ const ServerUsers = {
         const newPerms = this.getcheckedperms();
         const err = document.getElementById('subuserError');
         const server = App.currentServer;
+        const apiKey = await Servers.resolveapikey(server);
         try {
-          await Api.updatesubuser(server.panelUrl, server.apiKey, server.uuid, userId, newPerms);
+          await Api.updatesubuser(server.panelUrl, apiKey, server.uuid, userId, newPerms);
           Modal.close();
           this.load();
         } catch (e) {
@@ -298,8 +301,9 @@ const ServerUsers = {
     const email = attrs.email || 'Unknown';
     Modal.confirm('Remove Subuser', `Remove "${email}" from this server?`, async () => {
       const server = App.currentServer;
+      const apiKey = await Servers.resolveapikey(server);
       try {
-        await Api.deletesubuser(server.panelUrl, server.apiKey, server.uuid, userId);
+        await Api.deletesubuser(server.panelUrl, apiKey, server.uuid, userId);
         this.load();
       } catch (e) {}
     });

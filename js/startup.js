@@ -11,8 +11,9 @@ const ServerStartup = {
     if (!s || s.type !== 'Pterodactyl') return;
     this.loading = true;
     this.render();
+    const apiKey = await Servers.resolveapikey(s);
     try {
-      const data = await Api.fetchstartup(s.panelUrl, s.apiKey, s.uuid);
+      const data = await Api.fetchstartup(s.panelUrl, apiKey, s.uuid);
       if (data.meta) {
         this.startupCommand = data.meta.startup_command || '';
         this.variables = (data.data || []).map(v => v.attributes);
@@ -24,7 +25,7 @@ const ServerStartup = {
         }
       }
       try {
-        const details = await Api.getcachedserver(s.panelUrl, s.apiKey, s.uuid);
+        const details = await Api.getcachedserver(s.panelUrl, apiKey, s.uuid);
         this.currentImage = details.docker_image || '';
       } catch (e) {
         this.currentImage = '';
@@ -42,10 +43,11 @@ const ServerStartup = {
     if (!v) return;
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     v._saving = true;
     this.render();
     try {
-      await Api.updatestartupvariable(s.panelUrl, s.apiKey, s.uuid, v.env_variable, v.server_value);
+      await Api.updatestartupvariable(s.panelUrl, apiKey, s.uuid, v.env_variable, v.server_value);
       await this.load();
     } catch (e) {
       console.error(e);
@@ -57,10 +59,11 @@ const ServerStartup = {
   async updateimage() {
     const s = App.currentServer;
     if (!s) return;
+    const apiKey = await Servers.resolveapikey(s);
     this.savingImage = true;
     this.render();
     try {
-      await Api.updatedockerimage(s.panelUrl, s.apiKey, s.uuid, this.currentImage);
+      await Api.updatedockerimage(s.panelUrl, apiKey, s.uuid, this.currentImage);
       await this.load();
     } catch (e) {
       console.error(e);

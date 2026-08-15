@@ -432,8 +432,14 @@ const SFTP = {
         errEl.textContent = 'Please select a key';
         return;
       }
-      const key = ServerKeychain.keys[parseInt(keyIdx)];
-      privateKey = key.privateKey;
+      const pk = ServerKeychain.getprivatekey(parseInt(keyIdx));
+      if (!pk) {
+        const errEl = Utils.el('sftpAuthError');
+        errEl.style.display = '';
+        errEl.textContent = 'No private key found';
+        return;
+      }
+      privateKey = pk;
     }
 
     const cfg = { host, port: parseInt(port), username, authType, password, privateKey };
@@ -452,13 +458,17 @@ const SFTP = {
   async quickconnect(index) {
     const server = Servers.list[index];
     if (!server) return;
+    let pk = '';
+    if (server.authType === 'key') {
+      pk = await Servers.resolvevpsprivatekey(server);
+    }
     const cfg = {
       host: server.host,
       port: server.port || 22,
       username: server.username || 'root',
       authType: server.authType === 'key' ? 'key' : 'password',
       password: server.password || '',
-      privateKey: server.privateKey || ''
+      privateKey: pk
     };
     if (cfg.authType === 'password' && !cfg.password) {
       const errEl = document.getElementById('sftpAuthError');

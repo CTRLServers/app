@@ -202,10 +202,14 @@ const VPSConsole = {
       rows: this.term.rows
     };
 
-    if (this.server.authType === 'key' && this.server.privateKey) {
-      config.authType = 'privateKey';
-      config.privateKey = this.server.privateKey;
-    } else {
+    if (this.server.authType === 'key') {
+      const pk = await Servers.resolvevpsprivatekey(this.server);
+      if (pk) {
+        config.authType = 'privateKey';
+        config.privateKey = pk;
+      }
+    }
+    if (!config.authType) {
       config.authType = 'password';
       config.password = this.server.password || '';
     }
@@ -215,7 +219,6 @@ const VPSConsole = {
     try {
       this.sshId = await window.electronAPI.sshconnect(config);
       this.connected = true;
-      this.term.clear();
       this.fitAddon.fit();
       window.electronAPI.sshresize(this.sshId, this.term.cols, this.term.rows);
     } catch (e) {

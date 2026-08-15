@@ -246,8 +246,8 @@ const SecurityScore = {
     const s = this.server;
     if (!s) return { stdout: '' };
     const cfg = { host: s.host, port: s.port || 22, username: s.username || 'root' };
-    if (s.authType === 'key' && s.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = s.privateKey; }
-    else { cfg.authType = 'password'; cfg.password = s.password || ''; }
+    if (s.authType === 'key') { const pk = await Servers.resolvevpsprivatekey(s); if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; } }
+    if (!cfg.authType) { cfg.authType = 'password'; cfg.password = s.password || ''; }
     try {
       return await window.electronAPI.sshexec(cfg, cmd);
     } catch (e) {

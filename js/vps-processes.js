@@ -139,8 +139,8 @@ const VPSProcesses = {
 
   async exec(command) {
     const cfg = { host: this.server.host, port: this.server.port || 22, username: this.server.username || 'root' };
-    if (this.server.authType === 'key' && this.server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = this.server.privateKey; }
-    else { cfg.authType = 'password'; cfg.password = this.server.password || ''; }
+    if (this.server.authType === 'key') { const pk = await Servers.resolvevpsprivatekey(this.server); if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; } }
+    if (!cfg.authType) { cfg.authType = 'password'; cfg.password = this.server.password || ''; }
     if ((this.server.username || 'root') !== 'root') {
       const pass = (this.server.password || '').replace(/'/g, "'\\''");
       return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${command.replace(/'/g, "'\\''")}' 2>/dev/null`);

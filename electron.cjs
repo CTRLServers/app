@@ -6,7 +6,7 @@ const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
-const APP_VERSION = '1.0.9';
+const APP_VERSION = '1.1.0';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
@@ -40,6 +40,61 @@ const sshConnections = new Map();
 let sshIdCounter = 0;
 const sftpConnections = new Map();
 let sftpIdCounter = 0;
+
+const crypto = require('crypto');
+const ALGO = 'aes-256-gcm';
+const KEY_FILE = path.join(app.getPath('userData'), '.ctrlservers_masterkey');
+let machineKey = null;
+
+function loadormachinekey() {
+  if (machineKey) return machineKey;
+  try {
+    if (fs.existsSync(KEY_FILE)) {
+      const raw = fs.readFileSync(KEY_FILE, 'utf8').trim();
+      machineKey = Buffer.from(raw, 'hex');
+      if (machineKey.length !== 32) throw new Error('Invalid key length');
+      return machineKey;
+    }
+  } catch (e) {}
+  machineKey = crypto.randomBytes(32);
+  try {
+    const dir = path.dirname(KEY_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(KEY_FILE, machineKey.toString('hex'), { mode: 0o600 });
+  } catch (e) {}
+  return machineKey;
+}
+
+ipcMain.handle('crypto-encrypt', async (event, plaintext) => {
+  const key = loadormachinekey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(ALGO, key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted.toString('hex');
+});
+
+ipcMain.handle('crypto-decrypt', async (event, data) => {
+  const key = loadormachinekey();
+  const parts = data.split(':');
+  if (parts.length !== 3) throw new Error('Invalid encrypted data');
+  const iv = Buffer.from(parts[0], 'hex');
+  const tag = Buffer.from(parts[1], 'hex');
+  const encrypted = Buffer.from(parts[2], 'hex');
+  const decipher = crypto.createDecipheriv(ALGO, key, iv);
+  decipher.setAuthTag(tag);
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return decrypted.toString('utf8');
+});
+
+function validsftppath(remotePath) {
+  if (!remotePath || typeof remotePath !== 'string') return false;
+  const normalized = remotePath.replace(/\\/g, '/').replace(/\/+/g, '/');
+  if (normalized.includes('/../') || normalized.endsWith('/..') || normalized.startsWith('../') || normalized === '..') {
+    return false;
+  }
+  return true;
+}
 
 let monitorInterval = null;
 let monitorServers = [];
@@ -139,13 +194,20 @@ ipcMain.handle('ws-connect', async (event, url, token, headers, origin) => {
   const id = ++wsIdCounter;
   const win = BrowserWindow.fromWebContents(event.sender);
 
+  if (!url || (!url.startsWith('wss://') && !url.startsWith('ws://'))) {
+    throw new Error('Invalid WebSocket URL');
+  }
+  if (!url.startsWith('wss://')) {
+    throw new Error('Only secure WebSocket connections (wss://) are allowed');
+  }
+
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url, {
       headers: {
         ...headers,
         Origin: origin || 'https://app.ctrlservers.xyz'
       },
-      rejectUnauthorized: false
+      rejectUnauthorized: true
     });
 
     wsConnections.set(id, ws);
@@ -193,7 +255,7 @@ ipcMain.handle('ws-close', async (event, id) => {
 });
 
 ipcMain.handle('open-external', async (event, url) => {
-  await shell.openexternal(url);
+  await shell.openExternal(url);
 });
 
 ipcMain.on('get-platform', (event) => {
@@ -403,6 +465,7 @@ ipcMain.handle('sftp-connect', async (event, config) => {
 ipcMain.handle('sftp-list', async (event, id, remotePath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     entry.sftp.readdir(remotePath, (err, list) => {
       if (err) reject(err);
@@ -414,6 +477,7 @@ ipcMain.handle('sftp-list', async (event, id, remotePath) => {
 ipcMain.handle('sftp-stat', async (event, id, remotePath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     entry.sftp.stat(remotePath, (err, stats) => {
       if (err) reject(err);
@@ -425,6 +489,7 @@ ipcMain.handle('sftp-stat', async (event, id, remotePath) => {
 ipcMain.handle('sftp-read', async (event, id, remotePath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     const chunks = [];
     const stream = entry.sftp.createReadStream(remotePath);
@@ -437,6 +502,7 @@ ipcMain.handle('sftp-read', async (event, id, remotePath) => {
 ipcMain.handle('sftp-write', async (event, id, remotePath, content) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     const stream = entry.sftp.createWriteStream(remotePath);
     stream.on('close', () => resolve(true));
@@ -448,6 +514,7 @@ ipcMain.handle('sftp-write', async (event, id, remotePath, content) => {
 ipcMain.handle('sftp-mkdir', async (event, id, remotePath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     entry.sftp.mkdir(remotePath, (err) => {
       if (err) reject(err); else resolve(true);
@@ -458,6 +525,7 @@ ipcMain.handle('sftp-mkdir', async (event, id, remotePath) => {
 ipcMain.handle('sftp-rename', async (event, id, oldPath, newPath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(oldPath) || !validsftppath(newPath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     entry.sftp.rename(oldPath, newPath, (err) => {
       if (err) reject(err); else resolve(true);
@@ -468,6 +536,7 @@ ipcMain.handle('sftp-rename', async (event, id, oldPath, newPath) => {
 ipcMain.handle('sftp-delete', async (event, id, remotePath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     entry.sftp.unlink(remotePath, (err) => {
       if (err) reject(err); else resolve(true);
@@ -478,6 +547,7 @@ ipcMain.handle('sftp-delete', async (event, id, remotePath) => {
 ipcMain.handle('sftp-rmdir', async (event, id, remotePath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     entry.sftp.rmdir(remotePath, (err) => {
       if (err) reject(err); else resolve(true);
@@ -488,6 +558,7 @@ ipcMain.handle('sftp-rmdir', async (event, id, remotePath) => {
 ipcMain.handle('sftp-upload', async (event, id, remotePath, buffer) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     const stream = entry.sftp.createWriteStream(remotePath);
     stream.on('close', () => resolve(true));
@@ -499,6 +570,7 @@ ipcMain.handle('sftp-upload', async (event, id, remotePath, buffer) => {
 ipcMain.handle('sftp-download', async (event, id, remotePath) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     const chunks = [];
     const stream = entry.sftp.createReadStream(remotePath);
@@ -511,6 +583,7 @@ ipcMain.handle('sftp-download', async (event, id, remotePath) => {
 ipcMain.handle('sftp-chmod', async (event, id, remotePath, mode) => {
   const entry = sftpConnections.get(id);
   if (!entry || !entry.sftp) throw new Error('SFTP not connected');
+  if (!validsftppath(remotePath)) throw new Error('Invalid path: path traversal detected');
   return new Promise((resolve, reject) => {
     entry.sftp.chmod(remotePath, mode, (err) => {
       if (err) reject(err); else resolve(true);
@@ -919,4 +992,33 @@ ipcMain.handle('checkvps', async (event, host, port) => {
     socket.on('error', () => done('offline'));
     socket.connect(parseInt(port) || 22, host);
   });
+});
+
+const PLUGINS_DIR = path.join(app.getPath('userData'), 'plugins');
+
+ipcMain.handle('plugin-dir', async () => {
+  if (!fs.existsSync(PLUGINS_DIR)) fs.mkdirSync(PLUGINS_DIR, { recursive: true });
+  return PLUGINS_DIR;
+});
+
+ipcMain.handle('plugin-list', async () => {
+  if (!fs.existsSync(PLUGINS_DIR)) return [];
+  try {
+    return fs.readdirSync(PLUGINS_DIR, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+  } catch (e) { return []; }
+});
+
+ipcMain.handle('plugin-read-manifest', async (event, folder) => {
+  const manifestPath = path.join(PLUGINS_DIR, folder, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) return null;
+  const raw = fs.readFileSync(manifestPath, 'utf8');
+  return JSON.parse(raw);
+});
+
+ipcMain.handle('plugin-read-entry', async (event, folder, entry) => {
+  const entryPath = path.join(PLUGINS_DIR, folder, entry);
+  if (!fs.existsSync(entryPath)) return null;
+  return fs.readFileSync(entryPath, 'utf8');
 });

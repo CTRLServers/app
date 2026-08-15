@@ -21,11 +21,35 @@ const Servers = {
     this.renderworkspaces();
   },
 
+  async resolvevpsprivatekey(server) {
+    if (server.authType !== 'key') return server.password || '';
+    if (server.privateKey) return server.privateKey;
+    if (server.keyIndex !== undefined && ServerKeychain.keys[server.keyIndex]) {
+      return ServerKeychain.keys[server.keyIndex].privateKey || '';
+    }
+    return '';
+  },
+
   load() {
     const data = localStorage.getItem('ctrl_servers');
     this.list = data ? JSON.parse(data) : [];
     const fd = localStorage.getItem('ctrl_folders');
     this.folders = fd ? JSON.parse(fd) : [];
+    this._apikeycache = {};
+  },
+
+  async resolveapikey(server) {
+    if (!server || !server.apiKey) return '';
+    if (!server.apiKey.startsWith('enc:')) return server.apiKey;
+    const cachekey = server.uuid || server.id;
+    if (this._apikeycache[cachekey]) return this._apikeycache[cachekey];
+    try {
+      const dec = await window.electronAPI.cryptodecrypt(server.apiKey.slice(4));
+      this._apikeycache[cachekey] = dec;
+      return dec;
+    } catch (e) {
+      return '';
+    }
   },
 
   save() {
@@ -60,7 +84,12 @@ const Servers = {
         port: parseInt(server.port) || 22,
         username: server.username || 'root',
       };
-      if (server.authType === 'key' && server.privateKey) {
+      if (server.authType === 'key' && server.keyIndex !== undefined) {
+        const key = ServerKeychain.keys[server.keyIndex];
+        if (!key) return;
+        cfg.authType = 'privateKey';
+        cfg.privateKey = key.privateKey;
+      } else if (server.authType === 'key' && server.privateKey) {
         cfg.authType = 'privateKey';
         cfg.privateKey = server.privateKey;
       } else {
@@ -124,14 +153,19 @@ const Servers = {
 
   async quickpower(index, signal) {
     const server = this.list[index];
-    if (!server || server.type !== 'Pterodactyl' || !server.apiKey || !server.panelUrl) return;
+    if (!server || server.type !== 'Pterodactyl' || !server.panelUrl) return;
+    const apiKey = await this.resolveapikey(server);
+    if (!apiKey) return;
     try {
-      await Api.power(server.panelUrl, server.apiKey, server.uuid, signal);
+      await Api.power(server.panelUrl, apiKey, server.uuid, signal);
       this.resources[server.uuid] = this.resources[server.uuid] || {};
       this.resources[server.uuid].state = signal === 'start' || signal === 'restart' ? 'starting' : 'stopping';
       this.updatecard(server.uuid);
       if (signal === 'start' || signal === 'restart') {
         this._pollafterpower(server.uuid, 0);
+      }
+      if (typeof CTRLPlugin !== 'undefined') {
+        CTRLPlugin.emit('server:' + signal, { server, uuid: server.uuid });
       }
     } catch (e) {}
   },
@@ -141,9 +175,11 @@ const Servers = {
     const delays = [2000, 3000, 3000, 4000, 5000, 5000, 5000, 5000, 5000, 5000];
     setTimeout(async () => {
     const server = this.list.find(s => s.uuid === uuid || String(s.id) === String(uuid));
-      if (!server || !server.apiKey || !server.panelUrl) return;
+      if (!server || !server.panelUrl) return;
+      const apiKey = await this.resolveapikey(server);
+      if (!apiKey) return;
       try {
-        const data = await Api.fetchresources(server.panelUrl, server.apiKey, uuid);
+        const data = await Api.fetchresources(server.panelUrl, apiKey, uuid);
         this.resources[uuid] = {
           state: data.current_state,
           memory_bytes: data.resources.memory_bytes,
@@ -154,6 +190,7 @@ const Servers = {
         server.status = data.current_state;
         this.save();
         this.updatecard(uuid);
+        if (typeof CTRLPlugin !== 'undefined') CTRLPlugin.emit('_serverupdate', { uuid, resources: this.resources[uuid] });
         if (data.current_state === 'running' || data.current_state === 'stopped') return;
         this._pollafterpower(uuid, attempt + 1);
       } catch (e) {
@@ -332,11 +369,13 @@ const Servers = {
 
   async pollresources() {
     if (App.currentPage !== 'dashboard' || App.currentServer) return;
-    const ptero = this.list.filter(s => s.type === 'Pterodactyl' && s.apiKey && s.panelUrl);
+    const ptero = this.list.filter(s => s.type === 'Pterodactyl' && s.panelUrl);
     const vps = this.list.filter(s => s.type === 'VPS/VDS' && s.host && s.port);
     for (const server of ptero) {
+      const apiKey = await this.resolveapikey(server);
+      if (!apiKey) continue;
       try {
-        const data = await Api.fetchresources(server.panelUrl, server.apiKey, server.uuid);
+        const data = await Api.fetchresources(server.panelUrl, apiKey, server.uuid);
         this.resources[server.uuid] = {
           state: data.current_state,
           memory_bytes: data.resources.memory_bytes,
@@ -347,6 +386,7 @@ const Servers = {
         server.status = data.current_state;
         this.save();
         this.updatecard(server.uuid);
+        if (typeof CTRLPlugin !== 'undefined') CTRLPlugin.emit('_serverupdate', { uuid: server.uuid, resources: this.resources[server.uuid] });
         if (App.currentServer?.uuid === server.uuid) {
           ServerConsole.updateresources(server.uuid);
         }
@@ -372,16 +412,17 @@ const Servers = {
   },
 
   async fetchallfromapi() {
-    const ptero = this.list.filter(s => s.type === 'Pterodactyl' && s.apiKey && s.panelUrl);
+    const ptero = this.list.filter(s => s.type === 'Pterodactyl' && s.panelUrl);
     const panels = new Map();
     ptero.forEach(s => {
-      const key = s.panelUrl + '|' + s.apiKey;
+      const key = s.panelUrl;
       if (!panels.has(key)) panels.set(key, []);
       panels.get(key).push(s);
     });
 
-    for (const [key, servers] of panels) {
-      const [panelUrl, apiKey] = key.split('|');
+    for (const [panelUrl, servers] of panels) {
+      const apiKey = await this.resolveapikey(servers[0]);
+      if (!apiKey) continue;
       try {
         const apiServers = await Api.fetchservers(panelUrl, apiKey);
         for (const saved of servers) {
@@ -495,8 +536,19 @@ const Servers = {
     for (const server of vps) {
       try {
         const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
-        if (server.authType === 'key' && server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = server.privateKey; }
-        else { cfg.authType = 'password'; cfg.password = server.password || ''; }
+        if (server.authType === 'key' && server.keyIndex !== undefined) {
+          const key = ServerKeychain.keys[server.keyIndex];
+          if (key) {
+            cfg.authType = 'privateKey';
+            cfg.privateKey = key.privateKey;
+          }
+        } else if (server.authType === 'key' && server.privateKey) {
+          cfg.authType = 'privateKey';
+          cfg.privateKey = server.privateKey;
+        } else {
+          cfg.authType = 'password';
+          cfg.password = server.password || '';
+        }
         const cmd = "free -b | awk '/Mem:/{print $2,$3} /Swap:/{print $2,$3}' && df -B1 / | awk 'NR==2{print $2,$3}' && cat /proc/loadavg && nproc";
         const result = await window.electronAPI?.sshexec?.(cfg, cmd);
         if (result && result.stdout) {
@@ -909,16 +961,21 @@ const Servers = {
 
   addselected() {
     const { panelUrl, apiKey, servers } = this._addData;
-    this._selected.forEach(i => {
+    this._selected.forEach(async (i) => {
       const s = servers[i];
       if (this.list.some(x => x.uuid === s.attributes.uuid && x.panelUrl === panelUrl)) return;
       const alloc = s.attributes.relationships?.allocations?.data?.[0]?.attributes;
+      let encryptedApiKey = apiKey;
+      try {
+        const enc = await window.electronAPI.cryptoencrypt(apiKey);
+        encryptedApiKey = 'enc:' + enc;
+      } catch (e) {}
       this.list.push({
         id: Date.now() + Math.random(),
         type: 'Pterodactyl',
         name: s.attributes.name,
         description: s.attributes.description || '',
-        panelUrl, apiKey,
+        panelUrl, apiKey: encryptedApiKey,
         uuid: s.attributes.uuid,
         node: s.attributes.node,
         host: alloc?.ip || panelUrl.replace(/^https?:\/\//, ''),
@@ -927,12 +984,12 @@ const Servers = {
         allocations: (s.attributes.relationships?.allocations?.data || []).map(a => ({ id: a.attributes.id, ip: a.attributes.ip, port: a.attributes.port })),
         status: 'offline'
       });
+      this.save();
+      this.render();
+      this.fetchallfromapi();
+      CTRLCloud.autosyncupload('add');
+      Modal.close();
     });
-    this.save();
-    this.render();
-    this.fetchallfromapi();
-    CTRLCloud.autosyncupload('add');
-    Modal.close();
   },
 
   showvpsform() {
@@ -1031,7 +1088,6 @@ const Servers = {
       const keyIdx = parseInt(Utils.el('vpsKeySelect').value);
       if (!isNaN(keyIdx) && ServerKeychain.keys[keyIdx]) {
         server.keyIndex = keyIdx;
-        server.privateKey = ServerKeychain.keys[keyIdx].privateKey;
       } else {
         return;
       }
