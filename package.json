@@ -30,6 +30,7 @@
       "index.html",
       "styles.css",
       "js/**/*",
+      "node_modules/@xterm/addon-webgl/lib/addon-webgl.js",
       "assets/**/*",
       "src/**/*"
     ],
@@ -50,6 +51,7 @@
     }
   },
   "dependencies": {
+    "@xterm/addon-webgl": "^0.19.0",
     "discord-rpc": "^4.0.1",
     "ssh2": "^1.17.0",
     "ws": "^8.21.1"

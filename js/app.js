@@ -734,11 +734,6 @@ const App = {
     if (page === 'vpsConsole') {
       const tab = Utils.el('tabVPSConsole');
       if (tab) tab.style.display = 'flex';
-      if (this.currentServer) {
-        setTimeout(() => {
-          if (VPSConsole.term) VPSConsole.fitAddon && VPSConsole.fitAddon.fit();
-        }, 50);
-      }
       return;
     }
 

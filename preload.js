@@ -88,11 +88,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sshconnect: (config) => {
     return ipcRenderer.invoke('ssh-connect', config);
   },
+  sshready: (id) => {
+    ipcRenderer.send('ssh-ready', id);
+  },
   sshdata: (id, data) => {
-    return ipcRenderer.invoke('ssh-data', id, data);
+    ipcRenderer.send('ssh-data', id, data);
   },
   sshresize: (id, cols, rows) => {
-    return ipcRenderer.invoke('ssh-resize', id, cols, rows);
+    ipcRenderer.send('ssh-resize', id, cols, rows);
   },
   sshdisconnect: (id) => {
     return ipcRenderer.invoke('ssh-disconnect', id);
@@ -184,6 +187,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   checkvps: (host, port) => {
     return ipcRenderer.invoke('checkvps', host, port);
+  },
+  sshping: (host, port) => {
+    return ipcRenderer.invoke('sshping', host, port);
   },
   onserverstatus: (callback) => {
     return ipcRenderer.on('server-status', (event, data) => callback(data));

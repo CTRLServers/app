@@ -382,10 +382,19 @@ const CTRLPlugin = {
     };
     if (server.authType === 'key') {
       const pk = await Servers.resolvevpsprivatekey(server);
-      if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; }
+      if (pk) {
+        cfg.authType = 'privateKey';
+        cfg.privateKey = pk;
+      } else {
+        cfg.authType = 'password';
+        cfg.password = server.password || '';
+      }
     } else {
       cfg.authType = 'password';
       cfg.password = server.password || '';
+    }
+    if (!cfg.password && cfg.authType === 'password') {
+      throw new Error('No password saved for this server');
     }
     return await window.electronAPI.sshexec(cfg, command);
   },
@@ -397,8 +406,14 @@ const CTRLPlugin = {
       username: server.username || 'root',
     };
     if (server.authType === 'key') {
-      cfg.authType = 'key';
-      cfg.privateKey = await Servers.resolvevpsprivatekey(server);
+      const pk = await Servers.resolvevpsprivatekey(server);
+      if (pk) {
+        cfg.authType = 'privateKey';
+        cfg.privateKey = pk;
+      } else {
+        cfg.authType = 'password';
+        cfg.password = server.password || '';
+      }
     } else {
       cfg.authType = 'password';
       cfg.password = server.password || '';
@@ -419,8 +434,14 @@ const CTRLPlugin = {
       username: server.username || 'root',
     };
     if (server.authType === 'key') {
-      cfg.authType = 'key';
-      cfg.privateKey = await Servers.resolvevpsprivatekey(server);
+      const pk = await Servers.resolvevpsprivatekey(server);
+      if (pk) {
+        cfg.authType = 'privateKey';
+        cfg.privateKey = pk;
+      } else {
+        cfg.authType = 'password';
+        cfg.password = server.password || '';
+      }
     } else {
       cfg.authType = 'password';
       cfg.password = server.password || '';

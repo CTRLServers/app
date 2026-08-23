@@ -6,7 +6,7 @@ const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
@@ -234,7 +234,7 @@ ipcMain.handle('ws-connect', async (event, url, token, headers, origin) => {
       if (win && !win.isDestroyed()) {
         win.webContents.send('ws-error', id, err.message);
       }
-      reject(err);
+      reject(err.message || 'WebSocket connection failed');
     });
   });
 });
@@ -298,20 +298,42 @@ ipcMain.handle('ssh-connect', async (event, config) => {
 
   return new Promise((resolve, reject) => {
     const conn = new Client();
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { conn.end(); } catch (e) {}
+      reject('Connection timed out');
+    }, 15000);
+
+    const done = (err, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) {
+        try { conn.end(); } catch (e) {}
+        reject(err);
+      } else {
+        resolve(result);
+      }
+    };
 
     conn.on('ready', () => {
       conn.shell({ term: 'xterm-256color', cols: config.cols || 80, rows: config.rows || 24 }, (err, stream) => {
-        if (err) {
-          conn.end();
-          reject(err);
-          return;
-        }
-        sshConnections.set(id, { conn, stream });
+        if (err) { done(err.message || 'Shell request failed'); return; }
+        const entry = { conn, stream, win, ready: false, pendingData: [] };
+        sshConnections.set(id, entry);
+
+        const sendData = (data) => {
+          if (!entry.ready) {
+            entry.pendingData.push(data);
+            return;
+          }
+          if (win && !win.isDestroyed()) win.webContents.send('ssh-data', id, data);
+        };
 
         stream.on('data', (data) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send('ssh-data', id, data.toString('utf8'));
-          }
+          sendData(data);
         });
 
         stream.on('close', () => {
@@ -323,18 +345,15 @@ ipcMain.handle('ssh-connect', async (event, config) => {
         });
 
         stream.stderr.on('data', (data) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send('ssh-data', id, data.toString('utf8'));
-          }
+          sendData(data);
         });
 
-        resolve(id);
+        done(null, id);
       });
     });
 
     conn.on('error', (err) => {
-      sshConnections.delete(id);
-      reject(err);
+      done(err.message || 'SSH connection failed');
     });
 
     const connectConfig = {
@@ -351,20 +370,34 @@ ipcMain.handle('ssh-connect', async (event, config) => {
       if (config.passphrase) connectConfig.passphrase = config.passphrase;
     }
 
-    conn.connect(connectConfig);
+    try {
+      conn.connect(connectConfig);
+    } catch (e) {
+      done(e.message || 'Connection failed');
+    }
   });
 });
 
-ipcMain.handle('ssh-data', async (event, id, data) => {
+ipcMain.on('ssh-ready', (event, id) => {
   const entry = sshConnections.get(id);
-  if (entry && entry.stream) {
+  if (!entry || entry.win !== BrowserWindow.fromWebContents(event.sender)) return;
+  entry.ready = true;
+  for (const data of entry.pendingData) {
+    if (entry.win && !entry.win.isDestroyed()) entry.win.webContents.send('ssh-data', id, data);
+  }
+  entry.pendingData.length = 0;
+});
+
+ipcMain.on('ssh-data', (event, id, data) => {
+  const entry = sshConnections.get(id);
+  if (entry && entry.win === BrowserWindow.fromWebContents(event.sender) && entry.stream) {
     entry.stream.write(data);
   }
 });
 
-ipcMain.handle('ssh-resize', async (event, id, cols, rows) => {
+ipcMain.on('ssh-resize', (event, id, cols, rows) => {
   const entry = sshConnections.get(id);
-  if (entry && entry.stream) {
+  if (entry && entry.win === BrowserWindow.fromWebContents(event.sender) && entry.stream) {
     entry.stream.setWindow(rows, cols, 0, 0);
   }
 });
@@ -386,7 +419,7 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
       conn.exec(command, (err, stream) => {
         if (err) {
           conn.end();
-          reject(err);
+          reject(err.message || 'Exec request failed');
           return;
         }
 
@@ -409,7 +442,7 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
     });
 
     conn.on('error', (err) => {
-      reject(err);
+      reject(err.message || 'SSH connection failed');
     });
 
     const connectConfig = {
@@ -452,12 +485,12 @@ ipcMain.handle('sftp-connect', async (event, config) => {
     const conn = new Client();
     conn.on('ready', () => {
       conn.sftp((err, sftp) => {
-        if (err) { conn.end(); reject(err); return; }
+        if (err) { conn.end(); reject(err.message || 'SFTP setup failed'); return; }
         sftpConnections.set(id, { conn, sftp });
         resolve(id);
       });
     });
-    conn.on('error', (err) => { reject(err); });
+    conn.on('error', (err) => { reject(err.message || 'SSH connection failed'); });
     conn.connect(buildsftpconfig(config));
   });
 });
@@ -882,13 +915,13 @@ async function checkserveralerts(server) {
         const conn = new Client();
         conn.on('ready', () => {
           conn.exec("free | awk '/Mem:/{print $2,$3} /Swap:/{print $2,$3}' && df / | awk 'NR==2{print $2,$3}' && nproc", (err, stream) => {
-            if (err) { conn.end(); reject(err); return; }
+            if (err) { conn.end(); reject(err.message || 'Exec failed'); return; }
             let out = '';
             stream.on('close', () => { conn.end(); resolve(out); });
             stream.on('data', (d) => { out += d.toString(); });
           });
         });
-        conn.on('error', reject);
+        conn.on('error', (err) => { reject(err.message || 'SSH connection failed'); });
         const connectConfig = { host: cfg.host, port: cfg.port, username: cfg.username, readyTimeout: 10000 };
         if (cfg.authType === 'password') connectConfig.password = cfg.password;
         else if (cfg.authType === 'privateKey') connectConfig.privateKey = cfg.privateKey;
@@ -977,6 +1010,24 @@ ipcMain.handle('monitor-status', async () => {
 });
 
 ipcMain.handle('checkvps', async (event, host, port) => {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let resolved = false;
+    const done = (status) => {
+      if (resolved) return;
+      resolved = true;
+      try { socket.destroy(); } catch (e) {}
+      resolve(status);
+    };
+    socket.setTimeout(5000);
+    socket.on('connect', () => done('online'));
+    socket.on('timeout', () => done('offline'));
+    socket.on('error', () => done('offline'));
+    socket.connect(parseInt(port) || 22, host);
+  });
+});
+
+ipcMain.handle('sshping', async (event, host, port) => {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     let resolved = false;

@@ -24,7 +24,7 @@ const Servers = {
   async resolvevpsprivatekey(server) {
     if (server.authType !== 'key') return server.password || '';
     if (server.privateKey) return server.privateKey;
-    if (server.keyIndex !== undefined && ServerKeychain.keys[server.keyIndex]) {
+    if (server.keyIndex !== undefined && server.keyIndex >= 0 && server.keyIndex < ServerKeychain.keys.length) {
       return ServerKeychain.keys[server.keyIndex].privateKey || '';
     }
     return '';
@@ -84,18 +84,20 @@ const Servers = {
         port: parseInt(server.port) || 22,
         username: server.username || 'root',
       };
-      if (server.authType === 'key' && server.keyIndex !== undefined) {
-        const key = ServerKeychain.keys[server.keyIndex];
-        if (!key) return;
-        cfg.authType = 'privateKey';
-        cfg.privateKey = key.privateKey;
-      } else if (server.authType === 'key' && server.privateKey) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = server.privateKey;
+      if (server.authType === 'key') {
+        const pk = await this.resolvevpsprivatekey(server);
+        if (pk) {
+          cfg.authType = 'privateKey';
+          cfg.privateKey = pk;
+        } else {
+          cfg.authType = 'password';
+          cfg.password = server.password || '';
+        }
       } else {
         cfg.authType = 'password';
         cfg.password = server.password || '';
       }
+      if (cfg.authType === 'password' && !cfg.password) return;
       const result = await window.electronAPI.sshexec(cfg, "cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"'");
       if (result && result.stdout && result.stdout.trim()) {
         server.os = result.stdout.trim();
@@ -402,6 +404,7 @@ const Servers = {
         if (prev !== server.status) {
           this.save();
           this.updatecard(server.id);
+          if (typeof CTRLPlugin !== 'undefined') CTRLPlugin.emit('_serverupdate', { uuid: server.id, resources: this.vpsstats[server.id] || {} });
         }
       } catch (e) {}
     }
@@ -536,19 +539,20 @@ const Servers = {
     for (const server of vps) {
       try {
         const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
-        if (server.authType === 'key' && server.keyIndex !== undefined) {
-          const key = ServerKeychain.keys[server.keyIndex];
-          if (key) {
+        if (server.authType === 'key') {
+          const pk = await this.resolvevpsprivatekey(server);
+          if (pk) {
             cfg.authType = 'privateKey';
-            cfg.privateKey = key.privateKey;
+            cfg.privateKey = pk;
+          } else {
+            cfg.authType = 'password';
+            cfg.password = server.password || '';
           }
-        } else if (server.authType === 'key' && server.privateKey) {
-          cfg.authType = 'privateKey';
-          cfg.privateKey = server.privateKey;
         } else {
           cfg.authType = 'password';
           cfg.password = server.password || '';
         }
+        if (cfg.authType === 'password' && !cfg.password) continue;
         const cmd = "free -b | awk '/Mem:/{print $2,$3} /Swap:/{print $2,$3}' && df -B1 / | awk 'NR==2{print $2,$3}' && cat /proc/loadavg && nproc";
         const result = await window.electronAPI?.sshexec?.(cfg, cmd);
         if (result && result.stdout) {
@@ -1183,6 +1187,21 @@ const Servers = {
                   });
                   keysAdded++;
                 }
+              }
+            }
+            for (const s of imported) {
+              if (s.authType === 'key') {
+                if (s.privateKey) {
+                  const idx = ServerKeychain.keys.findIndex(k => k.privateKey === s.privateKey);
+                  if (idx !== -1) s.keyIndex = idx;
+                } else if (s.keyIndex !== undefined && ServerKeychain.keys[s.keyIndex]) {
+                  const oldKey = data.keychain && data.keychain[s.keyIndex];
+                  if (oldKey) {
+                    const newIdx = ServerKeychain.keys.findIndex(k => k.name === oldKey.name);
+                    if (newIdx !== -1) s.keyIndex = newIdx;
+                  }
+                }
+                delete s.privateKey;
               }
             }
             if (keysAdded > 0) {
