@@ -124,9 +124,9 @@ const VPSConsole = {
       if (container) container.removeEventListener('keydown', this._keydownhandler, true);
       this._keydownhandler = null;
     }
+    if (this.webglAddon) { try { this.webglAddon.dispose(); } catch (e) {} this.webglAddon = null; }
+    if (this.fitAddon) { try { this.fitAddon.dispose(); } catch (e) {} this.fitAddon = null; }
     if (this.term) { this.term.dispose(); this.term = null; }
-    this.fitAddon = null;
-    this.webglAddon = null;
     this._pendingInput = '';
     this._inputFlushScheduled = false;
     this._localEchoPending = '';
