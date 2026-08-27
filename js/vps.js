@@ -19,6 +19,10 @@ const VPSConsole = {
   _sessionGeneration: 0,
   _connectTimer: null,
 
+  _cachekey(server) {
+    return String(server.id || [server.host, server.port || 22, server.username || 'root', server.authType || 'password'].join(':'));
+  },
+
   _maketermtheme() {
     const t = Theme.getcurrent();
     const themes = {
@@ -135,7 +139,7 @@ const VPSConsole = {
   },
 
   init(server) {
-    const cached = this._cache[server.host];
+    const cached = this._cache[this._cachekey(server)];
     if (cached) {
       this.server = server;
       this.sshId = cached.sshId;
@@ -265,7 +269,7 @@ const VPSConsole = {
 
   detach() {
     if (this.server && this.sshId !== null) {
-      this._cache[this.server.host] = {
+      this._cache[this._cachekey(this.server)] = {
         sshId: this.sshId,
         connected: this.connected,
         termData: this._termDataCache
@@ -344,12 +348,15 @@ const VPSConsole = {
   },
 
   _queueinput(data, gen) {
-    if (/^[\x20-\x7e]+$/.test(data) && this.term) {
-      this.term.write(data);
-      this._termDataCache += data;
-      this._localEchoPending += data;
+    const prepared = this._prepareinput(data);
+    if (!prepared.input) return;
+    const localEcho = prepared.localEcho;
+    if (localEcho && this.term) {
+      this.term.write(localEcho);
+      this._termDataCache += localEcho;
+      this._localEchoPending += localEcho;
     }
-    this._pendingInput += data;
+    this._pendingInput += prepared.input;
     if (this._inputFlushScheduled) return;
     this._inputFlushScheduled = true;
     queueMicrotask(() => {
@@ -360,6 +367,21 @@ const VPSConsole = {
         window.electronAPI.sshdata(this.sshId, input);
       }
     });
+  },
+
+  _prepareinput(data) {
+    if (data.includes('\x1b')) return { input: data, localEcho: '' };
+    let input = '';
+    let localEcho = '';
+    for (const char of data) {
+      if (/^[\x20-\x7e]$/.test(char)) {
+        input += char;
+        localEcho += char;
+      } else {
+        input += char;
+      }
+    }
+    return { input, localEcho };
   },
 
   _consumeLocalecho(data) {

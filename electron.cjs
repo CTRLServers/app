@@ -6,7 +6,7 @@ const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.1.3';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 

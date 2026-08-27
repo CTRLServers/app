@@ -69,8 +69,8 @@ const Windows = {
         delete ServerConsole._cache[server.uuid];
         if (ServerConsole.server && ServerConsole.server.uuid === server.uuid) ServerConsole.destroy();
       } else {
-        delete VPSConsole._cache[server.host];
-        if (VPSConsole.server && VPSConsole.server.host === server.host) VPSConsole.destroy();
+        delete VPSConsole._cache[VPSConsole._cachekey(server)];
+        if (VPSConsole.server && VPSConsole._cachekey(VPSConsole.server) === VPSConsole._cachekey(server)) VPSConsole.destroy();
       }
     }
     if (this.activeId === id) {

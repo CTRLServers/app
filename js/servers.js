@@ -9,6 +9,7 @@ const Servers = {
   _dragidx: -1,
   _didrag: false,
   _vpspollcount: 0,
+  _selected: new Set(),
 
   init() {
     this.load();
@@ -18,7 +19,163 @@ const Servers = {
       e.preventDefault();
       App.showserverlist();
     });
+    document.addEventListener('click', (e) => this._onclick(e));
+    document.addEventListener('contextmenu', (e) => this._oncontextmenu(e));
+    const modalbody = Utils.el('modalBody');
+    if (modalbody) modalbody.addEventListener('click', (e) => this._onmodalclick(e));
+    const filterbar = Utils.el('dashboardFilterBar');
+    if (filterbar) filterbar.addEventListener('click', (e) => this._onfilterclick(e));
+    const workspaces = Utils.el('workspacesList');
+    if (workspaces) workspaces.addEventListener('click', (e) => this._onworkspaceclick(e));
+    const massbar = document.querySelector('.server-mass-actions');
+    if (massbar) {
+      massbar.addEventListener('click', (e) => this._onmassclick(e));
+      massbar.addEventListener('change', (e) => {
+        if (e.target.classList.contains('server-select-all')) {
+          this.toggleselectall(e.target.checked);
+        }
+      });
+    }
+    document.querySelector('.workspaces-add')?.addEventListener('click', () => this.showcreatefolder());
+    const searchinp = Utils.el('dashboardSearchInput');
+    if (searchinp) searchinp.addEventListener('input', () => this.onsearch(searchinp.value));
+    document.querySelector('[data-action="export-servers"]')?.addEventListener('click', () => this.exportlist());
+    document.querySelector('[data-action="import-servers"]')?.addEventListener('click', () => this.importlist());
+    this._ensurectxmenu();
     this.renderworkspaces();
+  },
+
+  _serverkey(server) {
+    return String(server.uuid || server.id);
+  },
+
+  _barpct(pct) {
+    return Math.min(pct, 100);
+  },
+
+  _setbarwidth(el, pct) {
+    if (el) el.style.setProperty('--bar-pct', this._barpct(pct));
+  },
+
+  _onclick(e) {
+    const sel = e.target.closest('.server-card-select');
+    if (sel) {
+      const card = sel.closest('.server-card');
+      if (card) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleselect(parseInt(card.dataset.index, 10));
+      }
+      return;
+    }
+    const power = e.target.closest('[data-power]');
+    if (power) {
+      e.stopPropagation();
+      const card = power.closest('.server-card');
+      if (card) this.quickpower(parseInt(card.dataset.index, 10), power.dataset.power);
+      return;
+    }
+    if (e.target.closest('.card-action-btn')) return;
+    const card = e.target.closest('.server-card');
+    if (card && !e.defaultPrevented) App.openserver(parseInt(card.dataset.index, 10));
+  },
+
+  _oncontextmenu(e) {
+    const card = e.target.closest('.server-card');
+    if (!card || !card.closest('#serversGrid, #pinnedGrid')) return;
+    e.preventDefault();
+    this.opencontextmenu(e, parseInt(card.dataset.index, 10));
+  },
+
+  _onmassclick(e) {
+    const btn = e.target.closest('[data-mass-action]');
+    if (!btn) return;
+    if (btn.dataset.massAction === 'delete') this.massdelete();
+    else if (btn.dataset.massAction === 'clear') this.clearselection();
+  },
+
+  _onfilterclick(e) {
+    const del = e.target.closest('.filter-pill-x');
+    if (del) {
+      e.stopPropagation();
+      this.deletetag(decodeURIComponent(del.dataset.tag));
+      return;
+    }
+    const pill = e.target.closest('.filter-pill[data-tag]');
+    if (pill) this.setfiltertag(decodeURIComponent(pill.dataset.tag));
+  },
+
+  _onworkspaceclick(e) {
+    const del = e.target.closest('.workspace-delete');
+    if (del) {
+      e.stopPropagation();
+      this.deletefolder(decodeURIComponent(del.dataset.folder));
+      return;
+    }
+    const item = e.target.closest('.workspace-item[data-folder]');
+    if (item) this.setfilterfolder(decodeURIComponent(item.dataset.folder));
+  },
+
+  _onmodalclick(e) {
+    const typeopt = e.target.closest('[data-add-type]');
+    if (typeopt) {
+      const t = typeopt.dataset.addType;
+      if (t === 'pterodactyl') this.showpterodactylform();
+      else if (t === 'vps') this.showvpsform();
+      else if (t === 'link') this.showlinkform();
+      return;
+    }
+    const additem = e.target.closest('[data-add-select]');
+    if (additem) {
+      this.toggleaddselect(parseInt(additem.dataset.addSelect, 10));
+      return;
+    }
+    const btn = e.target.closest('[data-modal-action]');
+    if (!btn) return;
+    const action = btn.dataset.modalAction;
+    if (action === 'add-back' || action === 'ptero-back' || action === 'vps-back' || action === 'link-back') this.openaddmodal();
+    else if (action === 'ptero-connect') this.fetchpterodactyl();
+    else if (action === 'ptero-select-back') this.showpterodactylform();
+    else if (action === 'add-select-all') this.toggleaddall();
+    else if (action === 'add-selected') this.addselected();
+    else if (action === 'vps-add') this.addvps();
+    else if (action === 'vps-all-keys') this.showallvpskeys();
+    else if (action === 'link-add') this.addlink();
+    else if (action === 'tag-cancel' || action === 'folder-cancel' || action === 'export-ok' || action === 'import-cancel') Modal.close();
+    else if (action === 'tag-add') this.addtag();
+    else if (action === 'folder-create') this.createfolder();
+    else if (action === 'export-plain') this.downloadexport();
+    else if (action === 'export-encrypted') this.showencryptedexport();
+    else if (action === 'export-generate') this.generateexportpassword();
+    else if (action === 'export-download') this.downloadexport(Utils.el('exportPassword')?.value);
+    else if (action === 'import-decrypt') this.decryptimport();
+    else if (action === 'vps-auth') this.togglevpsauth(btn.dataset.auth);
+  },
+
+  _ensurectxmenu() {
+    if (this._ctxmenu) return this._ctxmenu;
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    document.body.appendChild(menu);
+    menu.addEventListener('click', (e) => this._onctxmenuclick(e));
+    this._ctxmenu = menu;
+    return menu;
+  },
+
+  _onctxmenuclick(e) {
+    const btn = e.target.closest('[data-ctx]');
+    if (!btn) return;
+    e.stopPropagation();
+    this._ctxmenu.classList.remove('active');
+    const index = this._ctxindex;
+    const action = btn.dataset.ctx;
+    if (action === 'pin') this.togglepin(index);
+    else if (action === 'tag') this.toggletag(index, this._ctxtags[parseInt(btn.dataset.tagIdx, 10)]);
+    else if (action === 'newtag') this.showaddtag(index);
+    else if (action === 'folder') this.movefolder(index, this._ctxfolders[parseInt(btn.dataset.folderIdx, 10)]);
+    else if (action === 'folder-clear') this.movefolder(index, '');
+    else if (action === 'clone') this.cloneserver(index);
+    else if (action === 'delete') this.deleteserver(index);
   },
 
   async resolvevpsprivatekey(server) {
@@ -287,6 +444,7 @@ const Servers = {
     }).join('');
     this._instdrag(grid);
     if (pinned.length > 0) this._instdrag(pinnedGrid);
+    this.updatemassbar();
     clearTimeout(this._vpsfetchtimer);
     this._vpsfetchtimer = setTimeout(() => this.fetchvpsstats(), 1500);
   },
@@ -301,11 +459,19 @@ const Servers = {
       const state = res.state || server.status || 'offline';
       const ip = server.host || '—';
       const port = server.port || '';
-
+      const key = this._serverkey(server);
+      const isselected = this._selected.has(key);
+      const cpupct = this._barpct(cpu);
+      const rampct = this._barpct(memTotal > 0 ? (memUsed / memTotal) * 100 : 0);
+      const diskpct = this._barpct(diskTotal > 0 ? (diskUsed / diskTotal) * 100 : 0);
       return `
-      <div class="server-card" draggable="true" data-uuid="${server.uuid || server.id || ''}" data-index="${index}" onclick="App.openserver(${index})" oncontextmenu="Servers.contextmenu(event, ${index})">
+      <div class="server-card${isselected ? ' selected' : ''}" draggable="true" data-key="${key}" data-uuid="${server.uuid || server.id || ''}" data-index="${index}">
         <div class="server-card-header">
           <div class="server-name-row">
+            <label class="server-card-select">
+              <input type="checkbox" ${isselected ? 'checked' : ''} />
+              <span class="server-card-check"></span>
+            </label>
             ${Servers.geticon(server)}
             <div class="server-name">${Utils.escape(server.name)}</div>
           </div>
@@ -330,17 +496,17 @@ const Servers = {
         <div class="server-stats">
           <div class="stat-row">
             <div class="stat-label">CPU</div>
-            <div class="stat-bar-wrap"><div class="stat-bar" style="width:${Math.min(cpu, 100)}%"></div></div>
+            <div class="stat-bar-wrap"><div class="stat-bar" style="--bar-pct:${cpupct}"></div></div>
             <div class="stat-value">${cpu.toFixed(1)}%</div>
           </div>
           <div class="stat-row">
             <div class="stat-label">RAM</div>
-            <div class="stat-bar-wrap"><div class="stat-bar" style="width:${memTotal > 0 ? Math.min((memUsed / memTotal) * 100, 100) : 0}%"></div></div>
+            <div class="stat-bar-wrap"><div class="stat-bar" style="--bar-pct:${rampct}"></div></div>
             <div class="stat-value">${Utils.formatbytes(memUsed)} / ${Utils.formatmb(server.limits?.memory)}</div>
           </div>
           <div class="stat-row">
             <div class="stat-label">Disk</div>
-            <div class="stat-bar-wrap"><div class="stat-bar" style="width:${diskTotal > 0 ? Math.min((diskUsed / diskTotal) * 100, 100) : 0}%"></div></div>
+            <div class="stat-bar-wrap"><div class="stat-bar" style="--bar-pct:${diskpct}"></div></div>
             <div class="stat-value">${Utils.formatbytes(diskUsed)} / ${Utils.formatmb(server.limits?.disk)}</div>
           </div>
         </div>` : ''}
@@ -354,13 +520,13 @@ const Servers = {
           <div class="server-card-actions">
             ${res.uptime ? `<span class="status-uptime">${Utils.formatuptime(res.uptime)}</span>` : ''}
             ${server.type === 'Pterodactyl' && server.apiKey && server.panelUrl && (state === 'running' || state === 'stopped' || state === 'offline') ? `
-              <button class="card-action-btn" data-action="start" onclick="event.stopPropagation();Servers.quickpower(${index},'start')" title="Start" ${state === 'running' ? 'disabled' : ''}>
+              <button type="button" class="card-action-btn" data-power="start" data-action="start" title="Start" ${state === 'running' ? 'disabled' : ''}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               </button>
-              <button class="card-action-btn" onclick="event.stopPropagation();Servers.quickpower(${index},'restart')" title="Restart">
+              <button type="button" class="card-action-btn" data-power="restart" title="Restart">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               </button>
-              <button class="card-action-btn" data-action="stop" onclick="event.stopPropagation();Servers.quickpower(${index},'stop')" title="Stop" ${state === 'stopped' || state === 'offline' ? 'disabled' : ''}>
+              <button type="button" class="card-action-btn" data-power="stop" data-action="stop" title="Stop" ${state === 'stopped' || state === 'offline' ? 'disabled' : ''}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
               </button>
             ` : ''}
@@ -481,15 +647,15 @@ const Servers = {
     const cpu = res.cpu || 0;
 
     if (bars[0]) {
-      bars[0].querySelector('.stat-bar').style.width = Math.min(cpu, 100) + '%';
+      this._setbarwidth(bars[0].querySelector('.stat-bar'), cpu);
       bars[0].querySelector('.stat-value').textContent = cpu.toFixed(1) + '%';
     }
     if (bars[1]) {
-      bars[1].querySelector('.stat-bar').style.width = (memTotal > 0 ? Math.min((memUsed / memTotal) * 100, 100) : 0) + '%';
+      this._setbarwidth(bars[1].querySelector('.stat-bar'), memTotal > 0 ? (memUsed / memTotal) * 100 : 0);
       bars[1].querySelector('.stat-value').textContent = Utils.formatbytes(memUsed) + ' / ' + Utils.formatmb(server.limits?.memory);
     }
     if (bars[2]) {
-      bars[2].querySelector('.stat-bar').style.width = (diskTotal > 0 ? Math.min((diskUsed / diskTotal) * 100, 100) : 0) + '%';
+      this._setbarwidth(bars[2].querySelector('.stat-bar'), diskTotal > 0 ? (diskUsed / diskTotal) * 100 : 0);
       bars[2].querySelector('.stat-value').textContent = Utils.formatbytes(diskUsed) + ' / ' + Utils.formatmb(server.limits?.disk);
     }
     }
@@ -498,36 +664,40 @@ const Servers = {
     const st = this.vpsstats[server.id];
     if (vpsCard && st) {
       vpsCard.querySelector('.vps-stat-ram .vps-stat-val').textContent = Utils.formatbytes(st.memUsed) + ' / ' + Utils.formatbytes(st.memTotal);
-      vpsCard.querySelector('.vps-stat-ram .vps-stat-bar').style.width = (st.memTotal > 0 ? Math.min((st.memUsed / st.memTotal) * 100, 100) : 0) + '%';
+      vpsCard.querySelector('.vps-stat-ram .vps-stat-bar').style.setProperty('--bar-pct', this._barpct(st.memTotal > 0 ? (st.memUsed / st.memTotal) * 100 : 0));
       vpsCard.querySelector('.vps-stat-disk .vps-stat-val').textContent = Utils.formatbytes(st.diskUsed) + ' / ' + Utils.formatbytes(st.diskTotal);
-      vpsCard.querySelector('.vps-stat-disk .vps-stat-bar').style.width = (st.diskTotal > 0 ? Math.min((st.diskUsed / st.diskTotal) * 100, 100) : 0) + '%';
+      vpsCard.querySelector('.vps-stat-disk .vps-stat-bar').style.setProperty('--bar-pct', this._barpct(st.diskTotal > 0 ? (st.diskUsed / st.diskTotal) * 100 : 0));
       vpsCard.querySelector('.vps-stat-swap .vps-stat-val').textContent = Utils.formatbytes(st.swapUsed) + ' / ' + Utils.formatbytes(st.swapTotal);
-      vpsCard.querySelector('.vps-stat-swap .vps-stat-bar').style.width = (st.swapTotal > 0 ? Math.min((st.swapUsed / st.swapTotal) * 100, 100) : 0) + '%';
+      vpsCard.querySelector('.vps-stat-swap .vps-stat-bar').style.setProperty('--bar-pct', this._barpct(st.swapTotal > 0 ? (st.swapUsed / st.swapTotal) * 100 : 0));
       vpsCard.querySelector('.vps-stat-load .vps-stat-val').textContent = st.load1.toFixed(2) + ' / ' + st.load5.toFixed(2) + ' / ' + st.load15.toFixed(2);
     }
   },
 
   _rendervpsstats(st) {
+    const rampct = this._barpct(st.memTotal > 0 ? (st.memUsed / st.memTotal) * 100 : 0);
+    const diskpct = this._barpct(st.diskTotal > 0 ? (st.diskUsed / st.diskTotal) * 100 : 0);
+    const swappct = this._barpct(st.swapTotal > 0 ? (st.swapUsed / st.swapTotal) * 100 : 0);
+    const loadpct = this._barpct((st.load1 / (st.cpus || 1)) * 100);
     return `
       <div class="server-stats vps-stats">
         <div class="stat-row vps-stat-ram">
           <div class="stat-label">RAM</div>
-          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${st.memTotal > 0 ? Math.min((st.memUsed / st.memTotal) * 100, 100) : 0}%"></div></div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="--bar-pct:${rampct}"></div></div>
           <div class="vps-stat-val stat-value">${Utils.formatbytes(st.memUsed)} / ${Utils.formatbytes(st.memTotal)}</div>
         </div>
         <div class="stat-row vps-stat-disk">
           <div class="stat-label">Disk</div>
-          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${st.diskTotal > 0 ? Math.min((st.diskUsed / st.diskTotal) * 100, 100) : 0}%"></div></div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="--bar-pct:${diskpct}"></div></div>
           <div class="vps-stat-val stat-value">${Utils.formatbytes(st.diskUsed)} / ${Utils.formatbytes(st.diskTotal)}</div>
         </div>
         <div class="stat-row vps-stat-swap">
           <div class="stat-label">Swap</div>
-          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${st.swapTotal > 0 ? Math.min((st.swapUsed / st.swapTotal) * 100, 100) : 0}%"></div></div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="--bar-pct:${swappct}"></div></div>
           <div class="vps-stat-val stat-value">${Utils.formatbytes(st.swapUsed)} / ${Utils.formatbytes(st.swapTotal)}</div>
         </div>
         <div class="stat-row vps-stat-load">
           <div class="stat-label">Load</div>
-          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="width:${Math.min((st.load1 / (st.cpus || 1)) * 100, 100)}%"></div></div>
+          <div class="stat-bar-wrap"><div class="vps-stat-bar stat-bar" style="--bar-pct:${loadpct}"></div></div>
           <div class="vps-stat-val stat-value">${st.load1.toFixed(2)} / ${st.load5.toFixed(2)} / ${st.load15.toFixed(2)}</div>
         </div>
       </div>`;
@@ -584,46 +754,39 @@ const Servers = {
     }
   },
 
-  contextmenu(e, index) {
-    e.preventDefault();
+  opencontextmenu(e, index) {
     e.stopPropagation();
     document.querySelectorAll('.context-menu.active').forEach(m => m.classList.remove('active'));
-
-    let menu = document.getElementById('contextmenu');
-    if (!menu) {
-      menu = document.createElement('div');
-      menu.id = 'contextmenu';
-      menu.className = 'context-menu';
-      document.body.appendChild(menu);
-    }
-
+    const menu = this._ensurectxmenu();
     const server = this.list[index];
-    const tags = server ? (server.tags || []) : [];
+    if (!server) return;
+    const tags = server.tags || [];
     const alltags = this._collecttags();
+    this._ctxindex = index;
+    this._ctxtags = alltags;
+    this._ctxfolders = this.folders;
     const taghtml = alltags.length > 0
-      ? alltags.map(t => `<button class="context-menu-item" onclick="Servers.toggletag(${index},'${Utils.escape(t)}')">
-          <span class="ctx-tag-dot" style="background:${this._tagcolor(t)}"></span>
+      ? alltags.map((t, ti) => `<button type="button" class="context-menu-item" data-ctx="tag" data-tag-idx="${ti}">
+          <span class="ctx-tag-dot" style="--tag-dot:${this._tagcolor(t)}"></span>
           ${tags.includes(t) ? '✓ ' : ''}${Utils.escape(t)}
         </button>`).join('')
       : '<div class="context-menu-label">No tags yet</div>';
-
     const folderhtml = this.folders.length > 0
-      ? this.folders.map(f => `<button class="context-menu-item" onclick="Servers.movefolder(${index},'${Utils.escape(f)}')">
+      ? this.folders.map((f, fi) => `<button type="button" class="context-menu-item" data-ctx="folder" data-folder-idx="${fi}">
           ${server.folder === f ? '✓ ' : ''}${Utils.escape(f)}
-        </button>`).join('') + `<button class="context-menu-item" onclick="Servers.movefolder(${index},'')">Remove from folder</button>`
+        </button>`).join('') + '<button type="button" class="context-menu-item" data-ctx="folder-clear">Remove from folder</button>'
       : '';
-
     menu.innerHTML = `
-      <button class="context-menu-item" onclick="Servers.togglepin(${index})">
+      <button type="button" class="context-menu-item" data-ctx="pin">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
         </svg>
-        ${this.list[index]?.pinned ? 'Unpin' : 'Pin'}
+        ${server.pinned ? 'Unpin' : 'Pin'}
       </button>
       <div class="context-menu-separator"></div>
       <div class="context-menu-label">Tags</div>
       ${taghtml}
-      <button class="context-menu-item" onclick="Servers.showaddtag(${index})">
+      <button type="button" class="context-menu-item" data-ctx="newtag">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
@@ -632,13 +795,13 @@ const Servers = {
       ${folderhtml ? '<div class="context-menu-separator"></div><div class="context-menu-label">Folder</div>' + folderhtml : ''}
       <div class="context-menu-separator"></div>
       ${server.type === 'Pterodactyl' ? `
-      <button class="context-menu-item" onclick="Servers.cloneserver(${index})">
+      <button type="button" class="context-menu-item" data-ctx="clone">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
         </svg>
         Clone
       </button>` : ''}
-      <button class="context-menu-item danger" onclick="Servers.deleteserver(${index})">
+      <button type="button" class="context-menu-item danger" data-ctx="delete">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
         </svg>
@@ -648,7 +811,6 @@ const Servers = {
     menu.style.left = e.clientX + 'px';
     menu.style.top = e.clientY + 'px';
     menu.classList.add('active');
-
     const close = (ev) => {
       if (!menu.contains(ev.target)) {
         menu.classList.remove('active');
@@ -684,23 +846,24 @@ const Servers = {
 
   showaddtag(index) {
     document.querySelectorAll('.context-menu.active').forEach(m => m.classList.remove('active'));
+    this._modaltagindex = index;
     Modal.open('New Tag', `
       <div class="form-group">
         <label class="form-label">Tag name</label>
         <input class="form-input" type="text" id="newTagInput" placeholder="e.g. production" autofocus />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="Servers.addtag(${index})">Add</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="tag-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" data-modal-action="tag-add">Add</button>
       </div>
     `);
     setTimeout(() => { const inp = Utils.el('newTagInput'); if (inp) inp.focus(); }, 50);
   },
 
-  addtag(index) {
+  addtag() {
     const val = Utils.el('newTagInput').value.trim().toLowerCase();
     if (!val) return;
-    const server = this.list[index];
+    const server = this.list[this._modaltagindex];
     if (!server) return;
     if (!server.tags) server.tags = [];
     if (!server.tags.includes(val)) server.tags.push(val);
@@ -727,8 +890,8 @@ const Servers = {
         <input class="form-input" type="text" id="newFolderInput" placeholder="e.g. Game Servers" autofocus />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="Servers.createfolder()">Create</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="folder-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" data-modal-action="folder-create">Create</button>
       </div>
     `);
     setTimeout(() => { const inp = Utils.el('newFolderInput'); if (inp) inp.focus(); }, 50);
@@ -781,7 +944,8 @@ const Servers = {
     list.innerHTML = this.folders.map(f => {
       const count = this.list.filter(s => s.folder === f).length;
       const active = this._filterfolder === f ? ' active' : '';
-      return `<div class="workspace-item${active}" onclick="Servers.setfilterfolder('${Utils.escape(f)}')">
+      const enc = encodeURIComponent(f);
+      return `<div class="workspace-item${active}" data-folder="${enc}">
         <div class="workspace-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         </div>
@@ -789,7 +953,7 @@ const Servers = {
           <div class="workspace-name">${Utils.escape(f)}</div>
           <div class="workspace-count">${count} server${count !== 1 ? 's' : ''}</div>
         </div>
-        <button class="workspace-delete" onclick="event.stopPropagation();Servers.deletefolder('${Utils.escape(f)}')" title="Delete workspace">
+        <button type="button" class="workspace-delete" data-folder="${enc}" title="Delete workspace">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
       </div>`;
@@ -813,13 +977,14 @@ const Servers = {
     const tags = this._collecttags();
     let html = '';
     if (tags.length > 0) {
-      html += tags.map(t =>
-        `<button class="filter-pill tag-pill${this._filtertag === t ? ' active' : ''}" onclick="Servers.setfiltertag('${Utils.escape(t)}')">
-          <span class="filter-pill-dot" style="background:${this._tagcolor(t)}"></span>
+      html += tags.map(t => {
+        const enc = encodeURIComponent(t);
+        return `<button type="button" class="filter-pill tag-pill${this._filtertag === t ? ' active' : ''}" data-tag="${enc}">
+          <span class="filter-pill-dot" style="--tag-dot:${this._tagcolor(t)}"></span>
           ${Utils.escape(t)}
-          <span class="filter-pill-x" onclick="event.stopPropagation();Servers.deletetag('${Utils.escape(t)}')" title="Delete tag">&times;</span>
-        </button>`
-      ).join('');
+          <span class="filter-pill-x" data-tag="${enc}" title="Delete tag">&times;</span>
+        </button>`;
+      }).join('');
     }
     bar.innerHTML = html;
   },
@@ -827,7 +992,68 @@ const Servers = {
   deleteserver(index) {
     document.querySelectorAll('.context-menu.active').forEach(m => m.classList.remove('active'));
     Modal.confirm('Delete Server', 'Are you sure you want to remove this server?', () => {
+      const server = this.list[index];
+      if (server) this._selected.delete(this._serverkey(server));
       this.list.splice(index, 1);
+      this.save();
+      this.render();
+      CTRLCloud.autosyncupload('delete');
+    });
+  },
+
+  toggleselect(index) {
+    const server = this.list[index];
+    if (!server) return;
+    const key = this._serverkey(server);
+    if (this._selected.has(key)) this._selected.delete(key);
+    else this._selected.add(key);
+    const on = this._selected.has(key);
+    document.querySelectorAll(`.server-card[data-key="${key}"]`).forEach(c => {
+      c.classList.toggle('selected', on);
+      const cb = c.querySelector('.server-card-select input[type="checkbox"]');
+      if (cb) cb.checked = on;
+    });
+    this._syncselectall();
+    this.updatemassbar();
+  },
+
+  toggleselectall(checked) {
+    const filtered = this._filterlist();
+    filtered.forEach(s => {
+      const key = this._serverkey(s);
+      if (checked) this._selected.add(key);
+      else this._selected.delete(key);
+    });
+    this.rendercards();
+    this.updatemassbar();
+  },
+
+  clearselection() {
+    this._selected.clear();
+    this.rendercards();
+    this.updatemassbar();
+  },
+
+  _syncselectall() {
+    const filtered = this._filterlist();
+    const allselected = filtered.length > 0 && filtered.every(s => this._selected.has(this._serverkey(s)));
+    const cb = document.querySelector('.server-select-all');
+    if (cb) cb.checked = allselected;
+  },
+
+  updatemassbar() {
+    const bar = document.querySelector('.server-mass-actions');
+    const count = bar?.querySelector('.mass-actions-count');
+    if (!bar) return;
+    bar.classList.toggle('is-hidden', this._selected.size === 0);
+    if (count) count.textContent = this._selected.size + ' selected';
+  },
+
+  massdelete() {
+    const count = this._selected.size;
+    Modal.confirm('Delete Servers', `Are you sure you want to remove ${count} server${count > 1 ? 's' : ''}?`, () => {
+      this.list = this.list.filter(s => !this._selected.has(this._serverkey(s)));
+      this._selected.clear();
       this.save();
       this.render();
       CTRLCloud.autosyncupload('delete');
@@ -836,9 +1062,9 @@ const Servers = {
 
   openaddmodal() {
     Modal.open('Add Server', `
-      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">Select server type</p>
+      <p class="modal-text">Select server type</p>
       <div class="server-types">
-        <div class="server-type-option" onclick="Servers.showpterodactylform()">
+        <div class="server-type-option" data-add-type="pterodactyl">
           <div class="server-type-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2" y="2" width="20" height="8" rx="2" ry="2" /><rect x="2" y="14" width="20" height="8" rx="2" ry="2" /><line x1="6" y1="6" x2="6.01" y2="6" /><line x1="6" y1="18" x2="6.01" y2="18" />
@@ -849,7 +1075,7 @@ const Servers = {
             <div class="server-type-desc">Connect via Panel URL and API Key</div>
           </div>
         </div>
-        <div class="server-type-option" onclick="Servers.showvpsform()">
+        <div class="server-type-option" data-add-type="vps">
           <div class="server-type-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="4" y="4" width="16" height="16" rx="2" ry="2" /><rect x="9" y="9" width="6" height="6" /><line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" /><line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
@@ -860,7 +1086,7 @@ const Servers = {
             <div class="server-type-desc">Virtual private or dedicated server</div>
           </div>
         </div>
-        <div class="server-type-option" onclick="Servers.showlinkform()">
+        <div class="server-type-option" data-add-type="link">
           <div class="server-type-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
@@ -899,8 +1125,8 @@ const Servers = {
       </div>
       <div id="pterodactylError"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Servers.openaddmodal()">Back</button>
-        <button class="btn btn-primary" onclick="Servers.fetchpterodactyl()">Connect</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="ptero-back">Back</button>
+        <button type="button" class="btn btn-primary" data-modal-action="ptero-connect">Connect</button>
       </div>
     `);
   },
@@ -926,15 +1152,15 @@ const Servers = {
   },
 
   showserverselect(servers) {
-    this._selected = new Set();
+    this._addselected = new Set();
     Modal.open('Select Servers', `
-      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:4px;">Found ${servers.length} server(s)</p>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <button class="btn btn-sm btn-secondary" onclick="Servers.toggleall()">Select All</button>
+      <p class="modal-hint">Found ${servers.length} server(s)</p>
+      <div class="modal-toolbar">
+        <button type="button" class="btn btn-sm btn-secondary" data-modal-action="add-select-all">Select All</button>
       </div>
       <div class="server-select-list">
         ${servers.map((s, i) => `
-          <div class="server-select-item" onclick="Servers.toggleselect(${i})">
+          <div class="server-select-item" data-add-select="${i}">
             <div class="server-checkbox">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
             </div>
@@ -946,40 +1172,48 @@ const Servers = {
         `).join('')}
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Servers.showpterodactylform()">Back</button>
-        <button class="btn btn-primary" onclick="Servers.addselected()">Add Selected</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="ptero-select-back">Back</button>
+        <button type="button" class="btn btn-primary" data-modal-action="add-selected">Add Selected</button>
       </div>
     `);
   },
 
-  toggleselect(i) {
-    if (this._selected.has(i)) this._selected.delete(i); else this._selected.add(i);
-    document.querySelectorAll('.server-select-item').forEach((el, idx) => el.classList.toggle('selected', this._selected.has(idx)));
+  toggleaddselect(i) {
+    if (this._addselected.has(i)) this._addselected.delete(i);
+    else this._addselected.add(i);
+    document.querySelectorAll('.server-select-item').forEach((el, idx) => {
+      el.classList.toggle('selected', this._addselected.has(idx));
+    });
   },
 
-  toggleall() {
+  toggleaddall() {
     const items = document.querySelectorAll('.server-select-item');
-    const all = this._selected.size === items.length;
-    items.forEach((el, i) => { if (all) this._selected.delete(i); else this._selected.add(i); el.classList.toggle('selected', this._selected.has(i)); });
+    const all = this._addselected.size === items.length;
+    items.forEach((el, i) => {
+      if (all) this._addselected.delete(i);
+      else this._addselected.add(i);
+      el.classList.toggle('selected', this._addselected.has(i));
+    });
   },
 
-  addselected() {
+  async addselected() {
     const { panelUrl, apiKey, servers } = this._addData;
-    this._selected.forEach(async (i) => {
+    if (!this._addselected.size) return;
+    let encryptedApiKey = apiKey;
+    try {
+      encryptedApiKey = 'enc:' + await window.electronAPI.cryptoencrypt(apiKey);
+    } catch (e) {}
+    for (const i of this._addselected) {
       const s = servers[i];
-      if (this.list.some(x => x.uuid === s.attributes.uuid && x.panelUrl === panelUrl)) return;
+      if (!s || this.list.some(x => x.uuid === s.attributes.uuid && x.panelUrl === panelUrl)) continue;
       const alloc = s.attributes.relationships?.allocations?.data?.[0]?.attributes;
-      let encryptedApiKey = apiKey;
-      try {
-        const enc = await window.electronAPI.cryptoencrypt(apiKey);
-        encryptedApiKey = 'enc:' + enc;
-      } catch (e) {}
       this.list.push({
         id: Date.now() + Math.random(),
         type: 'Pterodactyl',
         name: s.attributes.name,
         description: s.attributes.description || '',
-        panelUrl, apiKey: encryptedApiKey,
+        panelUrl,
+        apiKey: encryptedApiKey,
         uuid: s.attributes.uuid,
         node: s.attributes.node,
         host: alloc?.ip || panelUrl.replace(/^https?:\/\//, ''),
@@ -988,12 +1222,12 @@ const Servers = {
         allocations: (s.attributes.relationships?.allocations?.data || []).map(a => ({ id: a.attributes.id, ip: a.attributes.ip, port: a.attributes.port })),
         status: 'offline'
       });
-      this.save();
-      this.render();
-      this.fetchallfromapi();
-      CTRLCloud.autosyncupload('add');
-      Modal.close();
-    });
+    }
+    this.save();
+    this.render();
+    this.fetchallfromapi();
+    CTRLCloud.autosyncupload('add');
+    Modal.close();
   },
 
   showvpsform() {
@@ -1015,41 +1249,41 @@ const Servers = {
       <div class="form-group">
         <label class="form-label">Authentication</label>
         <div class="vps-auth-toggle">
-          <button class="vps-auth-btn active" id="vpsAuthPassword" onclick="Servers.togglevpsauth('password')">Password</button>
-          <button class="vps-auth-btn" id="vpsAuthKey" onclick="Servers.togglevpsauth('key')">Key</button>
+          <button type="button" class="vps-auth-btn active" id="vpsAuthPassword" data-modal-action="vps-auth" data-auth="password">Password</button>
+          <button type="button" class="vps-auth-btn" id="vpsAuthKey" data-modal-action="vps-auth" data-auth="key">Key</button>
         </div>
       </div>
       <div class="form-group" id="vpsPasswordField">
         <label class="form-label">Password</label>
         <input class="form-input" type="password" id="vpsPassword" placeholder="SSH password" />
       </div>
-      <div class="form-group" id="vpsKeyField" style="display:none;">
+      <div class="form-group is-hidden" id="vpsKeyField">
         <label class="form-label">SSH Key</label>
         <select class="form-input" id="vpsKeySelect">${keyOptions}</select>
-        ${hasMore ? `<button class="btn btn-sm btn-secondary" style="margin-top:8px;" onclick="Servers.showallvpskeys()">Show all ${keys.length} keys</button>` : ''}
+        ${hasMore ? `<button type="button" class="btn btn-sm btn-secondary vps-key-more" data-modal-action="vps-all-keys">Show all ${keys.length} keys</button>` : ''}
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Servers.openaddmodal()">Back</button>
-        <button class="btn btn-primary" onclick="Servers.addvps()">Add</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="vps-back">Back</button>
+        <button type="button" class="btn btn-primary" data-modal-action="vps-add">Add</button>
       </div>
     `);
   },
 
   togglevpsauth(type) {
-    const pwBtn = Utils.el('vpsAuthPassword');
-    const keyBtn = Utils.el('vpsAuthKey');
-    const pwField = Utils.el('vpsPasswordField');
-    const keyField = Utils.el('vpsKeyField');
+    const pwbtn = Utils.el('vpsAuthPassword');
+    const keybtn = Utils.el('vpsAuthKey');
+    const pwfield = Utils.el('vpsPasswordField');
+    const keyfield = Utils.el('vpsKeyField');
     if (type === 'key') {
-      pwBtn.classList.remove('active');
-      keyBtn.classList.add('active');
-      pwField.style.display = 'none';
-      keyField.style.display = '';
+      pwbtn.classList.remove('active');
+      keybtn.classList.add('active');
+      pwfield.classList.add('is-hidden');
+      keyfield.classList.remove('is-hidden');
     } else {
-      keyBtn.classList.remove('active');
-      pwBtn.classList.add('active');
-      keyField.style.display = 'none';
-      pwField.style.display = '';
+      keybtn.classList.remove('active');
+      pwbtn.classList.add('active');
+      keyfield.classList.add('is-hidden');
+      pwfield.classList.remove('is-hidden');
     }
   },
 
@@ -1109,8 +1343,8 @@ const Servers = {
       <div class="form-group"><label class="form-label">Server Name</label><input class="form-input" type="text" id="linkName" placeholder="My Server" /></div>
       <div class="form-group"><label class="form-label">Link URL</label><input class="form-input" type="url" id="linkUrl" placeholder="https://example.com" /></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Servers.openaddmodal()">Back</button>
-        <button class="btn btn-primary" onclick="Servers.addlink()">Add</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="link-back">Back</button>
+        <button type="button" class="btn btn-primary" data-modal-action="link-add">Add</button>
       </div>
     `);
   },
@@ -1124,39 +1358,190 @@ const Servers = {
   },
 
   exportlist() {
-    const data = {
-      servers: this.list,
+    Modal.open('Export servers', `
+      <p class="modal-text">How would you like to export your servers?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-modal-action="export-plain">Export without encryption</button>
+        <button type="button" class="btn btn-primary" data-modal-action="export-encrypted">Encrypt export</button>
+      </div>
+    `);
+  },
+
+  showencryptedexport() {
+    Modal.open('Encrypt export', `
+      <p class="modal-text-sm">Protect the export with AES-256-GCM. Keep this password: it cannot be recovered.</p>
+      <div class="form-group"><label class="form-label">Password</label><input class="form-input" type="text" id="exportPassword" autocomplete="off" /></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-modal-action="export-generate">Generate password</button>
+        <button type="button" class="btn btn-primary" data-modal-action="export-download">Encrypt and download</button>
+      </div>
+    `);
+  },
+
+  generateexportpassword() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const password = Array.from(bytes, byte => alphabet[byte % alphabet.length]).join('');
+    const input = Utils.el('exportPassword');
+    if (input) {
+      input.value = password;
+      input.focus();
+      input.select();
+    }
+  },
+
+  async downloadexport(password) {
+    try {
+      if (password !== undefined && !password) return;
+      const data = await this.getexportdata();
+      let content = JSON.stringify(data, null, 2);
+      if (password !== undefined) content = JSON.stringify(await this.encryptlist(content, password), null, 2);
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ctrlservers-export.ctrlservers';
+      a.click();
+      URL.revokeObjectURL(url);
+      Modal.close();
+    } catch (e) {
+      this.showexporterror('Unable to prepare the export. Reconnect the affected Pterodactyl server and try again.');
+    }
+  },
+
+  async getexportdata() {
+    const servers = await Promise.all(this.list.map(async (server) => {
+      const copy = { ...server };
+      if (copy.type === 'Pterodactyl' && typeof copy.apiKey === 'string' && copy.apiKey.startsWith('enc:')) {
+        const apiKey = await this.resolveapikey(server);
+        if (!apiKey) throw new Error('Unable to decrypt API key');
+        copy.apiKey = apiKey;
+      }
+      return copy;
+    }));
+    return {
+      servers,
       folders: this.folders,
       keychain: ServerKeychain.keys || []
     };
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ctrlservers-export.ctrlservers';
-    a.click();
-    URL.revokeObjectURL(url);
+  },
+
+  showexporterror(message) {
+    Modal.open('Export Error', `
+      <p class="modal-text-center">${Utils.escape(message)}</p>
+      <div class="modal-actions"><button type="button" class="btn btn-primary" data-modal-action="export-ok">OK</button></div>
+    `);
+  },
+
+  async encryptlist(text, password) {
+    const salt = new Uint8Array(16);
+    const iv = new Uint8Array(12);
+    crypto.getRandomValues(salt);
+    crypto.getRandomValues(iv);
+    const key = await this.deriveexportkey(password, salt);
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text));
+    return {
+      format: 'CTRLServers Encrypted Export',
+      version: 1,
+      algorithm: 'AES-256-GCM',
+      kdf: 'PBKDF2-SHA-256',
+      iterations: 310000,
+      salt: this.arraytobase64(salt),
+      iv: this.arraytobase64(iv),
+      ciphertext: this.arraytobase64(new Uint8Array(ciphertext))
+    };
+  },
+
+  async decryptlist(data, password) {
+    const salt = this.base64toarray(data.salt);
+    const iv = this.base64toarray(data.iv);
+    const ciphertext = this.base64toarray(data.ciphertext);
+    const key = await this.deriveexportkey(password, salt, data.iterations);
+    const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return new TextDecoder().decode(plaintext);
+  },
+
+  async deriveexportkey(password, salt, iterations) {
+    const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iterations || 310000, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  },
+
+  arraytobase64(bytes) {
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  },
+
+  base64toarray(value) {
+    const binary = atob(value);
+    return Uint8Array.from(binary, char => char.charCodeAt(0));
   },
 
   importlist() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.ctrlservers,.json';
-    input.onchange = () => {
+    input.onchange = async () => {
       const file = input.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(reader.result);
-          if (data.servers && Array.isArray(data.servers)) {
+      try {
+        const data = JSON.parse(await file.text());
+        if (data.format === 'CTRLServers Encrypted Export' && data.algorithm === 'AES-256-GCM') {
+          this.showdecryptimport(data);
+          return;
+        }
+        await this.applyimport(data);
+      } catch (e) {
+        this.showimporterror('Invalid JSON file');
+      }
+    };
+    input.click();
+  },
+
+  showdecryptimport(data) {
+    this._encryptedimport = data;
+    Modal.open('Encrypted file', `
+      <p class="modal-text-sm">This file is encrypted. Enter the password.</p>
+      <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="importPassword" type="password" autocomplete="off" /></div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-modal-action="import-cancel">Cancel</button><button type="button" class="btn btn-primary" data-modal-action="import-decrypt">Import</button></div>
+    `);
+    setTimeout(() => Utils.el('importPassword')?.focus(), 0);
+  },
+
+  async decryptimport() {
+    const password = Utils.el('importPassword')?.value || '';
+    if (!password || !this._encryptedimport) return;
+    try {
+      const data = JSON.parse(await this.decryptlist(this._encryptedimport, password));
+      this._encryptedimport = null;
+      await this.applyimport(data);
+    } catch (e) {
+      this.showimporterror('Unable to decrypt file. Check the password.');
+    }
+  },
+
+  showimporterror(message) {
+    Modal.open('Import Error', `
+      <p class="modal-text-center">${Utils.escape(message)}</p>
+      <div class="modal-actions"><button type="button" class="btn btn-primary" data-modal-action="export-ok">OK</button></div>
+    `);
+  },
+
+  async applyimport(data) {
+    if (data.servers && Array.isArray(data.servers)) {
             let added = 0;
             const imported = [];
             for (const s of data.servers) {
               if (!this.list.find(x => x.uuid && x.uuid === s.uuid || x.id && x.id === s.id)) {
-                this.list.push(s);
-                imported.push(s);
+                const importedServer = { ...s };
+                if (importedServer.type === 'Pterodactyl' && importedServer.apiKey && !importedServer.apiKey.startsWith('enc:')) {
+                  try {
+                    importedServer.apiKey = 'enc:' + await window.electronAPI.cryptoencrypt(importedServer.apiKey);
+                  } catch (e) {}
+                }
+                this.list.push(importedServer);
+                imported.push(importedServer);
                 added++;
               }
             }
@@ -1215,19 +1600,11 @@ const Servers = {
             let msg = `Added ${added} server(s)`;
             if (keysAdded > 0) msg += `, ${keysAdded} key(s)`;
             Modal.open('Import Complete', `
-              <p style="text-align:center;padding:20px 0;color:var(--text-secondary);">${msg}</p>
-              <div class="modal-actions"><button class="btn btn-primary" onclick="Modal.close()">OK</button></div>
+              <p class="modal-text-center">${Utils.escape(msg)}</p>
+              <div class="modal-actions"><button type="button" class="btn btn-primary" data-modal-action="export-ok">OK</button></div>
             `);
-          }
-        } catch (e) {
-          Modal.open('Import Error', `
-            <p style="text-align:center;padding:20px 0;color:var(--text-secondary);">Invalid JSON file</p>
-            <div class="modal-actions"><button class="btn btn-primary" onclick="Modal.close()">OK</button></div>
-          `);
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+    } else {
+      this.showimporterror('This file does not contain a server list.');
+    }
   }
 };

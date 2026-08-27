@@ -859,6 +859,7 @@ body {
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
+  background: var(--tag-dot, var(--accent));
 }
 
 .filter-pill-add {
@@ -907,6 +908,7 @@ body {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  background: var(--tag-dot, var(--accent));
 }
 
 .server-card {
@@ -914,14 +916,72 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  position: relative;
 }
 
 .server-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
   border-color: var(--accent);
+}
+
+.server-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow-md);
+}
+
+.server-card-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.server-card-select input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.server-card-check {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--border);
+  background: #fff;
+  box-sizing: border-box;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  pointer-events: none;
+}
+
+.server-card-select input[type="checkbox"]:checked + .server-card-check {
+  background: #fff;
+  border-color: var(--border);
+}
+
+.server-card-select input[type="checkbox"]:checked + .server-card-check::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid #000;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .server-card-header {
@@ -1531,6 +1591,7 @@ body {
 
 .stat-bar {
   height: 100%;
+  width: calc(var(--bar-pct, 0) * 1%);
   background: var(--accent);
   border-radius: 3px;
   transition: width 0.6s ease;
@@ -2228,6 +2289,54 @@ body {
   border-bottom: 1px solid var(--border);
   background: var(--accent-light);
   animation: slideDown 0.15s ease;
+}
+
+.mass-actions.is-hidden {
+  display: none;
+}
+
+.mass-actions-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-hint {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.modal-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.modal-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.modal-text-sm {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.modal-text-center {
+  text-align: center;
+  padding: 20px 0;
+  color: var(--text-secondary);
+}
+
+.vps-key-more {
+  margin-top: 8px;
+}
+
+.is-hidden {
+  display: none !important;
 }
 
 @keyframes slideDown {
