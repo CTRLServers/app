@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Notification, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification, Tray, Menu, dialog } = require('electron');
 const path = require('path');
 const WebSocket = require('ws');
 const { Client } = require('ssh2');
@@ -6,9 +6,11 @@ const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
-const APP_VERSION = '1.1.3';
+const APP_VERSION = '1.1.4';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
+
+const CLOUD_CALLBACK_PORT = 12747;
 
 const isPortable = process.env.PORTABLE_EXECUTABLE_DIR || process.argv.includes('--portable');
 if (isPortable) {
@@ -16,21 +18,81 @@ if (isPortable) {
   app.setPath('userData', path.join(portableDir, 'ctrlservers-data'));
 }
 
+function handleDeepLink(url) {
+  if (!url || typeof url !== 'string') return;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'ctrlservers:' && parsed.hostname === 'cloud-action') {
+      const token = parsed.searchParams.get('token');
+      const source = parsed.searchParams.get('source') || 'cloud';
+      if (token && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('cloud-action', { token, source });
+      }
+    }
+  } catch (e) {}
+}
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (event, commandLine) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
     }
+    const url = commandLine.find(arg => arg.startsWith('ctrlservers://'));
+    if (url) handleDeepLink(url);
+  });
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+      handleDeepLink(url);
+    }
   });
 
   app.whenReady().then(() => {
+    app.setAsDefaultProtocolClient('ctrlservers');
     createwindow();
     createtray();
+
+    try {
+      const http = require('http');
+      const callbackServer = http.createServer((req, res) => {
+        const url = new URL(req.url, `http://127.0.0.1:${CLOUD_CALLBACK_PORT}`);
+        if (url.pathname === '/cloud-callback' || url.pathname === '/mcplugin-callback' || url.pathname === '/selfhost-callback') {
+          const token = url.searchParams.get('token');
+          const source = url.pathname === '/mcplugin-callback' ? 'mcplugin' : url.pathname === '/selfhost-callback' ? 'selfhost' : 'cloud';
+          if (token && mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+            mainWindow.focus();
+            mainWindow.webContents.send('cloud-action', { token, source });
+          }
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end('<html><body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Logged in successfully!</h2><p>You can close this tab and return to CTRLServers.</p></div></body></html>');
+        } else {
+          res.writeHead(404);
+          res.end('Not found');
+        }
+      });
+      callbackServer.listen(CLOUD_CALLBACK_PORT, '127.0.0.1', () => {
+        console.log(`[CTRLServers] Cloud callback server on port ${CLOUD_CALLBACK_PORT}`);
+      });
+      callbackServer.on('error', (err) => {
+        console.log(`[CTRLServers] Callback server port ${CLOUD_CALLBACK_PORT} unavailable:`, err.message);
+      });
+    } catch (e) {}
+
+    if (process.argv) {
+      const deepLinkArg = process.argv.find(arg => arg.startsWith('ctrlservers://'));
+      if (deepLinkArg) {
+        setTimeout(() => handleDeepLink(deepLinkArg), 1500);
+      }
+    }
   });
 }
 
@@ -258,6 +320,19 @@ ipcMain.handle('open-external', async (event, url) => {
   await shell.openExternal(url);
 });
 
+ipcMain.handle('open-in-explorer', async (event, filePath) => {
+  shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle('show-save-dialog', async (event, defaultPath) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const result = await dialog.showSaveDialog(win, {
+    defaultPath: defaultPath || '',
+    properties: ['createDirectory']
+  });
+  return result.canceled ? null : result.filePath;
+});
+
 ipcMain.on('get-platform', (event) => {
   const plat = process.platform;
   const arch = process.arch;
@@ -319,6 +394,7 @@ ipcMain.handle('ssh-connect', async (event, config) => {
     };
 
     conn.on('ready', () => {
+      try { if (conn._sock) conn._sock.setNoDelay(true); } catch (e) {}
       conn.shell({ term: 'xterm-256color', cols: config.cols || 80, rows: config.rows || 24 }, (err, stream) => {
         if (err) { done(err.message || 'Shell request failed'); return; }
         const entry = { conn, stream, win, ready: false, pendingData: [] };
@@ -1043,6 +1119,108 @@ ipcMain.handle('sshping', async (event, host, port) => {
     socket.on('error', () => done('offline'));
     socket.connect(parseInt(port) || 22, host);
   });
+});
+
+function randomfilename(len) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let r = '';
+  for (let i = 0; i < len; i++) r += chars[Math.floor(Math.random() * chars.length)];
+  return r;
+}
+
+ipcMain.handle('ssh-open-cmd', async (event, config) => {
+  const { execSync, spawn } = require('child_process');
+  const tmpDir = os.tmpdir();
+  let keyFile = null;
+  let pubFile = null;
+
+  try {
+    if (config.authType === 'privateKey' && config.privateKey) {
+      const rnd = randomfilename(24);
+      keyFile = path.join(tmpDir, rnd + '.key');
+      pubFile = path.join(tmpDir, rnd + '.key.pub');
+      fs.writeFileSync(keyFile, config.privateKey, { mode: 0o600 });
+      try { execSync(`icacls "${keyFile}" /inheritance:r /grant:r "%USERNAME%:F"`, { stdio: 'ignore' }); } catch (e) {}
+      if (config.publicKey) {
+        fs.writeFileSync(pubFile, config.publicKey, { mode: 0o600 });
+        try { execSync(`icacls "${pubFile}" /inheritance:r /grant:r "%USERNAME%:F"`, { stdio: 'ignore' }); } catch (e) {}
+      }
+    }
+
+    const port = parseInt(config.port) || 22;
+    const user = config.username || 'root';
+    const host = config.host;
+
+    let args = [];
+    if (keyFile) args.push('-i', keyFile);
+    if (port !== 22) args.push('-p', String(port));
+    args.push(`${user}@${host}`);
+
+    const cmdArgs = ['/k', 'ssh', ...args];
+    spawn('cmd.exe', cmdArgs, {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false
+    }).unref();
+
+    return { ok: true, keyFile, pubFile };
+  } catch (e) {
+    if (keyFile) { try { fs.unlinkSync(keyFile); } catch (x) {} }
+    if (pubFile) { try { fs.unlinkSync(pubFile); } catch (x) {} }
+    throw new Error(e.message || 'Failed to open SSH session');
+  }
+});
+
+ipcMain.handle('ssh-cleanup-tempkey', async (event, keyPath) => {
+  try {
+    if (keyPath && fs.existsSync(keyPath)) fs.unlinkSync(keyPath);
+  } catch (e) {}
+  return { ok: true };
+});
+
+ipcMain.handle('scp-copy-file', async (event, config, remotePath, localPath) => {
+  const { execSync } = require('child_process');
+  const tmpDir = os.tmpdir();
+  let keyFile = null;
+  let pubFile = null;
+
+  try {
+    if (config.authType === 'privateKey' && config.privateKey) {
+      const rnd = randomfilename(24);
+      keyFile = path.join(tmpDir, rnd + '.key');
+      pubFile = path.join(tmpDir, rnd + '.key.pub');
+      fs.writeFileSync(keyFile, config.privateKey, { mode: 0o600 });
+      try { execSync(`icacls "${keyFile}" /inheritance:r /grant:r "%USERNAME%:F"`, { stdio: 'ignore' }); } catch (e) {}
+      if (config.publicKey) {
+        fs.writeFileSync(pubFile, config.publicKey, { mode: 0o600 });
+        try { execSync(`icacls "${pubFile}" /inheritance:r /grant:r "%USERNAME%:F"`, { stdio: 'ignore' }); } catch (e) {}
+      }
+    }
+
+    const port = parseInt(config.port) || 22;
+    const user = config.username || 'root';
+    const host = config.host;
+
+    const remote = `${user}@${host}:${remotePath}`;
+    let args = ['-r', '-P', String(port)];
+    if (keyFile) args.push('-i', keyFile);
+    args.push(remote, localPath);
+
+    const result = execSync(`scp ${args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`, {
+      timeout: 300000,
+      windowsHide: true,
+      encoding: 'utf8'
+    });
+
+    if (keyFile) { try { fs.unlinkSync(keyFile); } catch (e) {} }
+    if (pubFile) { try { fs.unlinkSync(pubFile); } catch (e) {} }
+
+    return { ok: true, output: result };
+  } catch (e) {
+    if (keyFile) { try { fs.unlinkSync(keyFile); } catch (x) {} }
+    if (pubFile) { try { fs.unlinkSync(pubFile); } catch (x) {} }
+    throw new Error(e.stderr || e.message || 'SCP transfer failed');
+  }
 });
 
 const PLUGINS_DIR = path.join(app.getPath('userData'), 'plugins');

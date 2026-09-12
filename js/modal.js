@@ -54,5 +54,32 @@ const Modal = {
     setTimeout(() => {
       Utils.el('modalAlertBtn').addEventListener('click', () => this.close());
     }, 0);
+  },
+
+  prompt(title, message, defaultValue, onSubmit) {
+    this.open(title, `
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">${message}</p>
+      <input type="text" id="modalPromptInput" class="input-field" value="${Utils.escape(defaultValue || '')}" style="width:100%;margin-bottom:24px;">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="modalPromptCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalPromptOk">OK</button>
+      </div>
+    `);
+    setTimeout(() => {
+      const input = Utils.el('modalPromptInput');
+      input.focus();
+      input.select();
+      Utils.el('modalPromptCancel').addEventListener('click', () => this.close());
+      Utils.el('modalPromptOk').addEventListener('click', () => {
+        const val = input.value.trim();
+        if (val) { this.close(); onSubmit(val); }
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const val = input.value.trim();
+          if (val) { this.close(); onSubmit(val); }
+        }
+      });
+    }, 0);
   }
 };

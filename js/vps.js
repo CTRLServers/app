@@ -12,9 +12,6 @@ const VPSConsole = {
   _keydownhandler: null,
   _termDataCache: '',
   _decoder: new TextDecoder(),
-  _pendingInput: '',
-  _inputFlushScheduled: false,
-  _localEchoPending: '',
   _cache: {},
   _sessionGeneration: 0,
   _connectTimer: null,
@@ -70,7 +67,7 @@ const VPSConsole = {
     this._ondata = this.term.onData((data) => {
       if (this._sessionGeneration !== gen) return;
       if (this.connected && this.sshId !== null) {
-        this._queueinput(data, gen);
+        window.electronAPI.sshdata(this.sshId, data);
       }
     });
 
@@ -79,10 +76,9 @@ const VPSConsole = {
       if (id !== this.sshId) return;
       if (!this.term) return;
       const text = typeof data === 'string' ? data : this._decoder.decode(data, { stream: true });
-      const visibleText = this._consumeLocalecho(text);
-      if (visibleText) {
-        this.term.write(visibleText);
-        this._termDataCache += visibleText;
+      if (text) {
+        this.term.write(text);
+        this._termDataCache += text;
       }
     });
 
@@ -109,7 +105,7 @@ const VPSConsole = {
         e.preventDefault();
         navigator.clipboard.readText().then((text) => {
           if (text && this.connected && this.sshId !== null) {
-            this._queueinput(text, gen);
+            window.electronAPI.sshdata(this.sshId, text);
           }
         }).catch(() => {});
       }
@@ -131,9 +127,6 @@ const VPSConsole = {
     if (this.webglAddon) { try { this.webglAddon.dispose(); } catch (e) {} this.webglAddon = null; }
     if (this.fitAddon) { try { this.fitAddon.dispose(); } catch (e) {} this.fitAddon = null; }
     if (this.term) { this.term.dispose(); this.term = null; }
-    this._pendingInput = '';
-    this._inputFlushScheduled = false;
-    this._localEchoPending = '';
     const container = Utils.el('vpsConsoleWrap');
     if (container) container.innerHTML = '';
   },
@@ -144,6 +137,7 @@ const VPSConsole = {
       this.server = server;
       this.sshId = cached.sshId;
       this.connected = cached.connected;
+      this.renderinfocard(server);
       this._recreateterm(cached);
       return;
     }
@@ -152,7 +146,7 @@ const VPSConsole = {
     this.connected = false;
     this._termDataCache = '';
     this._decoder = new TextDecoder();
-    this._localEchoPending = '';
+    this.renderinfocard(server);
 
     const container = Utils.el('vpsConsoleWrap');
     container.innerHTML = '';
@@ -227,8 +221,6 @@ const VPSConsole = {
     this.fitAddon = addon;
     this._termDataCache = cached.termData || '';
     this._decoder = new TextDecoder();
-    this._localEchoPending = '';
-
     this._wirelisteners(gen);
 
     let opened = false;
@@ -347,55 +339,39 @@ const VPSConsole = {
     }
   },
 
-  _queueinput(data, gen) {
-    const prepared = this._prepareinput(data);
-    if (!prepared.input) return;
-    const localEcho = prepared.localEcho;
-    if (localEcho && this.term) {
-      this.term.write(localEcho);
-      this._termDataCache += localEcho;
-      this._localEchoPending += localEcho;
+  _getosicon(server) {
+    const os = (server.os || '').toLowerCase();
+    const osMap = [
+      ['debian', 'debian'], ['ubuntu', 'ubuntu'], ['centos', 'centos'],
+      ['rocky', 'rockylinux'], ['almalinux', 'almalinux'], ['alpine', 'alpine'],
+      ['arch', 'arch'], ['gentoo', 'gentoo'], ['fedora', 'fedora'],
+      ['mint', 'mint'], ['rhel', 'rhel'], ['red hat', 'rhel'],
+    ];
+    for (const [key, file] of osMap) {
+      if (os.includes(key)) return `<img src="assets/${file}.png" alt="${file}" />`;
     }
-    this._pendingInput += prepared.input;
-    if (this._inputFlushScheduled) return;
-    this._inputFlushScheduled = true;
-    queueMicrotask(() => {
-      const input = this._pendingInput;
-      this._pendingInput = '';
-      this._inputFlushScheduled = false;
-      if (input && this._sessionGeneration === gen && this.connected && this.sshId !== null) {
-        window.electronAPI.sshdata(this.sshId, input);
-      }
-    });
+    return `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`;
   },
 
-  _prepareinput(data) {
-    if (data.includes('\x1b')) return { input: data, localEcho: '' };
-    let input = '';
-    let localEcho = '';
-    for (const char of data) {
-      if (/^[\x20-\x7e]$/.test(char)) {
-        input += char;
-        localEcho += char;
-      } else {
-        input += char;
-      }
-    }
-    return { input, localEcho };
-  },
+  renderinfocard(server) {
+    const card = Utils.el('vpsInfoCard');
+    const iconEl = Utils.el('vpsInfoIcon');
+    const nameEl = Utils.el('vpsInfoName');
+    const sshBtn = Utils.el('vpsInfoSSH');
+    const scpBtn = Utils.el('vpsInfoSCP');
 
-  _consumeLocalecho(data) {
-    if (!data || !this._localEchoPending) return data;
-    let offset = 0;
-    while (offset < data.length && this._localEchoPending) {
-      if (data[offset] !== this._localEchoPending[0]) {
-        this._localEchoPending = '';
-        return data;
-      }
-      offset++;
-      this._localEchoPending = this._localEchoPending.slice(1);
+    if (!card) return;
+    card.style.display = '';
+
+    if (iconEl) iconEl.innerHTML = this._getosicon(server);
+    if (nameEl) nameEl.textContent = server.name || 'VPS';
+
+    if (sshBtn) {
+      sshBtn.onclick = () => Servers.openssh(Servers.list.indexOf(server));
     }
-    return data.slice(offset);
+    if (scpBtn) {
+      scpBtn.onclick = () => Servers.openscpmodal(Servers.list.indexOf(server));
+    }
   },
 
   async destroy() {

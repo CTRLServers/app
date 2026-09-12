@@ -128,10 +128,13 @@ const Windows = {
     Utils.el('topbarActions').style.display = '';
     Utils.el('topbarServerActions').style.display = 'none';
     Utils.el('pageTitle').textContent = 'Dashboard';
+    Utils.el('pageTitle').style.display = '';
+    Utils.el('vpsInfoCard').style.display = 'none';
     Utils.el('content').classList.remove('server-view');
     Utils.el('tabCloud').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabSelfHost').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
     Utils.el('dashboardFilterBar').style.display = Servers.list.length > 0 ? '' : 'none';
@@ -258,6 +261,8 @@ const App = {
     CLI.init();
     CheatSheet.init();
     CTRLCloud.init();
+    MCPlugin.init();
+    SelfHost.init();
     this.bindevents();
     this.bindwindowcontrols();
     Servers.render();
@@ -466,6 +471,7 @@ const App = {
     Utils.el('tabCloud').style.display = page === 'cloud' ? '' : 'none';
     Utils.el('tabSftp').style.display = page === 'sftp' ? '' : 'none';
     Utils.el('tabMinecraft').style.display = page === 'minecraft' ? '' : 'none';
+    Utils.el('tabSelfHost').style.display = page === 'selfhost' ? '' : 'none';
     Utils.el('tabMultiTerm').style.display = page === 'multiterm' ? '' : 'none';
     Utils.el('tabPluginsGlobal').style.display = page === 'plugins' ? '' : 'none';
     Utils.el('tabappsettings').style.display = page === 'appsettings' ? '' : 'none';
@@ -495,21 +501,8 @@ const App = {
     if (page === 'cloud') CTRLCloud.render();
     if (page === 'sftp') SFTP.load();
     if (page === 'multiterm') MultiTerm.load();
-    if (page === 'minecraft') {
-      Utils.el('tabMinecraft').innerHTML =
-        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;gap:16px">' +
-          '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>' +
-          '<h2 style="margin:0;font-size:20px;font-weight:600;color:var(--text-primary)">Minecraft Plugin isn\'t supported in the Desktop App</h2>' +
-          '<p style="margin:0;font-size:14px;color:var(--text-muted);max-width:400px">Please use our <a href="#" id="mcWebLink" style="color:var(--accent);text-decoration:underline;cursor:pointer">Web App</a> for that.</p>' +
-          '<button class="btn btn-primary" id="mcOpenWeb" style="margin-top:8px">' +
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
-            ' Open Web App</button>' +
-        '</div>';
-      const openBtn = document.getElementById('mcOpenWeb');
-      const linkEl = document.getElementById('mcWebLink');
-      if (openBtn) openBtn.addEventListener('click', () => window.electronAPI.openexternal('https://app.ctrlservers.xyz'));
-      if (linkEl) linkEl.addEventListener('click', (e) => { e.preventDefault(); window.electronAPI.openexternal('https://app.ctrlservers.xyz'); });
-    }
+    if (page === 'minecraft') MCPlugin.render();
+    if (page === 'selfhost') SelfHost.render();
   },
 
   getpagetitle(page) {
@@ -518,7 +511,7 @@ const App = {
       const pageConfig = CTRLPlugin._pages.find(p => p.id === pageId);
       return pageConfig ? pageConfig.label || pageId : 'Plugin';
     }
-    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'Minecraft Plugin', sftp: 'SFTP', multiterm: 'Multi Terminal', plugins: 'Plugins', appsettings: 'App Settings' }[page] || 'Dashboard';
+    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'CTRLManage', selfhost: 'Self-Host', sftp: 'SFTP', multiterm: 'Multi Terminal', plugins: 'Plugins', appsettings: 'App Settings' }[page] || 'Dashboard';
   },
 
   showserverlist() {
@@ -526,6 +519,18 @@ const App = {
     if (this.currentServer) {
       if (this.currentServer.type === 'VPS/VDS') VPSConsole.detach();
       else if (this.currentServer.panelUrl) ServerConsole.detach();
+    }
+    const shTab = Utils.el('tabSelfHost');
+    if (shTab && shTab._inServerPage && shTab._parentBeforeMove) {
+      shTab.style.display = 'none';
+      if (shTab._nextSibling && shTab._nextSibling.parentNode === shTab._parentBeforeMove) {
+        shTab._parentBeforeMove.insertBefore(shTab, shTab._nextSibling);
+      } else {
+        shTab._parentBeforeMove.appendChild(shTab);
+      }
+      shTab._inServerPage = false;
+      shTab._parentBeforeMove = null;
+      shTab._nextSibling = null;
     }
     this.currentServer = null;
     Servers._didrag = false;
@@ -556,10 +561,13 @@ const App = {
     Utils.el('topbarActions').style.display = '';
     Utils.el('topbarServerActions').style.display = 'none';
     Utils.el('pageTitle').textContent = 'Dashboard';
+    Utils.el('pageTitle').style.display = '';
+    Utils.el('vpsInfoCard').style.display = 'none';
     Utils.el('content').classList.remove('server-view');
     Utils.el('tabCloud').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabSelfHost').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
     const searchInput = Utils.el('dashboardSearchInput');
@@ -623,12 +631,15 @@ const App = {
     Utils.el('dashboardFilterBar').style.display = 'none';
     Utils.el('serverDetail').style.display = '';
     Utils.el('pageTitle').textContent = server.name;
+    Utils.el('pageTitle').style.display = '';
+    Utils.el('vpsInfoCard').style.display = 'none';
     Utils.el('sidebar').classList.remove('open');
     Utils.el('content').classList.add('server-view');
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('tabCloud').style.display = 'none';
     Utils.el('tabSftp').style.display = 'none';
     Utils.el('tabMinecraft').style.display = 'none';
+    Utils.el('tabSelfHost').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
     DiscordRPC.updateserver(server.name);
@@ -647,6 +658,8 @@ const App = {
       Utils.el('topbarActions').style.display = 'none';
       Utils.el('topbarServerActions').style.display = 'none';
       Utils.el('topbarResources').style.display = 'none';
+      Utils.el('pageTitle').style.display = 'none';
+      Utils.el('vpsInfoCard').style.display = '';
       Servers.detectos(server);
       document.querySelectorAll('#serverNav .nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.serverPage === 'vpsConsole');
@@ -692,6 +705,20 @@ const App = {
     if (page !== 'disk' && VPSDisk.destroy) VPSDisk.destroy();
     if (page !== 'vpsNet' && VPSNet.destroy) VPSNet.destroy();
     if (page !== 'ssl' && VPSSSL.destroy) VPSSSL.destroy();
+    if (page !== 'selfhost') {
+      const shTab = Utils.el('tabSelfHost');
+      if (shTab && shTab._inServerPage && shTab._parentBeforeMove) {
+        shTab.style.display = 'none';
+        if (shTab._nextSibling && shTab._nextSibling.parentNode === shTab._parentBeforeMove) {
+          shTab._parentBeforeMove.insertBefore(shTab, shTab._nextSibling);
+        } else {
+          shTab._parentBeforeMove.appendChild(shTab);
+        }
+        shTab._inServerPage = false;
+        shTab._parentBeforeMove = null;
+        shTab._nextSibling = null;
+      }
+    }
     this.currentServerPage = page;
     if (typeof CTRLPlugin !== 'undefined') {
       CTRLPlugin.emit('page:serverpage', { page, server: this.currentServer });
@@ -740,7 +767,7 @@ const App = {
     const tab = Utils.el('tab' + page.charAt(0).toUpperCase() + page.slice(1));
     if (tab) tab.style.display = 'flex';
 
-    const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL', securityscore: 'tabSecurity' };
+    const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL', securityscore: 'tabSecurity', selfhost: 'tabSelfHost' };
     if (vpsTabMap[page]) {
       const vpsTab = Utils.el(vpsTabMap[page]);
       if (vpsTab) vpsTab.style.display = 'flex';
@@ -770,6 +797,19 @@ const App = {
     if (page === 'ssl' && App.currentServer) VPSSSL.load();
     if (page === 'docker' && App.currentServer) Docker.load();
     if (page === 'webServer' && App.currentServer) WebServer.load();
+    if (page === 'selfhost' && App.currentServer) {
+      const shTab = Utils.el('tabSelfHost');
+      const serverPage = Utils.el('serverPage');
+      if (shTab && serverPage && !shTab._inServerPage) {
+        shTab._parentBeforeMove = shTab.parentNode;
+        shTab._nextSibling = shTab.nextSibling;
+        serverPage.appendChild(shTab);
+        shTab._inServerPage = true;
+      }
+      if (shTab) shTab.style.display = 'flex';
+      SelfHost.render();
+      return;
+    }
     if (page === 'plugins') {
       Plugins.init();
       Plugins.loadpopular();

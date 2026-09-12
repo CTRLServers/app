@@ -1101,15 +1101,16 @@ const Servers = {
     `);
   },
 
-  cloneserver(index) {
+  async cloneserver(index) {
     const server = this.list[index];
     if (!server || server.type !== 'Pterodactyl') return;
+    const apiKey = await this.resolveapikey(server);
     this.showpterodactylform();
     setTimeout(() => {
       const urlEl = Utils.el('panelUrl');
       const keyEl = Utils.el('apiKey');
       if (urlEl) urlEl.value = server.panelUrl || '';
-      if (keyEl) keyEl.value = server.apiKey || '';
+      if (keyEl) keyEl.value = apiKey || '';
     }, 50);
   },
 
@@ -1355,6 +1356,289 @@ const Servers = {
     if (!name || !url) return;
     this.list.push({ id: Date.now(), type: 'Link', name, host: url, status: 'offline' });
     this.save(); this.render(); CTRLCloud.autosyncupload('add'); Modal.close();
+  },
+
+  _buildsshconfig(server) {
+    return {
+      host: server.host,
+      port: parseInt(server.port) || 22,
+      username: server.username || 'root',
+      authType: server.authType === 'key' ? 'privateKey' : 'password',
+      password: server.password || '',
+      privateKey: '',
+      publicKey: ''
+    };
+  },
+
+  async _resolvekeyforsystem(server) {
+    if (server.authType !== 'key') return null;
+    let pk = '';
+    if (server.privateKey) pk = server.privateKey;
+    else if (server.keyIndex !== undefined && server.keyIndex >= 0 && server.keyIndex < ServerKeychain.keys.length) {
+      pk = ServerKeychain.keys[server.keyIndex].privateKey || '';
+    }
+    return pk || null;
+  },
+
+  openssh(index) {
+    const server = this.list[index];
+    if (!server || server.type !== 'VPS/VDS') return;
+
+    if (server.authType === 'key') {
+      this._resolvekeyforsystem(server).then(pk => {
+        if (!pk) {
+          this._showsshpasswordmodal(server);
+          return;
+        }
+        const publicKey = (server.keyIndex !== undefined && server.keyIndex >= 0 && ServerKeychain.keys[server.keyIndex])
+          ? (ServerKeychain.keys[server.keyIndex].publicKey || '') : '';
+        const config = this._buildsshconfig(server);
+        config.privateKey = pk;
+        config.publicKey = publicKey;
+        window.electronAPI.sshopencmd(config).then(result => {
+          if (result && result.keyFile) {
+            this._showsshkeymodal(result.keyFile, result.pubFile);
+          }
+        }).catch(err => {
+          Modal.alert('SSH Error', 'Failed to open SSH session: ' + (err.message || err));
+        });
+      });
+    } else {
+      const password = server.password || '';
+      if (!password) {
+        this._showsshpasswordmodal(server);
+        return;
+      }
+      const config = this._buildsshconfig(server);
+      config.password = password;
+      window.electronAPI.sshopencmd(config).catch(err => {
+        Modal.alert('SSH Error', 'Failed to open SSH session: ' + (err.message || err));
+      });
+    }
+  },
+
+  _showsshkeymodal(keyFile, pubFile) {
+    Modal.open('SSH Key Files Created', `
+      <p class="modal-text-sm" style="margin-bottom:16px;">I have created new files on your computer.</p>
+      <p class="modal-text-sm" style="margin-bottom:12px;">Here are paths to them:</p>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">Private Key</label>
+        <div class="password-reveal-wrap">
+          <input class="form-input" type="text" value="${Utils.escape(keyFile)}" readonly style="font-family:monospace;font-size:12px;padding-right:56px;" />
+          <button type="button" class="password-copy-btn" onclick="navigator.clipboard.writeText('${Utils.escape(keyFile)}')" style="position:absolute;right:30px;top:50%;transform:translateY(-50%);" title="Copy path">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+          <button type="button" class="password-copy-btn" onclick="window.electronAPI.openinexplorer('${Utils.escape(keyFile)}')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);" title="Open in Explorer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+      ${pubFile ? `<div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Public Key</label>
+        <div class="password-reveal-wrap">
+          <input class="form-input" type="text" value="${Utils.escape(pubFile)}" readonly style="font-family:monospace;font-size:12px;padding-right:56px;" />
+          <button type="button" class="password-copy-btn" onclick="navigator.clipboard.writeText('${Utils.escape(pubFile)}')" style="position:absolute;right:30px;top:50%;transform:translateY(-50%);" title="Copy path">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+          <button type="button" class="password-copy-btn" onclick="window.electronAPI.openinexplorer('${Utils.escape(pubFile)}')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);" title="Open in Explorer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>` : ''}
+      <p class="modal-text-sm" style="color:#f59e0b;font-weight:500;">Don't forget to delete them after you ended up working with your SSH session!</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" onclick="Modal.close()">Got it</button>
+      </div>
+    `);
+  },
+
+  _showsshpasswordmodal(server) {
+    const user = server.username || 'root';
+    const host = server.host;
+    const port = server.port || '22';
+    Modal.open('Open SSH Connection', `
+      <p class="modal-text-sm">A new CMD will open right now. This is your SSH window but in CMD, it will request for password.</p>
+      <div class="form-group" style="margin-top:16px;">
+        <label class="form-label">Password</label>
+        <div class="password-reveal-wrap">
+          <input class="form-input" type="password" id="sshPasswordModal" value="${Utils.escape(server.password || '')}" readonly />
+          <button type="button" class="password-reveal-btn" onclick="const inp=this.previousElementSibling;inp.type=inp.type==='password'?'text':'password'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button type="button" class="password-copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('sshPasswordModal').value)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="sshOpenBtn">Open CMD</button>
+      </div>
+    `);
+    setTimeout(() => {
+      const openBtn = Utils.el('sshOpenBtn');
+      if (openBtn) {
+        openBtn.addEventListener('click', () => {
+          const config = {
+            host: server.host,
+            port: parseInt(server.port) || 22,
+            username: server.username || 'root',
+            authType: 'password',
+            password: server.password || ''
+          };
+          window.electronAPI.sshopencmd(config).then(() => {
+            Modal.close();
+          }).catch(err => {
+            Modal.close();
+            Modal.alert('SSH Error', 'Failed to open SSH session: ' + (err.message || err));
+          });
+        });
+      }
+    }, 0);
+  },
+
+  openscpmodal(index) {
+    const server = this.list[index];
+    if (!server || server.type !== 'VPS/VDS') return;
+
+    const user = server.username || 'root';
+    const host = server.host;
+    const port = server.port || '22';
+
+    Modal.open('Copy File via SCP', `
+      <p class="modal-text-sm">Download a file from your VPS using SCP.</p>
+      <div class="form-group" style="margin-top:16px;">
+        <label class="form-label">Remote file path (on VPS)</label>
+        <input class="form-input" type="text" id="scpRemotePath" placeholder="/var/www/html/index.php" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Local save path (on your PC)</label>
+        <div class="password-reveal-wrap">
+          <input class="form-input" type="text" id="scpLocalPath" placeholder="C:\\Users\\${user}\\Desktop\\index.php" style="padding-right:36px;" />
+          <button type="button" class="password-copy-btn" id="scpBrowseBtn" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);" title="Browse...">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+          <div id="scpError" style="color:#ef4444;font-size:13px;margin-top:8px;display:none;"></div>
+          <div id="scpSuccess" style="color:#22c55e;font-size:13px;margin-top:8px;display:none;"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="scpDownloadBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+      </div>
+    `);
+
+    setTimeout(() => {
+      const dlBtn = Utils.el('scpDownloadBtn');
+      const browseBtn = Utils.el('scpBrowseBtn');
+      if (browseBtn) {
+        browseBtn.addEventListener('click', async () => {
+          const current = Utils.el('scpLocalPath').value.trim();
+          const filePath = await window.electronAPI.showsavedialog(current);
+          if (filePath) Utils.el('scpLocalPath').value = filePath;
+        });
+      }
+      if (dlBtn) {
+        dlBtn.addEventListener('click', async () => {
+          const remotePath = Utils.el('scpRemotePath').value.trim();
+          const localPath = Utils.el('scpLocalPath').value.trim();
+          const errEl = Utils.el('scpError');
+          const okEl = Utils.el('scpSuccess');
+
+          if (!remotePath || !localPath) {
+            errEl.textContent = 'Please fill both fields.';
+            errEl.style.display = '';
+            okEl.style.display = 'none';
+            return;
+          }
+
+          dlBtn.disabled = true;
+          dlBtn.innerHTML = '<span class="spinner-sm"></span> Copying...';
+          errEl.style.display = 'none';
+          okEl.style.display = 'none';
+
+          const config = this._buildsshconfig(server);
+
+          if (server.authType === 'key') {
+            const pk = await this._resolvekeyforsystem(server);
+            if (!pk) {
+              dlBtn.disabled = false;
+              dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
+              this._showscppasswordmodal(server, remotePath, localPath);
+              return;
+            }
+            config.privateKey = pk;
+            if (server.keyIndex !== undefined && server.keyIndex >= 0 && ServerKeychain.keys[server.keyIndex]) {
+              config.publicKey = ServerKeychain.keys[server.keyIndex].publicKey || '';
+            }
+          } else if (!config.password) {
+            dlBtn.disabled = false;
+            dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
+            this._showscppasswordmodal(server, remotePath, localPath);
+            return;
+          }
+
+          try {
+            await window.electronAPI.scpcopy(config, remotePath, localPath);
+            okEl.textContent = 'File downloaded successfully!';
+            okEl.style.display = '';
+            errEl.style.display = 'none';
+          } catch (err) {
+            errEl.textContent = 'SCP Error: ' + (err.message || err);
+            errEl.style.display = '';
+            okEl.style.display = 'none';
+          } finally {
+            dlBtn.disabled = false;
+            dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
+          }
+        });
+      }
+    }, 0);
+  },
+
+  _showscppasswordmodal(server, remotePath, localPath) {
+    Modal.open('SCP Password Required', `
+      <p class="modal-text-sm">A new CMD will open right now. This is your SCP window but in CMD, it will request for password.</p>
+      <div class="form-group" style="margin-top:16px;">
+        <label class="form-label">Password</label>
+        <div class="password-reveal-wrap">
+          <input class="form-input" type="password" id="scpPasswordModal" value="${Utils.escape(server.password || '')}" readonly />
+          <button type="button" class="password-reveal-btn" onclick="const inp=this.previousElementSibling;inp.type=inp.type==='password'?'text':'password'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button type="button" class="password-copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('scpPasswordModal').value)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="scpOpenCmdBtn">Open CMD</button>
+      </div>
+    `);
+    setTimeout(() => {
+      const btn = Utils.el('scpOpenCmdBtn');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const config = {
+            host: server.host,
+            port: parseInt(server.port) || 22,
+            username: server.username || 'root',
+            authType: 'password',
+            password: server.password || ''
+          };
+          window.electronAPI.scpcopy(config, remotePath, localPath).then(() => {
+            Modal.close();
+          }).catch(err => {
+            Modal.close();
+            Modal.alert('SCP Error', 'Failed to copy file: ' + (err.message || err));
+          });
+        });
+      }
+    }, 0);
   },
 
   exportlist() {

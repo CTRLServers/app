@@ -70,6 +70,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openexternal: (url) => {
     return ipcRenderer.invoke('open-external', url);
   },
+  openinexplorer: (filePath) => {
+    return ipcRenderer.invoke('open-in-explorer', filePath);
+  },
+  showsavedialog: (defaultPath) => {
+    return ipcRenderer.invoke('show-save-dialog', defaultPath);
+  },
   getplatform: () => {
     return ipcRenderer.sendSync('get-platform');
   },
@@ -211,6 +217,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   pluginreadentry: (folder, entry) => {
     return ipcRenderer.invoke('plugin-read-entry', folder, entry);
+  },
+  sshopencmd: (config) => {
+    return ipcRenderer.invoke('ssh-open-cmd', config);
+  },
+  sshcleanupkey: (keyPath) => {
+    return ipcRenderer.invoke('ssh-cleanup-tempkey', keyPath);
+  },
+  scpcopy: (config, remotePath, localPath) => {
+    return ipcRenderer.invoke('scp-copy-file', config, remotePath, localPath);
+  },
+  oncloudaction: (callback) => {
+    ipcRenderer.on('cloud-action', (event, data) => callback(data));
   },
   winminimize: () => ipcRenderer.invoke('win-minimize'),
   winmaximize: () => ipcRenderer.invoke('win-maximize'),

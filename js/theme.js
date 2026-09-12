@@ -49,7 +49,7 @@ const Theme = {
       ServerFiles.editor.setOption('theme', theme === 'dark' || theme === 'oled' ? 'material-darker' : 'default');
     }
     if (VPSConsole && VPSConsole.term) {
-      VPSConsole.term.options.theme = VPSConsole._getxtermtheme();
+      VPSConsole.term.options.theme = VPSConsole._maketermtheme();
     }
   },
 

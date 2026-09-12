@@ -1,10 +1,12 @@
 const CTRLCloud = {
   API: 'https://cloud.ctrlsrv.net',
+  AUTH_URL: 'https://authorization.ctrlservers.xyz',
   token: null,
   user: null,
   syncdata: null,
   autosync: { onLaunch: true, onServerAdd: true, onServerDelete: false },
   loading: false,
+  _deepLinkBound: false,
 
   init() {
     this.token = localStorage.getItem('ctrl_cloud_token');
@@ -12,6 +14,23 @@ const CTRLCloud = {
     const as = localStorage.getItem('ctrl_cloud_autosync');
     if (as) {
       try { this.autosync = JSON.parse(as); } catch (e) {}
+    }
+    if (!this._deepLinkBound) {
+      this._deepLinkBound = true;
+      window.electronAPI.oncloudaction((data) => {
+        if (data && data.token && (!data.source || data.source === 'cloud')) {
+          this.token = data.token;
+          this.saveauth();
+          this.checktoken().then(ok => {
+            if (ok) {
+              this.fetchautosyncsettings().then(() => this.render());
+            } else {
+              this.loading = false;
+              this.render();
+            }
+          });
+        }
+      });
     }
   },
 
@@ -54,7 +73,7 @@ const CTRLCloud = {
     const el = Utils.el('tabCloud');
     if (!el) return;
     if (this.loading) {
-      el.innerHTML = '<div class="cloud-loading"><svg class="spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg></div>';
+      el.innerHTML = 'div class="cloud-loading"><svg class="spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg></div>';
       return;
     }
     if (!this.token) {
@@ -74,47 +93,23 @@ const CTRLCloud = {
             </svg>
           </div>
           <h2 class="cloud-auth-title">CTRLCloud</h2>
-          <p class="cloud-auth-sub">Sign in to sync your servers</p>
+          <p class="cloud-auth-sub">Register or login to continue.</p>
           <div class="cloud-auth-form">
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-input" id="cloudLoginEmail" placeholder="you@example.com" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Password</label>
-              <input type="password" class="form-input" id="cloudLoginPassword" placeholder="Your password" />
-            </div>
-            <button class="btn btn-primary cloud-auth-btn" onclick="CTRLCloud.dologin()">Sign In</button>
+            <button class="btn btn-primary cloud-auth-btn" onclick="CTRLCloud.openauth()">Go to Web</button>
           </div>
           <div class="cloud-auth-error" id="cloudAuthError"></div>
         </div>
       </div>`;
   },
 
+  openauth() {
+    const url = this.AUTH_URL + '/cloud-login';
+    window.electronAPI.openexternal(url);
+  },
+
   showautherror(msg) {
     const el = document.getElementById('cloudAuthError');
     if (el) el.textContent = msg;
-  },
-
-  async dologin() {
-    const email = document.getElementById('cloudLoginEmail').value.trim();
-    const password = document.getElementById('cloudLoginPassword').value;
-    if (!email || !password) return this.showautherror('Fill in all fields');
-    try {
-      this.loading = true;
-      this.render();
-      const data = await this.api('POST', '/api/login', { email, password });
-      this.token = data.token;
-      this.user = data.user;
-      this.saveauth();
-      this.loading = false;
-      await this.fetchautosyncsettings();
-      this.render();
-    } catch (e) {
-      this.loading = false;
-      this.render();
-      this.showautherror(e.message);
-    }
   },
 
   logout() {
@@ -126,14 +121,15 @@ const CTRLCloud = {
   },
 
   async renderdashboard(el) {
+    const displayName = this.user?.username || this.user?.nickname || this.user?.email || '?';
     el.innerHTML = `
       <div class="cloud-dashboard">
         <div class="cloud-header">
           <div class="cloud-header-left">
-            <div class="cloud-user-avatar">${(this.user.nickname || '?')[0].toUpperCase()}</div>
+            <div class="cloud-user-avatar">${displayName[0].toUpperCase()}</div>
             <div class="cloud-user-info">
-              <h3 class="cloud-user-name">${Utils.escape(this.user.nickname)}</h3>
-              <span class="cloud-user-email">${Utils.escape(this.user.email)}</span>
+              <h3 class="cloud-user-name">${Utils.escape(displayName)}</h3>
+              <span class="cloud-user-email">${Utils.escape(this.user?.email || '')}</span>
             </div>
           </div>
           <div class="cloud-header-actions">
@@ -272,7 +268,7 @@ const CTRLCloud = {
         </div>
         <button class="btn-icon btn-danger-sm" onclick="CTRLCloud.deleteserver('${Utils.escape(String(s.id))}')" title="Remove from cloud">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        </button>
+        </div>
       </div>`).join('');
   },
 

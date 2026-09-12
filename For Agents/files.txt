@@ -1,0 +1,181 @@
+Created by MiMo v2.5 (Free), may contain errors. -- IGNORE THIS LINE. ONLY FOR HUMANS
+
+
+==========================================
+  CTRLServers Project - File Descriptions
+  (app/ folder)
+==========================================
+
+--- ROOT LEVEL FILES ---
+
+electron.cjs - Electron main process entry point. Handles window creation, app lifecycle, IPC communication between renderer and main process, SSH connections via ssh2, SFTP file transfers, crypto encryption/decryption of API keys, and spawning of external applications. Manages SSH session lifecycle (connect, disconnect, data relay, resize), SFTP operations (connect, list, read, write, upload, download, delete, rename, mkdir, rmdir), and cloud sync deep link callbacks.
+
+preload.js - Electron preload script that exposes a safe API bridge (electronAPI) to the renderer process via contextBridge. Exposes methods for: SSH connect/disconnect/exec/resize/data, SFTP connect/disconnect/list/read/write/upload/download/delete/rename/mkdir/rmdir, cloud sync deep link callbacks, crypto encrypt/decrypt, plugin directory management, external URL opening, VPS status checking, and app version retrieval.
+
+index.html - Main HTML shell for the application. Contains the full UI structure including: sidebar navigation (dashboard, server views), modal overlay, dashboard grid for server cards, filter bar, search input, empty state, theme toggle, mass action bar for bulk selection, workspace sidebar, and all tab containers for server management pages (console, files, databases, backups, network, schedules, users, settings, startup, security, services, packages, web server, SSL, processes, logs, disk, users, firewall, Minecraft, Docker, cloud, self-host, plugins). Loads all CSS stylesheets and JS modules.
+
+styles.css - Main CSS stylesheet. Defines the complete visual design system including: CSS variables for dark/light/OLED themes, layout (sidebar, main content area), server cards, navigation, modals, forms, buttons, badges, status indicators, terminal/console styles, file browser, SFTP UI, plugin browser, Docker manager, cloud sync UI, self-host dashboard, card manager, security score visualization, package manager, web server config, firewall rules, Minecraft server tools, backup manager, database manager, network monitor, disk analyzer, process manager, log viewer, services manager, schedule manager, user management, startup config, settings, and responsive design breakpoints.
+
+package.json - Node.js project configuration. Defines the Electron app as "ctrlservers" v2.9.0, sets main entry to electron.cjs, lists dependencies (electron, ssh2, node-fetch), and scripts for building the Electron app for multiple platforms (Windows, macOS, Linux) using electron-builder. Targets Windows (nsis/portable), macOS (dmg/zip), and Linux (AppImage/deb/rpm).
+
+LICENSE - MIT License file.
+
+README.md - Project documentation file.
+
+.gitignore - Git ignore rules for the project (node_modules, dist, build artifacts, etc.).
+
+--- js/ FOLDER ---
+
+js/app.js - Main application controller (App object). Manages page navigation between dashboard and server views, handles opening/closing servers, manages server page tabs (console, files, databases, etc.), polls Pterodactyl server resources (CPU, RAM, disk, uptime) and VPS stats on intervals, initializes all modules on startup, handles lock screen, manages UI state transitions, and coordinates between all sub-modules.
+
+js/servers.js - Core server management module (Servers object). Handles the complete server lifecycle: loading/saving servers from localStorage, rendering server cards with stats bars (CPU, RAM, disk, swap, load), drag-and-drop reordering, server selection (single and bulk), context menus (pin, tag, folder, clone, delete), server filtering by tags/search/folders, workspace/folder management, importing/exporting server lists (plain and encrypted with AES), adding servers via three types (Pterodactyl panel URL+API key, VPS/VDS with SSH credentials, Link servers), power controls (start/stop/restart), VPS stats fetching via SSH, OS detection, encrypted API key resolution, and cloud auto-sync integration.
+
+js/utils.js - Utility functions module (Utils object). Provides: HTML escaping (escape), byte formatting (formatbytes: B/KB/MB/GB/TB), MB formatting (formatmb), uptime formatting (formatuptime: days/hours/minutes), server status labels (running/starting/stopping/online/offline), DOM element getter by ID (el), and ANSI-to-HTML converter (ansitohtml) that parses ANSI escape codes for colors, bold, italic, underline, and background colors.
+
+js/theme.js - Theme management module (Theme object). Supports three themes: dark, light, and OLED. Handles theme toggling cycle, persisting theme choice to localStorage, updating UI icons (moon/sun/OLED icons as SVG), applying theme to CodeMirror editor and xterm.js terminal, and emitting theme:change events to the plugin system.
+
+js/startup.js - Server startup configuration for Pterodactyl servers (ServerStartup object). Fetches startup command, Docker images, and editable environment variables from the Pterodactyl API. Allows viewing the startup command, changing the Docker image from predefined options or custom, editing server variables (with read-only enforcement), and saving changes back to the panel.
+
+js/sftp.js - SFTP file browser module (SFTP object). Provides a full SFTP client with: connection management (password and SSH key authentication), saved connections in localStorage, quick-connect from saved VPS servers, file listing with sorting (directories first), breadcrumb navigation, file operations (create file, create folder, upload files, download files, delete files/folders, rename files), multi-select with checkboxes, select-all toggle, file size and date formatting, and a complete UI with auth screen and browser screen.
+
+js/settings.js - Pterodactyl server settings module (ServerSettings object). Manages server details editing (name, description), displays SFTP connection details (IP, port, username with UUID format), provides one-click SFTP connection launch, shows debug information (server ID, node), and handles saving changes back to the panel API.
+
+js/services.js - Linux services manager for VPS servers (Services object). Lists all systemd services via SSH, displays service status (active/inactive/failed) with color-coded cards, provides search/filter functionality, allows starting/stopping/restarting/enabling/disabling services via systemctl, and shows service statistics (total, active, failed counts).
+
+js/securityscore.js - VPS security scoring module (SecurityScore object). Performs automated security scanning via SSH: checks SSH configuration (root login, password auth, empty passwords, max auth tries, X11 forwarding), scans open ports (identifies dangerous ports like 21, 23, 3389, 5900, 6379), checks firewall status (UFW/firewalld/iptables), checks fail2ban installation and status, lists system users (root/sudo/normal). Calculates a 0-100 security score with color-coded ring visualization and detailed issue breakdown.
+
+js/security.js - Detailed VPS security information module (Security object). Displays comprehensive security data: TCP and UDP open ports with process names and states, SSH configuration parsing (port, root login, password auth, key auth, max tries, X11 forwarding), fail2ban status with banned IPs and jail list, recent successful logins (last command), recent failed login attempts (lastb command), firewall status with rule counts, and option to install fail2ban via package manager.
+
+js/schedules.js - Pterodactyl task scheduler module (ServerSchedules object). Manages automated server schedules with: list view and detail view, CRUD operations for schedules (create, read, update, delete), cron expression editing (minute, hour, day of month, month, day of week), enable/disable schedules, schedule task management (command, power action, backup creation), task time offsets, continue-on-failure flag, manual execution, and last/next run time display.
+
+js/users.js - Pterodactyl sub-user management module (ServerUsers object). Manages server user permissions with: user list with avatars, email display, permission chips grouped by category, invite new users via email, edit user permissions with checkbox grid, delete users, and permission templates (Read-Only, Moderator, Admin, Developer). Permission categories include: Server Control, File Management, Backups, Network, Databases, Schedules, User Management, and Startup.
+
+js/plugins.js - Modrinth mod/plugin browser module (ModrinthBrowser, Plugins, Mods objects). Integrates with the Modrinth API to browse and install Minecraft plugins and mods. Features: search with debounce, version filtering, project detail view with description and loaders, version listing with download counts and file sizes, one-click download and auto-upload to server's plugins/mods folder. Plugins object handles detection of Java plugin servers, Mods object handles Forge/Fabric mod servers.
+
+js/pluginloader.js - Plugin system loader (PluginLoader object). Discovers and loads third-party plugins from a local plugins directory. Features: plugin manifest parsing (id, name, version, description, author, permissions, entry file), enable/disable toggle with localStorage persistence, dynamic code execution via Function constructor with access to core modules (CTRLPlugin, Servers, App, Api, Utils, Modal), beta warning banner, plugin listing UI with toggle switches, and folder opening for plugin installation.
+
+js/pluginapi.js - Plugin API and event system (CTRLPlugin object). Provides the plugin developer API with: event hook system (on/off/emit), navigation page registration (addNavPage for main nav, addServerPage for server-specific nav), server operations (power control, send command, SSH exec, SFTP operations), file management (list, read, write, create folder, delete, rename, copy, compress, decompress, set permissions), backup management (list, create, delete, restore, get download URL, toggle lock), database management (list, create, delete, rotate password), Pterodactyl API proxy (pteroApi), persistent plugin storage (get/set/remove with per-plugin namespaces), notification system, and modal helpers.
+
+js/cloud.js - Cloud sync module (CTRLCloud object). Provides server list synchronization with a remote cloud service. Features: user authentication (login/signup via browser-based OAuth), server upload/download to cloud storage, auto-sync on server changes, conflict resolution, server diffing to detect changes, encrypted API key handling, and UI for manual sync operations with status indicators.
+
+js/selfhost.js - Self-hosted monitoring dashboard (SelfHost object). Manages monitoring infrastructure for VPS servers via the CTRLServers authorization and API servers. Features: OAuth login to CTRLServers account, hosting server management (add/delete), Discord webhook connections for notifications, alert rule system (RAM/CPU/Disk thresholds, online/offline state, starting state awareness), monitored server management with live stats (RAM, CPU, disk), installation script generation with configurable report cooldown, server auto-sync settings, and log viewing with auto-polling.
+
+js/console.js - Pterodactyl server console module (ServerConsole object). Provides a WebSocket-based terminal console for Pterodactyl servers. Features: real-time log streaming, command input, power action buttons (start/stop/restart/kill), resource monitoring display (CPU, RAM, disk, uptime), status indicators, and auto-reconnection.
+
+js/files.js - Pterodactyl file manager module (ServerFiles object). Full-featured file browser for Pterodactyl servers via API. Features: directory navigation with breadcrumbs, file/folder creation, file editing with CodeMirror syntax highlighting (supports 30+ languages), file upload/download, file deletion, folder compression/decompression, archive extraction, file/folder renaming, copy/move, file permissions (chmod), and a built-in text editor with save functionality.
+
+js/databases.js - Pterodactyl database management module (ServerDatabases object). Manages MySQL/PostgreSQL databases via Pterodactyl API. Features: database listing with host/port/username/password display, database creation, password rotation, deletion with confirmation, and password copy-to-clipboard.
+
+js/backups.js - Pterodactyl backup management module (ServerBackups object). Manages server backups. Features: backup listing with size and creation date, backup creation with optional naming, backup deletion, backup restoration (with truncate option), backup download via temporary URL, backup lock/unlock toggling, and storage usage display.
+
+js/network.js - Pterodactyl network/allocation management module (ServerNetwork object). Manages server network allocations. Features: allocation listing (IP:port pairs), adding new allocations, removing allocations, and IP alias management.
+
+js/nginx.js - Web server management module (WebServer object). Detects and manages Nginx or Apache web servers on VPS. Features: automatic web server detection (nginx vs apache), virtual host listing with server names and SSL status, SSL certificate listing from Let's Encrypt, configuration file content display, and web server reload/restart functionality.
+
+js/packages.js - VPS package manager module (Packages object). Provides one-click package installation for VPS servers. Features: OS detection (Ubuntu, Debian, CentOS, RHEL, Rocky, AlmaLinux, Fedora, Arch, Alpine, Gentoo), package manager detection (apt, dnf, pacman, apk, emerge), installed package listing, pre-configured package catalog (Nginx, Apache, Python3, htop, btop, Fastfetch, Neofetch, Certbot, UFW, Node.js, MariaDB, PostgreSQL), batch installation, and installation output streaming.
+
+js/firewall.js - VPS firewall management module (Firewall object). Manages UFW/firewalld/iptables firewall rules. Features: rule listing (allow/deny, ports, protocols, source IPs), rule creation with protocol/port/source selection, rule deletion, firewall enable/disable, and status display.
+
+js/vps.js - VPS SSH console module (VPSConsole object). Provides a full terminal emulator for VPS servers via SSH. Features: xterm.js terminal with WebGL rendering, theme integration (dark/light/OLED), SSH connection management (password and key auth), session caching for tab switching, local echo with deduplication, tab completion via compgen, copy/paste (Ctrl+C/Ctrl+V), terminal resize with automatic fit, connection status indicators, and multi-session support.
+
+js/vps-disk.js - VPS disk usage analyzer module (VPSDisk object). Analyzes disk usage on VPS servers. Features: overall disk usage with ring chart visualization, filesystem usage bars with color coding (green/yellow/red by percentage), directory treemap showing largest directories, largest files table, auto-refresh every 10 seconds, and byte parsing for various units.
+
+js/vps-logs.js - VPS log viewer module (VPSLogs object). Views system logs on VPS servers. Features: multiple log file presets (syslog, auth.log, kern.log, Nginx error, Apache error, Docker, MySQL, PostgreSQL, systemd journal, dmesg), configurable line count (100-1000), live streaming mode with 2-second refresh, log filtering/search, color-coded log levels (error, warning, info), and clear functionality.
+
+js/vps-net.js - VPS network monitor module (VPSNet object). Monitors network interfaces on VPS servers. Features: interface listing with RX/TX statistics, real-time bandwidth rates (bytes/sec), total transfer counters, live bandwidth graph with canvas rendering, auto-refresh every 2 seconds, and history buffer of 60 data points.
+
+js/vps-processes.js - VPS process manager module (VPSProcesses object). Lists and manages running processes on VPS servers. Features: process listing (PID, user, CPU%, RAM%, VSZ, RSS, command), sortable columns, process filtering/search, auto-refresh every 3 seconds, kill process (SIGKILL), high CPU/memory highlighting, and summary statistics (total, active, high CPU counts).
+
+js/vps-ssl.js - VPS SSL certificate manager module (VPSSSL object). Manages SSL/TLS certificates on VPS servers via Certbot. Features: certificate listing with expiry status (valid/expiring/expired), certificate request with domain and email, individual certificate renewal, bulk renewal, certbot installation via package manager (apt/yum), and certificate detail display (domains, expiry date, path).
+
+js/vps-users.js - VPS system user management module (VPSUsers object). Manages Linux users on VPS servers. Features: user listing (name, UID, home, shell, groups), logged-in users display (who command), sudo group detection (sudo/wheel), user creation with password, user deletion (with home directory), password change, sudo group toggle, and root user identification.
+
+js/cardmanager.js - Custom card/widget manager module (CardManager object). Allows plugins to register custom dashboard cards. Features: card registration with custom HTML/content, card removal, card styling (custom CSS), and card position management within the dashboard grid.
+
+js/cheatsheet.js - Quick reference/cheatsheet module (Cheatsheet object). Displays command cheatsheets and quick reference information for server management tasks.
+
+js/cli.js - CLI interface module. Provides command-line interface functionality for the application.
+
+js/cron.js - Cron job manager module. Manages cron jobs on VPS servers via SSH.
+
+js/discord.js - Discord integration module. Handles Discord webhook notifications and bot integration features.
+
+js/docker.js - Docker container manager module (Docker object). Manages Docker containers on VPS servers. Features: container listing, container start/stop/restart/delete, image listing, container logs, and Docker Compose management.
+
+js/info.js - Server info/details module. Displays detailed server information including system specs, OS details, and hardware information.
+
+js/keychain.js - SSH keychain module (ServerKeychain object). Manages SSH private keys for VPS authentication. Features: key storage in localStorage, key creation/viewing/deletion, and key resolution for SSH connections.
+
+js/lockscreen.js - Lock screen module. Provides PIN/password-based application lock screen for security.
+
+js/minecraft.js - Minecraft server management module. Provides Minecraft-specific tools: server.properties editor, player management, rcon commands, and Minecraft-specific server controls.
+
+js/multiterm.js - Multi-terminal module. Allows opening multiple SSH terminal sessions simultaneously in split views.
+
+js/modal.js - Modal dialog module (Modal object). Provides reusable modal dialogs: alert, confirm, prompt, and custom content modals with action buttons and keyboard shortcuts (Escape to close).
+
+js/api.js - Pterodactyl API client module (Api object). Centralized API wrapper for all Pterodactyl panel interactions. Features: server listing, server details (cached), resource monitoring, power control, file management (list, read, write, create folder, delete, rename, compress, decompress), backup management, database management, schedule management, sub-user management, startup variable updates, Docker image updates, and account info fetching.
+
+js/activity.js - Activity/audit log module. Tracks and displays user actions and server events.
+
+js/appsettings.js - Application settings module. Manages global application settings like auto-start, notifications, and appearance preferences.
+
+js/cron.js - Cron/scheduled tasks module for VPS servers. Manages cron jobs via SSH with create/edit/delete operations.
+
+--- js/xterm/ FOLDER ---
+
+js/xterm/xterm.js - xterm.js terminal emulator library (minified). Provides the core terminal rendering, input handling, and ANSI escape sequence processing for the SSH console.
+
+js/xterm/xterm.css - xterm.js default stylesheet (minified). Provides terminal styling including cursor, selection, scroll bar, and character rendering styles.
+
+js/xterm/xterm-addon-fit.js - xterm.js Fit addon (minified). Automatically resizes the terminal to fit its container element.
+
+--- js/codemirror/ FOLDER ---
+
+js/codemirror/codemirror.min.js - CodeMirror core library (minified). Provides the code editor foundation used in the file editor for syntax-highlighted editing.
+
+js/codemirror/codemirror.min.css - CodeMirror base stylesheet (minified). Provides editor styling including cursor, selection, gutter, and scrollbar styles.
+
+js/codemirror/theme/material-darker.min.css - CodeMirror Material Darker theme (minified). Dark color theme for the code editor matching the app's dark mode.
+
+js/codemirror/mode/ - CodeMirror language mode files (minified). Includes syntax highlighting modes for: JavaScript, TypeScript, Python, CSS, HTML, XML, JSON, YAML, Shell/Bash, SQL, PHP, Ruby, Go, Rust, Java, C/C++, Kotlin, Swift, Dart, Lua, Haskell, Scala, Elm, Elixir, Sass/SCSS, Dockerfile, TOML, Vue, Pug, Markdown, and diff format.
+
+js/codemirror/addon/ - CodeMirror addon files (minified). Includes: edit/closebrackets.min.js (auto-close brackets), edit/matchbrackets.min.js (bracket matching), edit/closetag.min.js (auto-close HTML tags), selection/active-line.min.js (highlight active line), display/placeholder.min.js (placeholder text), comment/comment.min.js (toggle comments), fold/ addons (code folding: brace-fold, comment-fold, foldcode, foldgutter, indent-fold, markdown-fold, xml-fold), hint/ addons (autocompletion: anyword, css, html, javascript, show-hint, sql, xml).
+
+--- assets/ FOLDER ---
+
+assets/logo.png - Application logo/icon image.
+assets/pterodactyl.png - Pterodactyl panel server type icon.
+assets/ubuntu.png - Ubuntu Linux distribution icon.
+assets/debian.png - Debian Linux distribution icon.
+assets/centos.png - CentOS Linux distribution icon.
+assets/fedora.png - Fedora Linux distribution icon.
+assets/arch.png - Arch Linux distribution icon.
+assets/alpine.png - Alpine Linux distribution icon.
+assets/almalinux.png - AlmaLinux distribution icon.
+assets/rockylinux.png - Rocky Linux distribution icon.
+assets/rhel.png - Red Hat Enterprise Linux icon.
+assets/mint.png - Linux Mint distribution icon.
+assets/gentoo.png - Gentoo Linux distribution icon.
+
+--- src/assets/ FOLDER ---
+
+src/assets/logo.png - Application logo (source copy).
+src/assets/icon.ico - Windows application icon.
+src/assets/icon.icns - macOS application icon.
+src/assets/pterodactyl.png - Pterodactyl icon (source copy).
+src/assets/ubuntu.png - Ubuntu icon (source copy).
+src/assets/debian.png - Debian icon (source copy).
+src/assets/centos.png - CentOS icon (source copy).
+src/assets/fedora.png - Fedora icon (source copy).
+src/assets/arch.png - Arch icon (source copy).
+src/assets/alpine.png - Alpine icon (source copy).
+src/assets/almalinux.png - AlmaLinux icon (source copy).
+src/assets/rockylinux.png - Rocky Linux icon (source copy).
+src/assets/rhel.png - RHEL icon (source copy).
+src/assets/mint.png - Mint icon (source copy).
+src/assets/gentoo.png - Gentoo icon (source copy).
+
+--- .github/ FOLDER ---
+
+.github/workflows/build.yml - GitHub Actions CI/CD workflow. Automates building the Electron app for Windows, macOS, and Linux on push/release events using electron-builder.
