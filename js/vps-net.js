@@ -9,13 +9,18 @@ const VPSNet = {
     this.server = App.currentServer;
     this._prev = {};
     this._history = {};
-    this.render();
+    this.renderloading();
     this.fetch();
     this._interval = setInterval(() => this.fetch(), 2000);
   },
 
   destroy() {
     if (this._interval) { clearInterval(this._interval); this._interval = null; }
+  },
+
+  renderloading() {
+    const c = Utils.el('tabVpsNet');
+    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
   },
 
   render() {
@@ -35,7 +40,8 @@ const VPSNet = {
   async fetch() {
     if (!this.server) return;
     const res = await this.exec(`cat /proc/net/dev && ip -s link 2>/dev/null`);
-    if (!res?.stdout) return;
+    if (res?.error || !res?.stdout) return;
+    this.render();
     this.parseinterfaces(res.stdout);
     this.renderinterfaces();
     this.rendergraphs();

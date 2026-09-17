@@ -265,6 +265,7 @@ const App = {
     SelfHost.init();
     this.bindevents();
     this.bindwindowcontrols();
+    this.wirevpsexecutors();
     Servers.render();
     trackvisitor();
     this.checkforupdate();
@@ -289,6 +290,39 @@ const App = {
 
     this.startpolling();
     CTRLCloud.autosynconlaunch();
+  },
+
+  wirevpsexecutors() {
+    [VPSDisk, VPSNet, VPSSSL, VPSProcesses, VPSLogs, Packages, VPSInfo, Firewall,
+      VPSUsers, Cron, Services, Security, Docker, WebServer].forEach(module => {
+      if (!module) return;
+      module.exec = (command, options = {}) => Servers.execvps(module.server, command, {
+        ...options,
+        page: App.currentServerPage
+      });
+    });
+    if (SecurityScore) {
+      SecurityScore._exec = command => Servers.execvps(SecurityScore.server, command, { page: App.currentServerPage });
+    }
+    window.addEventListener('vps-command-result', (event) => this.handlevpscommandresult(event.detail));
+  },
+
+  handlevpscommandresult(detail) {
+    const { server, result, page } = detail || {};
+    if (!result?.error || server !== this.currentServer || page !== this.currentServerPage) return;
+    const tabId = { vpsNet: 'tabVpsNet', vpsConsole: 'tabVPSConsole', ssl: 'tabSSL', securityscore: 'tabSecurity' }[page]
+      || ('tab' + page.charAt(0).toUpperCase() + page.slice(1));
+    const tab = Utils.el(tabId);
+    if (!tab) return;
+    const message = result.error.type === 'root'
+      ? 'Oops... You must have Root permissions for this Tab.'
+      : result.error.type === 'timeout'
+        ? "We tried hard, but unfortunately, we didn't get a response from the VPS/VDS server within 60 seconds."
+        : 'Unable to connect to the VPS/VDS server. Check the connection and try again.';
+    setTimeout(() => {
+      if (server !== this.currentServer || page !== this.currentServerPage) return;
+      tab.innerHTML = `<div class="vps-tab-error">${Utils.escape(message)}</div>`;
+    }, 0);
   },
 
   startpolling() {
@@ -705,20 +739,6 @@ const App = {
     if (page !== 'disk' && VPSDisk.destroy) VPSDisk.destroy();
     if (page !== 'vpsNet' && VPSNet.destroy) VPSNet.destroy();
     if (page !== 'ssl' && VPSSSL.destroy) VPSSSL.destroy();
-    if (page !== 'selfhost') {
-      const shTab = Utils.el('tabSelfHost');
-      if (shTab && shTab._inServerPage && shTab._parentBeforeMove) {
-        shTab.style.display = 'none';
-        if (shTab._nextSibling && shTab._nextSibling.parentNode === shTab._parentBeforeMove) {
-          shTab._parentBeforeMove.insertBefore(shTab, shTab._nextSibling);
-        } else {
-          shTab._parentBeforeMove.appendChild(shTab);
-        }
-        shTab._inServerPage = false;
-        shTab._parentBeforeMove = null;
-        shTab._nextSibling = null;
-      }
-    }
     this.currentServerPage = page;
     if (typeof CTRLPlugin !== 'undefined') {
       CTRLPlugin.emit('page:serverpage', { page, server: this.currentServer });
@@ -767,7 +787,7 @@ const App = {
     const tab = Utils.el('tab' + page.charAt(0).toUpperCase() + page.slice(1));
     if (tab) tab.style.display = 'flex';
 
-    const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL', securityscore: 'tabSecurity', selfhost: 'tabSelfHost' };
+    const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL', securityscore: 'tabSecurity' };
     if (vpsTabMap[page]) {
       const vpsTab = Utils.el(vpsTabMap[page]);
       if (vpsTab) vpsTab.style.display = 'flex';
@@ -797,19 +817,6 @@ const App = {
     if (page === 'ssl' && App.currentServer) VPSSSL.load();
     if (page === 'docker' && App.currentServer) Docker.load();
     if (page === 'webServer' && App.currentServer) WebServer.load();
-    if (page === 'selfhost' && App.currentServer) {
-      const shTab = Utils.el('tabSelfHost');
-      const serverPage = Utils.el('serverPage');
-      if (shTab && serverPage && !shTab._inServerPage) {
-        shTab._parentBeforeMove = shTab.parentNode;
-        shTab._nextSibling = shTab.nextSibling;
-        serverPage.appendChild(shTab);
-        shTab._inServerPage = true;
-      }
-      if (shTab) shTab.style.display = 'flex';
-      SelfHost.render();
-      return;
-    }
     if (page === 'plugins') {
       Plugins.init();
       Plugins.loadpopular();

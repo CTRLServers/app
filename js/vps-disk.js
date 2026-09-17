@@ -4,13 +4,18 @@ const VPSDisk = {
 
   load() {
     this.server = App.currentServer;
-    this.render();
+    this.renderloading();
     this.fetch();
     this._interval = setInterval(() => this.fetch(), 10000);
   },
 
   destroy() {
     if (this._interval) { clearInterval(this._interval); this._interval = null; }
+  },
+
+  renderloading() {
+    const c = Utils.el('tabDisk');
+    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
   },
 
   render() {
@@ -43,6 +48,8 @@ const VPSDisk = {
       this.exec('du -h --max-depth=1 / 2>/dev/null | sort -rh | head -20'),
       this.exec('find / -xdev -type f -printf "%s %p\\n" 2>/dev/null | sort -rn | head -15 || find / -xdev -type f -size +10M -exec ls -lhS {} + 2>/dev/null | head -15')
     ]);
+    if (dfRes?.error || duRes?.error || bigRes?.error) return;
+    this.render();
     this.renderoverview(dfRes?.stdout || '');
     this.renderbars(dfRes?.stdout || '');
     this.rendertreemap(duRes?.stdout || '');

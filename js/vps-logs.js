@@ -19,13 +19,18 @@ const VPSLogs = {
 
   load() {
     this.server = App.currentServer;
-    this.render();
+    this.renderloading();
     this.loadlog();
   },
 
   destroy() {
     this._streaming = false;
     if (this._interval) { clearInterval(this._interval); this._interval = null; }
+  },
+
+  renderloading() {
+    const c = Utils.el('tabLogs');
+    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
   },
 
   render() {
@@ -68,6 +73,8 @@ const VPSLogs = {
       cmd = `tail -n ${this._lines} ${this._logpath}`;
     }
     const res = await this.exec(cmd);
+    if (res?.error) return;
+    if (!Utils.el('logOutput')) this.render();
     const output = Utils.el('logOutput');
     if (!output) return;
     const text = (res?.stdout || '') + (res?.stderr || '');

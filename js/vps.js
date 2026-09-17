@@ -82,12 +82,17 @@ const VPSConsole = {
       }
     });
 
-    this._closelistenerid = window.electronAPI.onsshclose((id) => {
+    this._closelistenerid = window.electronAPI.onsshclose((id, reason) => {
       if (this._sessionGeneration !== gen) return;
       if (id !== this.sshId) return;
       this.connected = false;
       this.sshId = null;
-      if (this.term) this.term.writeln('\r\n\x1b[33mConnection closed.\x1b[0m');
+      const message = reason || 'Connection closed';
+      if (this.server) {
+        this._cache[this._cachekey(this.server)] = { sshId: null, connected: false, termData: this._termDataCache, disconnected: true, reason: message };
+      }
+      if (this.term) this.term.writeln('\r\n\x1b[33m' + message + '\x1b[0m');
+      this.showreconnect(message);
     });
 
     const container = Utils.el('vpsConsoleWrap');
@@ -139,6 +144,7 @@ const VPSConsole = {
       this.connected = cached.connected;
       this.renderinfocard(server);
       this._recreateterm(cached);
+      this.checkcachedconnection(cached);
       return;
     }
     this.destroy();
@@ -259,6 +265,51 @@ const VPSConsole = {
     this._resizeObserver.observe(container);
   },
 
+  async checkcachedconnection(cached) {
+    if (!cached || cached.sshId === null || cached.sshId === undefined) {
+      this.showreconnect(cached?.reason || 'Connection timed-out');
+      return;
+    }
+    try {
+      const active = await window.electronAPI.sshsessionstatus(cached.sshId);
+      if (active || !this.server || this.sshId !== cached.sshId) return;
+      this.connected = false;
+      this.sshId = null;
+      this._cache[this._cachekey(this.server)] = { ...cached, sshId: null, connected: false, disconnected: true, reason: 'Connection timed-out' };
+      this.showreconnect('Connection timed-out');
+    } catch (e) {
+      this.showreconnect('Connection timed-out');
+    }
+  },
+
+  showreconnect(reason) {
+    const container = Utils.el('vpsConsoleWrap');
+    if (!container) return;
+    let panel = Utils.el('vpsConsoleReconnect');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'vpsConsoleReconnect';
+      panel.className = 'vps-console-reconnect';
+      container.appendChild(panel);
+    }
+    panel.innerHTML = `<div>${Utils.escape(reason || 'Connection timed-out')}</div><button class="btn btn-primary btn-sm" onclick="VPSConsole.reconnect()">Reconnect</button>`;
+    panel.style.display = 'flex';
+  },
+
+  hidereconnect() {
+    const panel = Utils.el('vpsConsoleReconnect');
+    if (panel) panel.remove();
+  },
+
+  async reconnect() {
+    if (!this.server) return;
+    this.hidereconnect();
+    if (this.term) this.term.writeln('\r\n\x1b[36mReconnecting...\x1b[0m');
+    this.sshId = null;
+    this.connected = false;
+    await this.connect();
+  },
+
   detach() {
     if (this.server && this.sshId !== null) {
       this._cache[this._cachekey(this.server)] = {
@@ -321,6 +372,8 @@ const VPSConsole = {
       }
       this.sshId = sshId;
       this.connected = true;
+      this.hidereconnect();
+      this._cache[this._cachekey(this.server)] = { sshId, connected: true, termData: this._termDataCache };
       window.electronAPI.sshready(this.sshId);
       if (this.fitAddon && this.term) {
         this.fitAddon.fit();
@@ -336,6 +389,7 @@ const VPSConsole = {
           this.term.writeln('\x1b[31mConnection failed: ' + msg + '\x1b[0m');
         }
       }
+      this.showreconnect(/timed out|timeout/i.test(msg) ? 'Connection timed-out' : 'Connection failed: ' + msg);
     }
   },
 

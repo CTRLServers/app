@@ -19,7 +19,7 @@ const SecurityScore = {
       <div class="sec-score-wrap" id="secScoreWrap">
         <div class="sec-loading">
           <div class="spinner"></div>
-          <p>Scanning server security...</p>
+          <p>Loading...</p>
         </div>
       </div>`;
   },
@@ -28,7 +28,7 @@ const SecurityScore = {
     if (!this.server) return;
     const el = Utils.el('secScoreWrap');
     if (!el) return;
-    el.innerHTML = '<div class="sec-loading"><div class="spinner"></div><p>Scanning server security...</p></div>';
+    el.innerHTML = '<div class="sec-loading"><div class="spinner"></div><p>Loading...</p></div>';
 
     const checks = {};
     const [sshResult, portsResult, fwResult, f2bResult, usersResult] = await Promise.allSettled([

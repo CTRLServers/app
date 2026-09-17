@@ -6,7 +6,7 @@ const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
-const APP_VERSION = '1.1.4';
+const APP_VERSION = '1.1.5';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
@@ -397,8 +397,15 @@ ipcMain.handle('ssh-connect', async (event, config) => {
       try { if (conn._sock) conn._sock.setNoDelay(true); } catch (e) {}
       conn.shell({ term: 'xterm-256color', cols: config.cols || 80, rows: config.rows || 24 }, (err, stream) => {
         if (err) { done(err.message || 'Shell request failed'); return; }
-        const entry = { conn, stream, win, ready: false, pendingData: [] };
+        const entry = { conn, stream, win, ready: false, pendingData: [], closed: false };
         sshConnections.set(id, entry);
+
+        const closeEntry = (reason) => {
+          if (entry.closed) return;
+          entry.closed = true;
+          sshConnections.delete(id);
+          if (win && !win.isDestroyed()) win.webContents.send('ssh-close', id, reason || 'Connection closed');
+        };
 
         const sendData = (data) => {
           if (!entry.ready) {
@@ -413,11 +420,8 @@ ipcMain.handle('ssh-connect', async (event, config) => {
         });
 
         stream.on('close', () => {
-          sshConnections.delete(id);
+          closeEntry('Connection closed');
           conn.end();
-          if (win && !win.isDestroyed()) {
-            win.webContents.send('ssh-close', id);
-          }
         });
 
         stream.stderr.on('data', (data) => {
@@ -429,14 +433,26 @@ ipcMain.handle('ssh-connect', async (event, config) => {
     });
 
     conn.on('error', (err) => {
-      done(err.message || 'SSH connection failed');
+      if (!settled) {
+        done(err.message || 'SSH connection failed');
+        return;
+      }
+      const entry = sshConnections.get(id);
+      if (!entry || entry.closed) return;
+      entry.closed = true;
+      sshConnections.delete(id);
+      const message = err.message || 'SSH connection failed';
+      const reason = /timed out|timeout|keepalive/i.test(message) ? 'Connection timed-out' : 'Connection lost';
+      if (win && !win.isDestroyed()) win.webContents.send('ssh-close', id, reason);
     });
 
     const connectConfig = {
       host: config.host,
       port: parseInt(config.port) || 22,
       username: config.username,
-      readyTimeout: 10000
+      readyTimeout: 10000,
+      keepaliveInterval: 15000,
+      keepaliveCountMax: 3
     };
 
     if (config.authType === 'password') {
@@ -478,6 +494,11 @@ ipcMain.on('ssh-resize', (event, id, cols, rows) => {
   }
 });
 
+ipcMain.handle('ssh-session-status', async (event, id) => {
+  const entry = sshConnections.get(id);
+  return Boolean(entry && !entry.closed && entry.win === BrowserWindow.fromWebContents(event.sender));
+});
+
 ipcMain.handle('ssh-disconnect', async (event, id) => {
   const entry = sshConnections.get(id);
   if (entry) {
@@ -490,12 +511,25 @@ ipcMain.handle('ssh-disconnect', async (event, id) => {
 ipcMain.handle('ssh-exec', async (event, config, command) => {
   return new Promise((resolve, reject) => {
     const conn = new Client();
+    let settled = false;
+    const finish = (error, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { conn.end(); } catch (e) {}
+      if (error) reject(error);
+      else resolve(result);
+    };
+    const timer = setTimeout(() => {
+      const error = new Error('VPS/VDS request timed out after 60 seconds.');
+      error.code = 'SSH_EXEC_TIMEOUT';
+      finish(error);
+    }, 60000);
 
     conn.on('ready', () => {
       conn.exec(command, (err, stream) => {
         if (err) {
-          conn.end();
-          reject(err.message || 'Exec request failed');
+          finish(err.message || 'Exec request failed');
           return;
         }
 
@@ -503,8 +537,7 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
         let stderr = '';
 
         stream.on('close', (code) => {
-          conn.end();
-          resolve({ stdout, stderr, exitCode: code });
+          finish(null, { stdout, stderr, exitCode: typeof code === 'number' ? code : 1 });
         });
 
         stream.on('data', (data) => {
@@ -518,7 +551,7 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
     });
 
     conn.on('error', (err) => {
-      reject(err.message || 'SSH connection failed');
+      finish(err.message || 'SSH connection failed');
     });
 
     const connectConfig = {
@@ -535,7 +568,11 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
       if (config.passphrase) connectConfig.passphrase = config.passphrase;
     }
 
-    conn.connect(connectConfig);
+    try {
+      conn.connect(connectConfig);
+    } catch (e) {
+      finish(e.message || 'SSH connection failed');
+    }
   });
 });
 

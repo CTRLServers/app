@@ -213,7 +213,7 @@ const Docker = {
     if (!el) return;
 
     if (this.loading) {
-      el.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading Docker info...</div></div>';
+      el.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
       return;
     }
 

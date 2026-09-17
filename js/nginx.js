@@ -157,7 +157,7 @@ const WebServer = {
     if (!el) return;
 
     if (this.loading) {
-      el.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Detecting web server...</div></div>';
+      el.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
       return;
     }
 

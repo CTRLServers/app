@@ -7,13 +7,18 @@ const VPSProcesses = {
 
   load() {
     this.server = App.currentServer;
-    this.render();
+    this.renderloading();
     this.fetch();
     this._interval = setInterval(() => this.fetch(), 3000);
   },
 
   destroy() {
     if (this._interval) { clearInterval(this._interval); this._interval = null; }
+  },
+
+  renderloading() {
+    const c = Utils.el('tabProcesses');
+    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
   },
 
   render() {
@@ -50,7 +55,8 @@ const VPSProcesses = {
     if (!this.server) return;
     const cmd = 'ps aux --sort=-' + (this._sort === 'cpu' ? '%cpu' : this._sort === 'mem' ? '%mem' : this._sort === 'rss' ? 'rss' : this._sort === 'vsz' ? 'vsz' : this._sort === 'pid' ? 'pid' : this._sort === 'user' ? 'user' : 'comm');
     const res = await this.exec(cmd);
-    if (!res || !res.stdout) return;
+    if (!res || res.error || !res.stdout) return;
+    this.render();
     const lines = res.stdout.trim().split('\n');
     this._processes = [];
     for (let i = 1; i < lines.length; i++) {

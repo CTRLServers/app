@@ -27,8 +27,8 @@ ipcRenderer.on('ssh-data', (event, id, data) => {
   sshCallbacks.data.forEach(c => c.cb(id, data));
 });
 
-ipcRenderer.on('ssh-close', (event, id) => {
-  sshCallbacks.close.forEach(c => c.cb(id));
+ipcRenderer.on('ssh-close', (event, id, reason) => {
+  sshCallbacks.close.forEach(c => c.cb(id, reason));
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -105,6 +105,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   sshdisconnect: (id) => {
     return ipcRenderer.invoke('ssh-disconnect', id);
+  },
+  sshsessionstatus: (id) => {
+    return ipcRenderer.invoke('ssh-session-status', id);
   },
   sshexec: (config, command) => {
     return ipcRenderer.invoke('ssh-exec', config, command);

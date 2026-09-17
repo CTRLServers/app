@@ -149,7 +149,7 @@ const Security = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading security info...</div></div>';
+      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
       return;
     }
 
@@ -311,14 +311,8 @@ const Security = {
 
   async installfail2ban() {
     Modal.confirm('Install Fail2Ban', 'Install Fail2Ban using the Packages tab?', async () => {
-      const server = App.currentServer;
-      if (server) {
-        const cfg = {
-          host: server.host, port: server.port || 22, username: server.username || 'root'
-        };
-        if (server.authType === 'key') { const pk = await Servers.resolvevpsprivatekey(server); if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; } }
-        if (!cfg.authType) { cfg.authType = 'password'; cfg.password = server.password || ''; }
-        await window.electronAPI.sshexec(cfg, `echo '${(server.password || '').replace(/'/g, "'\\''")}' | sudo -S sh -c 'apt-get install -y fail2ban 2>/dev/null || dnf install -y fail2ban 2>/dev/null || pacman -S --noconfirm fail2ban 2>/dev/null' 2>/dev/null`);
+      if (this.server) {
+        await this.exec('apt-get install -y fail2ban 2>/dev/null || dnf install -y fail2ban 2>/dev/null || pacman -S --noconfirm fail2ban 2>/dev/null', { root: true });
         this.load();
       }
     });

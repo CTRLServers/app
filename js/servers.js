@@ -187,6 +187,92 @@ const Servers = {
     return '';
   },
 
+  _vpscommandneedsroot(command) {
+    return /(^|[;&|]\s*)(apt(?:-get)?|dnf|yum|pacman|apk|emerge|systemctl|service|ufw|firewall-cmd|iptables|nft|useradd|userdel|usermod|deluser|chpasswd|kill\s+-|certbot|docker|journalctl|dmesg|find\s+\/|du\s+.*\/|tail\s+.*\/var\/log|cat\s+\/etc\/shadow)\b/.test(command);
+  },
+
+  _shellliteral(value) {
+    return "'" + String(value).replace(/'/g, "'\\''") + "'";
+  },
+
+  _vpsresult(type, message) {
+    return { stdout: '', stderr: message || '', exitCode: -1, error: { type, message: message || '' } };
+  },
+
+  _notifyvpscommand(server, result, page) {
+    window.dispatchEvent(new CustomEvent('vps-command-result', { detail: { server, result, page } }));
+    return result;
+  },
+
+  async _vpsconfig(server) {
+    const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
+    if (server.authType === 'key') {
+      const privateKey = await this.resolvevpsprivatekey(server);
+      if (privateKey) {
+        cfg.authType = 'privateKey';
+        cfg.privateKey = privateKey;
+      }
+    }
+    if (!cfg.authType) {
+      cfg.authType = 'password';
+      cfg.password = server.password || '';
+    }
+    return cfg;
+  },
+
+  async execvps(server, command, options = {}) {
+    if (!server) return this._vpsresult('connection', 'No VPS/VDS server is selected.');
+    let cfg;
+    try {
+      cfg = await this._vpsconfig(server);
+    } catch (e) {
+      return this._notifyvpscommand(server, this._vpsresult('connection', e?.message || String(e)), options.page);
+    }
+
+    const run = async (remoteCommand) => {
+      try {
+        return await window.electronAPI.sshexec(cfg, remoteCommand);
+      } catch (e) {
+        const message = typeof e === 'string' ? e : (e?.message || String(e));
+        const type = /timed out after 60 seconds/i.test(message) ? 'timeout' : 'connection';
+        return this._vpsresult(type, message);
+      }
+    };
+
+    const needsRoot = options.root === true || (options.root !== false && this._vpscommandneedsroot(command));
+    if (!needsRoot || (server.username || 'root') === 'root') {
+      return this._notifyvpscommand(server, await run(command), options.page);
+    }
+
+    const password = server.password || '';
+    const payload = "printf %s " + this._shellliteral(btoa(unescape(encodeURIComponent(command)))) + " | base64 -d | sh";
+    const passPipe = "printf %s " + this._shellliteral(btoa(unescape(encodeURIComponent(password)))) + " | base64 -d | ";
+
+    const suCheck = await run(passPipe + "su - root -c 'id -u'");
+    if (suCheck.error) return this._notifyvpscommand(server, suCheck, options.page);
+    if (!suCheck.error && suCheck.exitCode === 0 && /^0\s*$/m.test(suCheck.stdout)) {
+      const result = await run(passPipe + 'su - root -c ' + this._shellliteral(payload));
+      result.privilege = 'root';
+      return this._notifyvpscommand(server, result, options.page);
+    }
+
+    const sudoCheck = await run(passPipe + "sudo -S -p '' -v");
+    if (sudoCheck.error) return this._notifyvpscommand(server, sudoCheck, options.page);
+    if (!sudoCheck.error && sudoCheck.exitCode === 0) {
+      const result = await run(passPipe + "sudo -S -p '' sh -c " + this._shellliteral(payload));
+      result.privilege = 'root';
+      return this._notifyvpscommand(server, result, options.page);
+    }
+
+    const result = await run(command);
+    result.privilege = 'user';
+    const combined = ((result.stdout || '') + '\n' + (result.stderr || '')).toLowerCase();
+    if (result.exitCode !== 0 && /(permission denied|operation not permitted|must be root|not root|superuser)/.test(combined)) {
+      result.error = { type: 'root', message: 'Oops... You must have Root permissions for this Tab.' };
+    }
+    return this._notifyvpscommand(server, result, options.page);
+  },
+
   load() {
     const data = localStorage.getItem('ctrl_servers');
     this.list = data ? JSON.parse(data) : [];

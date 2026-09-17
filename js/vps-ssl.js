@@ -3,11 +3,16 @@ const VPSSSL = {
 
   load() {
     this.server = App.currentServer;
-    this.render();
+    this.renderloading();
     this.fetch();
   },
 
   destroy() {},
+
+  renderloading() {
+    const c = Utils.el('tabSSL');
+    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+  },
 
   render() {
     const c = Utils.el('tabSSL');
@@ -28,6 +33,8 @@ const VPSSSL = {
   async fetch() {
     if (!this.server) return;
     const res = await this.exec('certbot certificates 2>/dev/null || echo "CERTBOT_NOT_FOUND"');
+    if (res?.error) return;
+    this.render();
     const stdout = res?.stdout || '';
     const status = Utils.el('sslStatus');
     const certs = Utils.el('sslCerts');
