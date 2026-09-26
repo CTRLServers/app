@@ -20,10 +20,15 @@ const ServerConsole = {
     if (cached) {
       this.wsId = cached.wsId;
       this.server = server;
+      this.serverInfo = null;
       this.connected = cached.connected;
       this._hasOutput = cached.hasOutput;
+      this._resetresourcepanel();
+      this.updateallocation();
       const output = Utils.el('consoleOutput');
       if (output && cached.outputHtml) output.innerHTML = cached.outputHtml;
+      this.updateresources(server.uuid);
+      this.loadserverinfo();
       this._updateconsolestate();
       this._updatebuttons(server.status || 'offline');
       this._applyfilter();
@@ -37,6 +42,8 @@ const ServerConsole = {
     this._searchmarks = [];
     this._searchidx = -1;
     this._graphHistory = { cpu: [], ram: [], disk: [] };
+    this._resetresourcepanel();
+    this.updateallocation();
     if (!this._listenersSetup) {
       this.setuplisteners();
       this._listenersSetup = true;
@@ -73,6 +80,17 @@ const ServerConsole = {
     this.server = null;
     this.serverInfo = null;
     this.connected = false;
+  },
+
+  credentialsChanged(server, oldUuid) {
+    const cached = this._cache[oldUuid || server.uuid];
+    if (cached?.wsId !== undefined) window.electronAPI.closews(cached.wsId);
+    delete this._cache[oldUuid || server.uuid];
+
+    if (this.server === server) {
+      this.destroy();
+      this.init(server);
+    }
   },
 
   setuplisteners() {
@@ -153,27 +171,84 @@ const ServerConsole = {
   },
 
   async loadserverinfo() {
+    const server = this.server;
     try {
-      const apiKey = await Servers.resolveapikey(this.server);
-      this.serverInfo = await Api.getcachedserver(this.server.panelUrl, apiKey, this.server.uuid);
+      const apiKey = await Servers.resolveapikey(server);
+      const serverInfo = await Api.getcachedserver(server.panelUrl, apiKey, server.uuid);
+      if (this.server !== server) return;
+      this.serverInfo = serverInfo;
+      this.updateallocation();
     } catch (e) {}
+  },
+
+  _resetresourcepanel() {
+    const values = {
+      resCpu: '—',
+      resRam: '—',
+      resDisk: '—',
+      resNetworkIn: '0 B',
+      resNetworkOut: '0 B',
+      resUptime: '—'
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const el = Utils.el(id);
+      if (el) el.textContent = value;
+    });
+    ['resCpuRing', 'resRamRing', 'resDiskRing'].forEach(id => {
+      const ring = Utils.el(id);
+      if (ring) ring.style.strokeDashoffset = 100;
+    });
+    this._updatestatebadge(this.server?.status || 'offline');
+  },
+
+  updateallocation() {
+    const value = Utils.el('resServerIp');
+    if (!value || !this.server) return;
+
+    const apiAllocations = this.serverInfo?.relationships?.allocations?.data || [];
+    const apiAllocation = apiAllocations.find(item => item.attributes?.is_default) || apiAllocations[0];
+    const savedAllocation = this.server.allocations?.find(item => item.is_default) || this.server.allocations?.[0];
+    const allocation = apiAllocation?.attributes || savedAllocation || {};
+    const host = allocation.ip_alias || allocation.ip || this.server.host || '';
+    const port = allocation.port || this.server.port || '';
+    const displayHost = host && host.includes(':') ? `[${host}]` : host;
+    const address = displayHost ? displayHost + (port ? ':' + port : '') : '—';
+
+    value.textContent = address;
+    value.title = address === '—' ? '' : address;
+  },
+
+  _updatestatebadge(state) {
+    const badge = Utils.el('resServerState');
+    if (!badge) return;
+    const normalized = state || 'offline';
+    badge.textContent = Utils.statuslabel(normalized);
+    badge.dataset.state = normalized;
   },
 
   updateresources(uuid) {
     const res = Servers.resources[uuid];
     if (!res) return;
     const server = this.server;
-    const memUsed = res.memory_bytes || 0;
-    const memTotal = (server.limits?.memory || 0) * 1024 * 1024;
-    const diskUsed = res.disk_bytes || 0;
+    const memUsed = Number.isFinite(Number(res.memory_bytes)) ? Number(res.memory_bytes) : 0;
+    const reportedMemTotal = Number(res.memory_limit_bytes);
+    const configuredMemTotal = (server.limits?.memory || 0) * 1024 * 1024;
+    const memTotal = Number.isFinite(reportedMemTotal) && reportedMemTotal > 0 ? reportedMemTotal : configuredMemTotal;
+    const diskUsed = Number.isFinite(Number(res.disk_bytes)) ? Number(res.disk_bytes) : 0;
     const diskTotal = (server.limits?.disk || 0) * 1024 * 1024;
+    const cpu = Number.isFinite(Number(res.cpu)) ? Number(res.cpu) : 0;
+    const networkIn = Number(res.network?.rx_bytes);
+    const networkOut = Number(res.network?.tx_bytes);
 
-    Utils.el('resCpu').textContent = (res.cpu || 0).toFixed(1) + '%';
-    Utils.el('resRam').textContent = Utils.formatbytes(memUsed) + ' / ' + Utils.formatmb(server.limits?.memory);
+    Utils.el('resCpu').textContent = cpu.toFixed(1) + '%';
+    Utils.el('resRam').textContent = Utils.formatbytes(memUsed) + ' / ' + Utils.formatbytes(memTotal);
     Utils.el('resDisk').textContent = Utils.formatbytes(diskUsed) + ' / ' + Utils.formatmb(server.limits?.disk);
+    Utils.el('resNetworkIn').textContent = Number.isFinite(networkIn) && networkIn >= 0 ? Utils.formatbytes(networkIn) : '0 B';
+    Utils.el('resNetworkOut').textContent = Number.isFinite(networkOut) && networkOut >= 0 ? Utils.formatbytes(networkOut) : '0 B';
     Utils.el('resUptime').textContent = Utils.formatuptime(res.uptime);
+    this._updatestatebadge(res.state || server.status);
 
-    const cpuPct = Math.min(res.cpu || 0, 100);
+    const cpuPct = Math.min(Math.max(cpu, 0), 100);
     const ramPct = memTotal > 0 ? Math.min((memUsed / memTotal) * 100, 100) : 0;
     const diskPct = diskTotal > 0 ? Math.min((diskUsed / diskTotal) * 100, 100) : 0;
 
@@ -299,8 +374,13 @@ const ServerConsole = {
       Servers.resources[this.server.uuid] = {
         state: stats.state,
         memory_bytes: stats.memory_bytes,
+        memory_limit_bytes: stats.memory_limit_bytes,
         cpu: stats.cpu_absolute,
         disk_bytes: stats.disk_bytes,
+        network: {
+          rx_bytes: stats.network?.rx_bytes,
+          tx_bytes: stats.network?.tx_bytes
+        },
         uptime: stats.uptime
       };
       this.server.status = stats.state;
@@ -332,6 +412,7 @@ const ServerConsole = {
     const btnRestart = Utils.el('btnRestart');
     const btnKill = Utils.el('btnKill');
     if (!btnStart) return;
+    this._updatestatebadge(state);
 
     if (state === 'running') {
       btnStart.disabled = true;

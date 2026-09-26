@@ -188,6 +188,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   monitorstart: (servers, tick, alerts) => {
     return ipcRenderer.invoke('monitor-start', servers, tick, alerts);
   },
+  monitorupdatecredentials: (id, apiKey) => {
+    return ipcRenderer.invoke('monitor-update-credentials', id, apiKey);
+  },
   monitorstop: () => {
     return ipcRenderer.invoke('monitor-stop');
   },
@@ -232,6 +235,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   oncloudaction: (callback) => {
     ipcRenderer.on('cloud-action', (event, data) => callback(data));
+  },
+  onacceptservers: (callback) => {
+    const drain = () => {
+      ipcRenderer.invoke('accept-servers-pending')
+        .then(data => {
+          if (data?.servers?.length) callback(data);
+        })
+        .catch(() => {});
+    };
+    ipcRenderer.on('accept-servers-available', drain);
+    drain();
+    return () => ipcRenderer.removeListener('accept-servers-available', drain);
   },
   winminimize: () => ipcRenderer.invoke('win-minimize'),
   winmaximize: () => ipcRenderer.invoke('win-maximize'),

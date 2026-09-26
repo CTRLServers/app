@@ -396,48 +396,6 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
         </div>
-        <div class="topbar-resources" id="topbarResources" style="display:none;">
-          <div class="res-card">
-            <svg class="res-ring" viewBox="0 0 36 36">
-              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
-              <circle class="res-ring-fill" id="resCpuRing" cx="18" cy="18" r="15.915" />
-            </svg>
-            <div class="res-card-info">
-              <span class="res-card-val" id="resCpu">—</span>
-              <span class="res-card-label">CPU</span>
-            </div>
-          </div>
-          <div class="res-card">
-            <svg class="res-ring" viewBox="0 0 36 36">
-              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
-              <circle class="res-ring-fill" id="resRamRing" cx="18" cy="18" r="15.915" />
-            </svg>
-            <div class="res-card-info">
-              <span class="res-card-val" id="resRam">—</span>
-              <span class="res-card-label">RAM</span>
-            </div>
-          </div>
-          <div class="res-card">
-            <svg class="res-ring" viewBox="0 0 36 36">
-              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
-              <circle class="res-ring-fill" id="resDiskRing" cx="18" cy="18" r="15.915" />
-            </svg>
-            <div class="res-card-info">
-              <span class="res-card-val" id="resDisk">—</span>
-              <span class="res-card-label">Disk</span>
-            </div>
-          </div>
-          <div class="res-card">
-            <svg class="res-ring" viewBox="0 0 36 36">
-              <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
-              <circle class="res-ring-fill" id="resUptimeRing" cx="18" cy="18" r="15.915" />
-            </svg>
-            <div class="res-card-info">
-              <span class="res-card-val" id="resUptime">—</span>
-              <span class="res-card-label">Uptime</span>
-            </div>
-          </div>
-        </div>
         <div class="topbar-actions" id="topbarActions">
           <div class="dashboard-search-wrap">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -457,14 +415,6 @@
           <button type="button" class="topbar-icon-btn" data-action="import-servers" title="Import servers">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
-        </div>
-          <div class="topbar-server-actions" id="topbarServerActions" style="display:none;">
-          <div class="server-control-group">
-            <button class="btn btn-green btn-sm" id="btnStart" onclick="ServerConsole.power('start')">Start</button>
-            <button class="btn btn-yellow btn-sm" id="btnRestart" onclick="ServerConsole.power('restart')">Restart</button>
-            <button class="btn btn-red btn-sm" id="btnStop" onclick="ServerConsole.power('stop')">Stop</button>
-            <button class="btn btn-red-outline btn-sm" id="btnKill" onclick="ServerConsole.confirmkill()">Kill</button>
-          </div>
         </div>
       </header>
 
@@ -519,6 +469,7 @@
         <div id="tabMultiTerm" style="display:none;"></div>
         <div id="tabPluginsGlobal" style="display:none;padding:20px;"></div>
         <div id="tabappsettings" style="display:none;"></div>
+        <div id="tabAcceptServers" style="display:none;padding:20px;max-width:800px;"></div>
 
         <div class="server-detail" id="serverDetail" style="display:none;">
           <div class="window-titlebar" id="windowTitlebar">
@@ -536,7 +487,8 @@
 
           <div class="server-page" id="serverPage">
             <div class="server-page-tab" id="tabConsole">
-              <div class="console-container">
+              <div class="console-layout">
+                <div class="console-container">
                 <div class="console-empty" id="consoleEmpty" style="display:none;">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"/>
@@ -626,10 +578,92 @@
                   </div>
                 </div>
                 <div class="console-output" id="consoleOutput"></div>
-                <div class="console-input-wrap">
-                  <input type="text" class="console-input" id="consoleInput" placeholder="Type a command..." />
-                  <button class="btn btn-primary btn-sm" onclick="ServerConsole.send()">Send</button>
+                  <div class="console-input-wrap">
+                    <input type="text" class="console-input" id="consoleInput" placeholder="Type a command..." />
+                    <button class="btn btn-primary btn-sm" onclick="ServerConsole.send()">Send</button>
+                  </div>
                 </div>
+                <aside class="server-resource-panel" id="topbarResources" style="display:none;" aria-label="Server resources and controls">
+                  <div class="server-resource-heading">
+                    <span>Server status</span>
+                    <span class="server-state-badge" id="resServerState" data-state="offline">Offline</span>
+                  </div>
+                  <div class="server-resource-list">
+                    <div class="res-card res-card-address">
+                      <span class="res-card-icon" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                      </span>
+                      <div class="res-card-info">
+                        <span class="res-card-val" id="resServerIp">—</span>
+                        <span class="res-card-label">Server IP</span>
+                      </div>
+                    </div>
+                    <div class="res-card">
+                      <svg class="res-ring" viewBox="0 0 36 36">
+                        <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+                        <circle class="res-ring-fill" id="resCpuRing" cx="18" cy="18" r="15.915" />
+                      </svg>
+                      <div class="res-card-info">
+                        <span class="res-card-val" id="resCpu">—</span>
+                        <span class="res-card-label">CPU</span>
+                      </div>
+                    </div>
+                    <div class="res-card">
+                      <svg class="res-ring" viewBox="0 0 36 36">
+                        <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+                        <circle class="res-ring-fill" id="resRamRing" cx="18" cy="18" r="15.915" />
+                      </svg>
+                      <div class="res-card-info">
+                        <span class="res-card-val" id="resRam">—</span>
+                        <span class="res-card-label">RAM</span>
+                      </div>
+                    </div>
+                    <div class="res-card">
+                      <svg class="res-ring" viewBox="0 0 36 36">
+                        <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+                        <circle class="res-ring-fill" id="resDiskRing" cx="18" cy="18" r="15.915" />
+                      </svg>
+                      <div class="res-card-info">
+                        <span class="res-card-val" id="resDisk">—</span>
+                        <span class="res-card-label">Disk</span>
+                      </div>
+                    </div>
+                    <div class="res-card">
+                      <span class="res-card-icon res-card-icon-network-in" aria-hidden="true">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>
+                      </span>
+                      <div class="res-card-info">
+                        <span class="res-card-val" id="resNetworkIn">0 B</span>
+                        <span class="res-card-label">Network (In)</span>
+                      </div>
+                    </div>
+                    <div class="res-card">
+                      <span class="res-card-icon res-card-icon-network-out" aria-hidden="true">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                      </span>
+                      <div class="res-card-info">
+                        <span class="res-card-val" id="resNetworkOut">0 B</span>
+                        <span class="res-card-label">Network (Out)</span>
+                      </div>
+                    </div>
+                    <div class="res-card">
+                      <svg class="res-ring" viewBox="0 0 36 36">
+                        <circle class="res-ring-bg" cx="18" cy="18" r="15.915" />
+                        <circle class="res-ring-fill" id="resUptimeRing" cx="18" cy="18" r="15.915" />
+                      </svg>
+                      <div class="res-card-info">
+                        <span class="res-card-val" id="resUptime">—</span>
+                        <span class="res-card-label">Uptime</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="server-resource-actions" id="topbarServerActions" style="display:none;">
+                    <button class="btn btn-green btn-sm" id="btnStart" onclick="ServerConsole.power('start')">Start</button>
+                    <button class="btn btn-yellow btn-sm" id="btnRestart" onclick="ServerConsole.power('restart')">Restart</button>
+                    <button class="btn btn-red btn-sm" id="btnStop" onclick="ServerConsole.power('stop')">Stop</button>
+                    <button class="btn btn-red-outline btn-sm" id="btnKill" onclick="ServerConsole.confirmkill()">Kill</button>
+                  </div>
+                </aside>
               </div>
             </div>
             <div class="server-page-tab" id="tabFiles" style="display:none;">
@@ -946,6 +980,7 @@
   <script src="js/pluginapi.js"></script>
   <script src="js/cardmanager.js"></script>
   <script src="js/pluginloader.js"></script>
+  <script src="js/accept-servers.js"></script>
   <script src="js/app.js"></script>
   <script>
     document.getElementById('titlebarMinimize').addEventListener('click', () => window.electronAPI.winminimize());

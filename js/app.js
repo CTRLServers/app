@@ -137,6 +137,7 @@ const Windows = {
     Utils.el('tabSelfHost').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
+    if (Utils.el('tabAcceptServers')) Utils.el('tabAcceptServers').style.display = 'none';
     Utils.el('dashboardFilterBar').style.display = Servers.list.length > 0 ? '' : 'none';
     if (Utils.el('dashboardFilterBar').style.display !== 'none') Servers.renderfilterbar();
   },
@@ -254,6 +255,7 @@ const App = {
     if (!passcodeOk) return;
 
     Servers.init();
+    if (typeof AcceptServers !== 'undefined') AcceptServers.init();
     ServerFiles.init();
     ServerKeychain.load();
     Plugins.init();
@@ -509,6 +511,18 @@ const App = {
     Utils.el('tabMultiTerm').style.display = page === 'multiterm' ? '' : 'none';
     Utils.el('tabPluginsGlobal').style.display = page === 'plugins' ? '' : 'none';
     Utils.el('tabappsettings').style.display = page === 'appsettings' ? '' : 'none';
+    const acceptTab = Utils.el('tabAcceptServers');
+    if (acceptTab) acceptTab.style.display = page === 'accept-servers' ? '' : 'none';
+    const dashboardEls = ['serversGrid', 'emptyState', 'pinnedServers', 'dashboardFilterBar'];
+    const onAccept = page === 'accept-servers';
+    if (onAccept) {
+      Utils.el('serversGrid').style.display = 'none';
+      Utils.el('emptyState').style.display = 'none';
+      const pinned = Utils.el('pinnedServers'); if (pinned) pinned.style.display = 'none';
+      Utils.el('dashboardFilterBar').style.display = 'none';
+      Utils.el('dashboardKeychain').style.display = 'none';
+      if (typeof AcceptServers !== 'undefined') AcceptServers.render();
+    }
 
     document.querySelectorAll('[id^="tabPluginPage-"]').forEach(el => el.style.display = 'none');
     if (page && page.startsWith('plugin-')) {
@@ -545,7 +559,7 @@ const App = {
       const pageConfig = CTRLPlugin._pages.find(p => p.id === pageId);
       return pageConfig ? pageConfig.label || pageId : 'Plugin';
     }
-    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'CTRLManage', selfhost: 'Self-Host', sftp: 'SFTP', multiterm: 'Multi Terminal', plugins: 'Plugins', appsettings: 'App Settings' }[page] || 'Dashboard';
+    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'CTRLManage', selfhost: 'Self-Host', sftp: 'SFTP', multiterm: 'Multi Terminal', plugins: 'Plugins', appsettings: 'App Settings', 'accept-servers': 'Accept Servers' }[page] || 'Dashboard';
   },
 
   showserverlist() {
@@ -604,6 +618,7 @@ const App = {
     Utils.el('tabSelfHost').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
+    if (Utils.el('tabAcceptServers')) Utils.el('tabAcceptServers').style.display = 'none';
     const searchInput = Utils.el('dashboardSearchInput');
     if (searchInput) { searchInput.value = ''; Servers._search = ''; Servers._filtertag = ''; Servers._filterfolder = ''; }
     Servers.renderfilterbar();
@@ -676,6 +691,7 @@ const App = {
     Utils.el('tabSelfHost').style.display = 'none';
     Utils.el('tabMultiTerm').style.display = 'none';
     Utils.el('tabappsettings').style.display = 'none';
+    if (Utils.el('tabAcceptServers')) Utils.el('tabAcceptServers').style.display = 'none';
     DiscordRPC.updateserver(server.name);
 
     document.querySelectorAll('#serverNav .nav-item').forEach(item => {

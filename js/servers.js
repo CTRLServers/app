@@ -281,14 +281,22 @@ const Servers = {
     this._apikeycache = {};
   },
 
+  clearapikeycache(server) {
+    if (!server || !this._apikeycache) return;
+    if (server.uuid) delete this._apikeycache[server.uuid];
+    if (server.id) delete this._apikeycache[server.id];
+    if (server.identifier) delete this._apikeycache[server.identifier];
+  },
+
   async resolveapikey(server) {
     if (!server || !server.apiKey) return '';
     if (!server.apiKey.startsWith('enc:')) return server.apiKey;
     const cachekey = server.uuid || server.id;
-    if (this._apikeycache[cachekey]) return this._apikeycache[cachekey];
+    const cached = this._apikeycache[cachekey];
+    if (cached && cached.value === server.apiKey) return cached.key;
     try {
       const dec = await window.electronAPI.cryptodecrypt(server.apiKey.slice(4));
-      this._apikeycache[cachekey] = dec;
+      this._apikeycache[cachekey] = { value: server.apiKey, key: dec };
       return dec;
     } catch (e) {
       return '';

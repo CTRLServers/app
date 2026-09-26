@@ -64,6 +64,82 @@ if (!gotLock) {
       const http = require('http');
       const callbackServer = http.createServer((req, res) => {
         const url = new URL(req.url, `http://127.0.0.1:${CLOUD_CALLBACK_PORT}`);
+        if (url.pathname === '/accept-servers') {
+          const corsHeaders = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '86400',
+          };
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204, { ...corsHeaders, 'Content-Length': '0' });
+            res.end();
+            return;
+          }
+          const json = (code, obj) => {
+            res.writeHead(code, { ...corsHeaders, 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(obj));
+          };
+          if (req.method !== 'POST') {
+            json(405, { success: false, error: 'Method not allowed, use POST' });
+            return;
+          }
+          let body = '';
+          req.on('data', (chunk) => {
+            body += chunk.toString('utf8');
+            if (body.length > 1024 * 1024) { try { req.destroy(); } catch (e) {} }
+          });
+          req.on('end', () => {
+            let payload;
+            try {
+              payload = JSON.parse(body);
+            } catch (e) {
+              json(400, { success: false, error: 'Invalid server payload' });
+              return;
+            }
+            const servers = Array.isArray(payload) ? payload : payload && typeof payload === 'object' ? payload.servers : null;
+            if (!Array.isArray(servers)) {
+              json(400, { success: false, error: 'Invalid server payload' });
+              return;
+            }
+            const panelFallback = (payload && typeof payload === 'object' && !Array.isArray(payload) && payload.panel && typeof payload.panel === 'object') ? payload.panel : {};
+            const fallbackPanelUrl = typeof panelFallback.url === 'string' ? panelFallback.url : '';
+            const fallbackApiKey = typeof panelFallback.apiKey === 'string' ? panelFallback.apiKey : '';
+            const normalized = [];
+            for (const s of servers) {
+              if (!s || typeof s !== 'object') continue;
+              const str = (v) => (typeof v === 'string' ? v.slice(0, 500).trim() : '');
+              const name = str(s.name);
+              const panelUrl = str(s.panelUrl || s.panel_url || s.panelURL || fallbackPanelUrl);
+              const identifier = str(s.identifier || s.shortId || s.short_id || s.uuid || s.serverUuid || s.server_uuid);
+              const uuid = str(s.uuid || s.serverUuid || s.server_uuid || identifier);
+              if (!name || !panelUrl || !uuid) continue;
+              try { const u = new URL(panelUrl); if (u.protocol !== 'https:' && u.protocol !== 'http:') continue; } catch (e) { continue; }
+              normalized.push({
+                name,
+                panelUrl: panelUrl.replace(/\/+$/, ''),
+                identifier,
+                uuid,
+                apiKey: str(s.apiKey || s.api_key || s.apiKeyPlain || s.key || fallbackApiKey),
+                node: str(s.node),
+                description: str(s.description).slice(0, 1000),
+                limits: s.limits && typeof s.limits === 'object' ? s.limits : {},
+                username: str(s.username || s.user),
+                host: str(s.host),
+                port: str(s.port),
+              });
+            }
+            if (normalized.length === 0) {
+              json(400, { success: false, error: 'Invalid server payload' });
+              return;
+            }
+            pendingServerImports.push(...normalized);
+            showMainWindow();
+            mainWindow.webContents.send('accept-servers-available');
+            json(200, { success: true, message: 'Servers received', count: normalized.length });
+          });
+          return;
+        }
         if (url.pathname === '/cloud-callback' || url.pathname === '/mcplugin-callback' || url.pathname === '/selfhost-callback') {
           const token = url.searchParams.get('token');
           const source = url.pathname === '/mcplugin-callback' ? 'mcplugin' : url.pathname === '/selfhost-callback' ? 'selfhost' : 'cloud';
@@ -170,6 +246,7 @@ let alertCooldown = {};
 let mainWindow = null;
 let tray = null;
 let isQuitting = false;
+let pendingServerImports = [];
 
 function createwindow() {
   mainWindow = new BrowserWindow({
@@ -202,6 +279,14 @@ function createwindow() {
       return false;
     }
   });
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createwindow();
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (!mainWindow.isVisible()) mainWindow.show();
+  app.focus();
+  mainWindow.focus();
 }
 
 function createtray() {
@@ -1097,6 +1182,20 @@ ipcMain.handle('monitor-start', async (event, servers, tick, alerts) => {
   runmonitorcheck();
   monitorInterval = setInterval(runmonitorcheck, monitorTick);
   return { ok: true, pid: process.pid, tick: monitorTick / 1000 };
+});
+
+ipcMain.handle('accept-servers-pending', async () => {
+  const servers = pendingServerImports;
+  pendingServerImports = [];
+  return { servers };
+});
+
+ipcMain.handle('monitor-update-credentials', async (event, id, apiKey) => {
+  const server = monitorServers.find(item => String(item.id) === String(id));
+  if (server && server.type === 'Pterodactyl' && typeof apiKey === 'string') {
+    server.apiKey = apiKey;
+  }
+  return { ok: Boolean(server) };
 });
 
 ipcMain.handle('monitor-stop', async () => {

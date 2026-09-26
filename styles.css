@@ -1802,20 +1802,13 @@ body {
   color: var(--text-secondary);
 }
 
-.topbar-resources {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  margin-right: 12px;
-}
-
 .res-card {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px 6px 6px;
-  border-radius: var(--radius-full);
+  min-width: 0;
+  padding: 7px 10px 7px 7px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--accent-light);
   transition: all 0.2s ease;
@@ -1826,8 +1819,8 @@ body {
 }
 
 .res-ring {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
 }
 
@@ -1874,6 +1867,124 @@ body {
   letter-spacing: 0.5px;
 }
 
+.console-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  gap: 16px;
+  padding: 0 20px 20px;
+}
+
+.server-resource-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.server-resource-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.server-state-badge {
+  max-width: 110px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  color: var(--text-muted);
+  background: var(--accent-light);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-state-badge[data-state="running"] {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.server-state-badge[data-state="starting"],
+.server-state-badge[data-state="stopping"] {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.server-state-badge[data-state="offline"],
+.server-state-badge[data-state="stopped"] {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.server-resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.server-resource-panel .res-card {
+  width: 100%;
+}
+
+.server-resource-panel .res-card-val {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+.res-card-icon {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.res-card-icon-network-in {
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.res-card-icon-network-out {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.res-card-address .res-card-val {
+  font-size: 11px;
+}
+
+.server-resource-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.server-resource-actions .btn {
+  justify-content: center;
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 .server-page {
   flex: 1;
   min-height: 0;
@@ -1915,6 +2026,7 @@ body {
   border: 1px solid var(--border);
   min-height: 0;
   position: relative;
+  min-width: 0;
 }
 
 .console-empty,
@@ -7136,6 +7248,53 @@ select.form-input option {
   height: 32px;
   border-radius: 4px;
   background: var(--console-bg);
+}
+
+@media (max-width: 1100px) {
+  #tabConsole {
+    overflow-y: auto;
+  }
+
+  .console-layout {
+    flex: none;
+    min-height: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .console-container {
+    min-height: 460px;
+  }
+
+  .server-resource-panel {
+    padding: 16px 0 0;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+    overflow: visible;
+  }
+
+  .server-resource-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .server-resource-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .console-layout {
+    padding: 0 12px 12px;
+  }
+
+  .console-container {
+    min-height: 400px;
+  }
+
+  .server-resource-list,
+  .server-resource-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .debug-info-grid {
