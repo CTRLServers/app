@@ -6,7 +6,7 @@ const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
-const APP_VERSION = '1.1.5';
+const APP_VERSION = '1.1.6';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
@@ -582,6 +582,62 @@ ipcMain.on('ssh-resize', (event, id, cols, rows) => {
 ipcMain.handle('ssh-session-status', async (event, id) => {
   const entry = sshConnections.get(id);
   return Boolean(entry && !entry.closed && entry.win === BrowserWindow.fromWebContents(event.sender));
+});
+
+ipcMain.handle('ssh-exec-session', async (event, id, command) => {
+  const entry = sshConnections.get(id);
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!entry || entry.closed || entry.win !== win) {
+    throw new Error('SSH session is unavailable.');
+  }
+  if (typeof command !== 'string' || !command.trim()) {
+    throw new Error('SSH command is required.');
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let stream = null;
+    const finish = (error, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) reject(error);
+      else resolve(result);
+    };
+    const timer = setTimeout(() => {
+      try { if (stream) stream.close(); } catch (e) {}
+      const error = new Error('VPS/VDS request timed out after 60 seconds.');
+      error.code = 'SSH_EXEC_TIMEOUT';
+      finish(error);
+    }, 60000);
+
+    try {
+      entry.conn.exec(command, (err, execStream) => {
+        if (err) {
+          finish(new Error(err.message || 'Exec request failed'));
+          return;
+        }
+        stream = execStream;
+        let stdout = '';
+        let stderr = '';
+
+        stream.on('close', (code) => {
+          finish(null, { stdout, stderr, exitCode: typeof code === 'number' ? code : 1 });
+        });
+        stream.on('error', (error) => {
+          finish(error);
+        });
+        stream.on('data', (data) => {
+          stdout += data.toString();
+        });
+        stream.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+      });
+    } catch (error) {
+      finish(error);
+    }
+  });
 });
 
 ipcMain.handle('ssh-disconnect', async (event, id) => {

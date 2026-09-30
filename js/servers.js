@@ -220,6 +220,19 @@ const Servers = {
     return cfg;
   },
 
+  async _execvpscommand(server, cfg, command) {
+    const sessionId = typeof VPSConsole !== 'undefined' ? VPSConsole.getsessionid(server) : null;
+    if (sessionId !== null && window.electronAPI.sshexecsession) {
+      try {
+        return await window.electronAPI.sshexecsession(sessionId, command);
+      } catch (e) {
+        const message = typeof e === 'string' ? e : (e?.message || String(e));
+        if (!/SSH session is unavailable/i.test(message)) throw e;
+      }
+    }
+    return await window.electronAPI.sshexec(cfg, command);
+  },
+
   async execvps(server, command, options = {}) {
     if (!server) return this._vpsresult('connection', 'No VPS/VDS server is selected.');
     let cfg;
@@ -231,7 +244,7 @@ const Servers = {
 
     const run = async (remoteCommand) => {
       try {
-        return await window.electronAPI.sshexec(cfg, remoteCommand);
+        return await this._execvpscommand(server, cfg, remoteCommand);
       } catch (e) {
         const message = typeof e === 'string' ? e : (e?.message || String(e));
         const type = /timed out after 60 seconds/i.test(message) ? 'timeout' : 'connection';
@@ -349,7 +362,7 @@ const Servers = {
         cfg.password = server.password || '';
       }
       if (cfg.authType === 'password' && !cfg.password) return;
-      const result = await window.electronAPI.sshexec(cfg, "cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"'");
+      const result = await this._execvpscommand(server, cfg, "cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"'");
       if (result && result.stdout && result.stdout.trim()) {
         server.os = result.stdout.trim();
         this.save();
@@ -818,7 +831,7 @@ const Servers = {
         }
         if (cfg.authType === 'password' && !cfg.password) continue;
         const cmd = "free -b | awk '/Mem:/{print $2,$3} /Swap:/{print $2,$3}' && df -B1 / | awk 'NR==2{print $2,$3}' && cat /proc/loadavg && nproc";
-        const result = await window.electronAPI?.sshexec?.(cfg, cmd);
+        const result = await this._execvpscommand(server, cfg, cmd);
         if (result && result.stdout) {
           const lines = result.stdout.trim().split('\n');
           const mem = lines[0]?.split(/\s+/) || [];

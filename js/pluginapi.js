@@ -396,7 +396,7 @@ const CTRLPlugin = {
     if (!cfg.password && cfg.authType === 'password') {
       throw new Error('No password saved for this server');
     }
-    return await window.electronAPI.sshexec(cfg, command);
+    return await Servers._execvpscommand(server, cfg, command);
   },
 
   async sftpList(server, remotePath) {

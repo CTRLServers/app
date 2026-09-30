@@ -20,6 +20,18 @@ const VPSConsole = {
     return String(server.id || [server.host, server.port || 22, server.username || 'root', server.authType || 'password'].join(':'));
   },
 
+  getsessionid(server) {
+    if (!server) return null;
+    const key = this._cachekey(server);
+    if (this.server && this._cachekey(this.server) === key && this.connected && this.sshId !== null) {
+      return this.sshId;
+    }
+    const cached = this._cache[key];
+    return cached && cached.connected && cached.sshId !== null && cached.sshId !== undefined
+      ? cached.sshId
+      : null;
+  },
+
   _maketermtheme() {
     const t = Theme.getcurrent();
     const themes = {

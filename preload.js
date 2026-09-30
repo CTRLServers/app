@@ -109,6 +109,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sshsessionstatus: (id) => {
     return ipcRenderer.invoke('ssh-session-status', id);
   },
+  sshexecsession: (id, command) => {
+    return ipcRenderer.invoke('ssh-exec-session', id, command);
+  },
   sshexec: (config, command) => {
     return ipcRenderer.invoke('ssh-exec', config, command);
   },

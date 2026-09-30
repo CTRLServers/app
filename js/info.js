@@ -2,25 +2,39 @@ const VPSInfo = {
   server: null,
   loading: false,
   data: null,
+  _cache: {},
+  _loadGeneration: 0,
+
+  _cachekey(server) {
+    return String(server.id || [server.host, server.port || 22, server.username || 'root'].join(':'));
+  },
 
   async load() {
     this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
 
-    this.loading = true;
+    const server = this.server;
+    const cacheKey = this._cachekey(server);
+    const generation = ++this._loadGeneration;
+    this.data = this._cache[cacheKey] || null;
+    this.loading = !this.data;
     this.render();
 
     try {
-      await this.fetchinfo();
+      const data = await this.fetchinfo(server);
+      this._cache[cacheKey] = data;
+      if (generation !== this._loadGeneration) return;
+      this.data = data;
     } catch (e) {
       console.error('Info load error:', e);
     }
 
+    if (generation !== this._loadGeneration) return;
     this.loading = false;
     this.render();
   },
 
-  async fetchinfo() {
+  async fetchinfo(server) {
     const cmds = {
       disk: "df -B1 / | tail -1 | awk '{print $2,$3,$4,$5}'",
       disk_fs: "df -Th / | tail -1 | awk '{print $2}'",
@@ -37,7 +51,7 @@ const VPSInfo = {
       procs_running: "ps aux 2>/dev/null | awk '$8 ~ /R/ {count++} END {print count+0}'",
       gpu: "lspci 2>/dev/null | grep -iE 'vga|3d|display' || echo 'No GPU detected'",
       packages_cmd: this.getpkgcountcmd(),
-      public_ip: "curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo 'N/A'",
+      public_ip: "curl -fsS --connect-timeout 2 --max-time 3 https://ifconfig.me 2>/dev/null || curl -fsS --connect-timeout 2 --max-time 3 https://icanhazip.com 2>/dev/null || echo 'N/A'",
       net_ifaces: "ip -4 -o addr show 2>/dev/null | awk '{print $2, $4}' || hostname -I",
       timezone: "timedatectl 2>/dev/null | grep 'Time zone' | awk '{print $3}' || cat /etc/timezone 2>/dev/null || readlink /etc/localtime 2>/dev/null | sed 's|/usr/share/zoneinfo/||'",
       ntp_sync: "timedatectl 2>/dev/null | grep -i 'synchronized' | awk -F': ' '{print $2}' || echo 'N/A'",
@@ -46,23 +60,24 @@ const VPSInfo = {
 
     const results = {};
     const entries = Object.entries(cmds);
+    const script = entries.map(([key, command]) =>
+      `printf '\\036${key}\\037'; { ${command}; } 2>/dev/null; printf '\\035'`
+    ).join('\n');
+    const response = await this.exec(script, { root: false });
 
-    const batch = await Promise.allSettled(
-      entries.map(([, cmd]) => this.exec(cmd))
-    );
-
-    entries.forEach(([key], i) => {
-      const res = batch[i];
-      results[key] = (res.status === 'fulfilled' && res.value.exitCode === 0)
-        ? res.value.stdout.trim()
-        : '';
-    });
+    for (const record of (response.stdout || '').split('\x1e').slice(1)) {
+      const keyEnd = record.indexOf('\x1f');
+      const valueEnd = record.indexOf('\x1d', keyEnd + 1);
+      if (keyEnd === -1 || valueEnd === -1) continue;
+      const key = record.slice(0, keyEnd);
+      results[key] = record.slice(keyEnd + 1, valueEnd).trim();
+    }
 
     const ramParts = (results.ram || '').split(' ').map(Number);
     const diskParts = (results.disk || '').split(' ').map(Number);
     const swapParts = (results.swap || '').split(' ').map(Number);
 
-    this.data = {
+    return {
       os: results.os || 'Unknown',
       kernel: results.kernel || 'Unknown',
       hostname: results.hostname_cmd || 'Unknown',
@@ -122,30 +137,8 @@ const VPSInfo = {
     return cmds[Packages.pkgManager] || cmds.apt;
   },
 
-  async exec(command) {
-    const cfg = {
-      host: this.server.host,
-      port: this.server.port || 22,
-      username: this.server.username || 'root'
-    };
-    if (this.server.authType === 'key') {
-      const pk = await Servers.resolvevpsprivatekey(this.server);
-      if (pk) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = pk;
-      }
-    }
-    if (!cfg.authType) {
-      cfg.authType = 'password';
-      cfg.password = this.server.password || '';
-    }
-    const isRoot = (this.server.username || 'root') === 'root';
-    if (isRoot) {
-      return await window.electronAPI.sshexec(cfg, command);
-    }
-    const pass = (this.server.password || '').replace(/'/g, "'\\''");
-    const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+  async exec(command, options = {}) {
+    return await Servers.execvps(this.server, command, { ...options, page: App.currentServerPage });
   },
 
   fmt(bytes) {
