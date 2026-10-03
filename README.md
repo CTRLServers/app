@@ -4,7 +4,7 @@ Hello! Welcome to the repository. This is the code from CTRLServers App, here is
 
 - Managing Pterodactyl, VPS and VDS servers in one place
 - Full control panel -- console, files, users, backups, schedules, databases
-- VPS tools -- terminal, processes, logs, disk, network, SSL, cron, docker, security score
+- VPS tools -- terminal, processes, logs, disk, network, SSL, cron, auto-start inventory, docker, and security management
 - Multi-terminal -- run commands on multiple servers at once
 - SFTP tab with built-in code editor
 - Modrinth plugin and mod browser

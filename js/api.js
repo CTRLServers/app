@@ -64,10 +64,28 @@ const Api = {
   async readfile(panelUrl, apiKey, uuid, file) {
     const base = panelUrl.replace(/\/+$/, '');
     const res = await fetch(`${base}/api/client/servers/${uuid}/files/contents?file=${encodeURIComponent(file)}`, {
-      headers: this.headers(apiKey)
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/vnd.pterodactyl.v1+json'
+      }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
+    const content = new TextDecoder('utf-8').decode(await res.arrayBuffer());
+    if (content.length) return content;
+
+    const downloadres = await fetch(`${base}/api/client/servers/${uuid}/files/download?file=${encodeURIComponent(file)}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/vnd.pterodactyl.v1+json'
+      }
+    });
+    if (!downloadres.ok) throw new Error(`HTTP ${downloadres.status}`);
+    const downloaddata = await downloadres.json();
+    const signedurl = downloaddata.attributes?.url || downloaddata.data?.attributes?.url;
+    if (!signedurl) throw new Error('Pterodactyl did not return a file download URL');
+    const fileres = await fetch(signedurl);
+    if (!fileres.ok) throw new Error(`File download failed: HTTP ${fileres.status}`);
+    return new TextDecoder('utf-8').decode(await fileres.arrayBuffer());
   },
 
   async createfolder(panelUrl, apiKey, uuid, name, path) {
@@ -82,12 +100,20 @@ const Api = {
 
   async writefile(panelUrl, apiKey, uuid, file, content) {
     const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/write`, {
+    const res = await fetch(`${base}/api/client/servers/${uuid}/files/write?file=${encodeURIComponent(file)}`, {
       method: 'POST',
-      headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file, content })
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/vnd.pterodactyl.v1+json',
+        'Content-Type': 'text/plain; charset=UTF-8'
+      },
+      body: String(content ?? '')
     });
-    return res.ok;
+    if (!res.ok) {
+      const details = (await res.text()).slice(0, 1000);
+      throw new Error(`HTTP ${res.status}${details ? ': ' + details : ''}`);
+    }
+    return true;
   },
 
   async uploadfiles(panelUrl, apiKey, uuid, directory, files) {

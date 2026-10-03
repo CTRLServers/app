@@ -3,6 +3,7 @@ const LockScreen = {
 
   show(resolve) {
     this._resolve = resolve;
+    if (typeof MCP !== 'undefined') MCP.setlocked(true);
     const overlay = Utils.el('lockScreenOverlay');
     if (overlay) overlay.style.display = 'flex';
     const input = Utils.el('lockScreenInput');
@@ -42,6 +43,7 @@ const LockScreen = {
 
     if (ok) {
       this.hide();
+      if (typeof MCP !== 'undefined') MCP.setlocked(false);
       if (this._resolve) this._resolve(true);
       this._resolve = null;
     } else {

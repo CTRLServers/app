@@ -115,8 +115,9 @@ const AppSettings = {
   async clearcache() {
     try {
       localStorage.removeItem('ctrl_servers');
-      localStorage.removeItem('ctrl_keychain');
+      localStorage.removeItem(ServerKeychain.STORAGE_KEY);
       localStorage.removeItem('ctrlservers_sftp');
+      ServerKeychain.keys = [];
       this.render();
       Modal.show('Cache Cleared', '<p style="color:var(--text-secondary);font-size:14px;margin:0;">Server data and connections have been cleared.</p>');
     } catch (e) {}
@@ -156,6 +157,16 @@ const AppSettings = {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div class="settings-card" id="mcpSettingsCard">
+          <div class="settings-card-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9h8M8 15h8"/><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4V2M17 4V2"/></svg>
+            <h3>MCP Server</h3>
+          </div>
+          <div class="settings-body" id="mcpSettingsBody">
+            <div class="mcp-loading"><span class="spinner-sm"></span> Loading MCP status...</div>
           </div>
         </div>
 
@@ -260,7 +271,7 @@ const AppSettings = {
               </div>
               <div class="debug-info-row">
                 <span class="debug-info-label">Keychains</span>
-                <span class="debug-info-val">${(ServerKeychain?.list || []).length} saved</span>
+                <span class="debug-info-val">${(ServerKeychain?.keys || []).length} saved</span>
               </div>
               <div class="debug-info-row">
                 <span class="debug-info-label">Storage Used</span>
@@ -325,6 +336,104 @@ const AppSettings = {
       </div>`;
 
     this.loadmonitor();
+    this.loadmcp();
+  },
+
+  async loadmcp() {
+    try {
+      const status = await window.electronAPI?.mcpgetstatus?.();
+      MCP.status = status;
+      this.rendermcp(status);
+    } catch (error) {
+      const body = Utils.el('mcpSettingsBody');
+      if (body) body.innerHTML = `<div class="settings-error">${Utils.escape(error?.message || String(error))}</div>`;
+    }
+  },
+
+  rendermcp(status) {
+    const body = Utils.el('mcpSettingsBody');
+    if (!body || !status) return;
+    const stateclass = status.running ? 'running' : status.error ? 'error' : 'stopped';
+    const statetext = status.running ? 'Running' : status.error ? 'Error' : 'Stopped';
+    if (!status.enabled) {
+      body.innerHTML = `
+        <div class="settings-row mcp-main-toggle">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Enable MCP Server</div>
+            <div class="settings-row-desc">Allow MCP-compatible AI clients to connect to CTRLServers.</div>
+          </div>
+          <button class="settings-toggle" onclick="MCP.toggleserver()" aria-label="Enable MCP Server"><span class="settings-toggle-knob"></span></button>
+        </div>`;
+      return;
+    }
+
+    const groups = {};
+    for (const definition of status.permissiondefinitions || []) {
+      if (!groups[definition.group]) groups[definition.group] = [];
+      groups[definition.group].push(definition);
+    }
+    const permissionshtml = Object.entries(groups).map(([group, definitions]) => `
+      <div class="mcp-permission-group">
+        <div class="mcp-permission-heading">${Utils.escape(group)}</div>
+        ${definitions.map(definition => {
+          const mode = status.permissions?.[definition.id] || 'deny';
+          return `<div class="mcp-permission-row">
+            <div class="mcp-permission-info">
+              <div class="mcp-permission-label">${Utils.escape(definition.label)}</div>
+              <div class="mcp-permission-description">${Utils.escape(definition.description)}</div>
+            </div>
+            <select class="mcp-permission-select mode-${mode}" onchange="MCP.setpermission('${Utils.escape(definition.id)}', this.value)" aria-label="${Utils.escape(definition.label)} permission">
+              <option value="allow" ${mode === 'allow' ? 'selected' : ''}>Allow</option>
+              <option value="ask" ${mode === 'ask' ? 'selected' : ''}>Ask</option>
+              <option value="deny" ${mode === 'deny' ? 'selected' : ''}>Deny</option>
+            </select>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+
+    const activity = (status.activity || []).slice(0, 12);
+    const activityhtml = activity.length ? activity.map(item => `
+      <div class="mcp-activity-row">
+        <span class="mcp-activity-result ${item.success ? 'success' : 'failed'}"></span>
+        <span class="mcp-activity-tool">${Utils.escape(item.tool || '')}</span>
+        <span class="mcp-activity-permission">${Utils.escape(item.permission || '')}</span>
+        <span class="mcp-activity-time">${Utils.escape(new Date(item.time).toLocaleTimeString())}</span>
+      </div>`).join('') : '<div class="mcp-empty-activity">No MCP calls in this app session.</div>';
+
+    body.innerHTML = `
+      <div class="settings-row mcp-main-toggle">
+        <div class="settings-row-info">
+          <div class="settings-row-label">Enable MCP Server</div>
+          <div class="settings-row-desc"><span class="mcp-state ${stateclass}"></span>${statetext}${status.locked ? ' - locked' : ''}</div>
+        </div>
+        <button class="settings-toggle active" onclick="MCP.toggleserver()" aria-label="Disable MCP Server"><span class="settings-toggle-knob"></span></button>
+      </div>
+      ${status.error ? `<div class="settings-error mcp-server-error">${Utils.escape(status.error)}</div>` : ''}
+      <div class="mcp-credentials">
+        <div class="mcp-section-title">Connection</div>
+        <div class="settings-field">
+          <label>Streamable HTTP endpoint</label>
+          <div class="mcp-copy-line"><input class="settings-input" readonly value="${Utils.escape(status.endpoint)}"><button class="btn-icon" onclick="MCP.copyendpoint()" title="Copy endpoint" aria-label="Copy endpoint"><span class="mcp-copy-symbol">&#10697;</span></button></div>
+        </div>
+        <div class="settings-field">
+          <label>Bearer token</label>
+          <div class="mcp-copy-line"><input class="settings-input" readonly type="${MCP._showtoken ? 'text' : 'password'}" value="${Utils.escape(status.token)}"><button class="btn-icon" onclick="MCP.toggletoken()" title="${MCP._showtoken ? 'Hide' : 'Show'} token" aria-label="${MCP._showtoken ? 'Hide' : 'Show'} token"><span class="mcp-eye-symbol">${MCP._showtoken ? '&#9673;' : '&#9678;'}</span></button><button class="btn-icon" onclick="MCP.copytoken()" title="Copy token" aria-label="Copy token"><span class="mcp-copy-symbol">&#10697;</span></button></div>
+        </div>
+        <div class="mcp-connection-actions">
+          <button class="btn btn-secondary btn-sm" onclick="MCP.copygenericconfig()">Copy generic HTTP config</button>
+          <button class="btn btn-secondary btn-sm" onclick="MCP.confirmregenerate()">Regenerate token</button>
+        </div>
+        <p class="settings-note">Use the endpoint and bearer token in Codex, Claude, Antigravity, or any client that supports MCP Streamable HTTP.</p>
+      </div>
+      <div class="mcp-permissions">
+        <div class="mcp-section-bar"><div class="mcp-section-title">Permissions</div><div class="mcp-bulk-actions"><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('allow')">Allow all</button><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('ask')">Ask all</button><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('deny')">Deny all</button></div></div>
+        <div class="mcp-permission-warning">VPS shell execution is unrestricted. When allowed, shell commands can perform operations covered by every narrower VPS permission.</div>
+        ${permissionshtml}
+      </div>
+      <div class="mcp-activity">
+        <div class="mcp-section-bar"><div class="mcp-section-title">Recent activity</div><button class="btn btn-secondary btn-sm" onclick="MCP.clearactivity()">Clear</button></div>
+        <div class="mcp-activity-list">${activityhtml}</div>
+      </div>`;
   },
 
   settheme(theme) {

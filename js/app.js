@@ -265,6 +265,7 @@ const App = {
     CTRLCloud.init();
     MCPlugin.init();
     SelfHost.init();
+    MCP.init();
     this.bindevents();
     this.bindwindowcontrols();
     this.wirevpsexecutors();
@@ -296,23 +297,20 @@ const App = {
 
   wirevpsexecutors() {
     [VPSDisk, VPSNet, VPSSSL, VPSProcesses, VPSLogs, Packages, VPSInfo, Firewall,
-      VPSUsers, Cron, Services, Security, Docker, WebServer].forEach(module => {
+      VPSUsers, Cron, Services, Autostart, Security, Docker, WebServer].forEach(module => {
       if (!module) return;
       module.exec = (command, options = {}) => Servers.execvps(module.server, command, {
         ...options,
         page: App.currentServerPage
       });
     });
-    if (SecurityScore) {
-      SecurityScore._exec = command => Servers.execvps(SecurityScore.server, command, { page: App.currentServerPage });
-    }
     window.addEventListener('vps-command-result', (event) => this.handlevpscommandresult(event.detail));
   },
 
   handlevpscommandresult(detail) {
     const { server, result, page } = detail || {};
     if (!result?.error || server !== this.currentServer || page !== this.currentServerPage) return;
-    const tabId = { vpsNet: 'tabVpsNet', vpsConsole: 'tabVPSConsole', ssl: 'tabSSL', securityscore: 'tabSecurity' }[page]
+    const tabId = { vpsNet: 'tabVpsNet', vpsConsole: 'tabVPSConsole', ssl: 'tabSSL' }[page]
       || ('tab' + page.charAt(0).toUpperCase() + page.slice(1));
     const tab = Utils.el(tabId);
     if (!tab) return;
@@ -491,6 +489,7 @@ const App = {
 
   navigateto(page) {
     this.currentPage = page;
+    const showdashboard = page === 'dashboard' && !this.currentServer;
     if (typeof CTRLPlugin !== 'undefined') {
       CTRLPlugin.emit('page:navigate', { page });
     }
@@ -500,9 +499,10 @@ const App = {
     Utils.el('pageTitle').textContent = this.getpagetitle(page);
     Utils.el('sidebar').classList.remove('open');
     Utils.el('topbarResources').style.display = 'none';
-    Utils.el('serversGrid').style.display = page === 'dashboard' ? 'grid' : 'none';
-    Utils.el('dashboardFilterBar').style.display = page === 'dashboard' ? '' : 'none';
-    Utils.el('emptyState').style.display = (page === 'dashboard' && Servers.list.length === 0) ? 'flex' : 'none';
+    Utils.el('serversGrid').style.display = showdashboard && Servers.list.length > 0 ? 'grid' : 'none';
+    Utils.el('dashboardFilterBar').style.display = showdashboard ? '' : 'none';
+    Utils.el('emptyState').style.display = showdashboard && Servers.list.length === 0 ? 'flex' : 'none';
+    Utils.el('pinnedServers').style.display = 'none';
     Utils.el('dashboardKeychain').style.display = page === 'keychain' ? 'flex' : 'none';
     Utils.el('tabCloud').style.display = page === 'cloud' ? '' : 'none';
     Utils.el('tabSftp').style.display = page === 'sftp' ? '' : 'none';
@@ -544,6 +544,7 @@ const App = {
     }
 
     if (page === 'plugins') PluginLoader.render();
+    if (showdashboard && Servers.list.length > 0) Servers.rendercards();
     if (page === 'appsettings') AppSettings.render();
     if (page === 'keychain') ServerKeychain.renderdashboard();
     if (page === 'cloud') CTRLCloud.render();
@@ -803,12 +804,11 @@ const App = {
     const tab = Utils.el('tab' + page.charAt(0).toUpperCase() + page.slice(1));
     if (tab) tab.style.display = 'flex';
 
-    const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL', securityscore: 'tabSecurity' };
+    const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL' };
     if (vpsTabMap[page]) {
       const vpsTab = Utils.el(vpsTabMap[page]);
       if (vpsTab) vpsTab.style.display = 'flex';
     }
-    if (page === 'securityscore' && App.currentServer) SecurityScore.load();
     if (page === 'files' && App.currentServer) ServerFiles.load(ServerFiles.currentPath || '/');
     if (page === 'activity' && App.currentServer) ServerActivity.load();
     if (page === 'users' && App.currentServer) ServerUsers.load();
@@ -825,6 +825,7 @@ const App = {
     if (page === 'vpsUsers' && App.currentServer) VPSUsers.load();
     if (page === 'cron' && App.currentServer) Cron.load();
     if (page === 'services' && App.currentServer) Services.load();
+    if (page === 'autostart' && App.currentServer) Autostart.load();
     if (page === 'security' && App.currentServer) Security.load();
     if (page === 'processes' && App.currentServer) VPSProcesses.load();
     if (page === 'logs' && App.currentServer) VPSLogs.load();

@@ -5,8 +5,9 @@ const { Client } = require('ssh2');
 const net = require('net');
 const fs = require('fs');
 const os = require('os');
+const { PERMISSION_DEFINITIONS, defaultpermissions, permissionfortool } = require('./mcp/permissions.cjs');
 
-const APP_VERSION = '1.1.6';
+const APP_VERSION = '1.1.7';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
@@ -59,6 +60,7 @@ if (!gotLock) {
     app.setAsDefaultProtocolClient('ctrlservers');
     createwindow();
     createtray();
+    startmcpifneeded();
 
     try {
       const http = require('http');
@@ -247,6 +249,273 @@ let mainWindow = null;
 let tray = null;
 let isQuitting = false;
 let pendingServerImports = [];
+let mcpserver = null;
+let mcpstarting = null;
+let mcpsettings = null;
+let mcplocked = true;
+let mcplasterror = '';
+let mcpactivity = [];
+let mcprequestcounter = 0;
+const mcppendingoperations = new Map();
+const mcppendingapprovals = new Map();
+
+function mcpsettingspath() {
+  return path.join(app.getPath('userData'), 'mcp-settings.json');
+}
+
+function normalizemcpsettings(value) {
+  const defaults = defaultpermissions();
+  const savedpermissions = value && typeof value.permissions === 'object' ? value.permissions : {};
+  const permissions = {};
+  for (const definition of PERMISSION_DEFINITIONS) {
+    const mode = savedpermissions[definition.id];
+    permissions[definition.id] = ['allow', 'ask', 'deny'].includes(mode) ? mode : defaults[definition.id];
+  }
+  return {
+    enabled: Boolean(value && value.enabled),
+    token: value && typeof value.token === 'string' && value.token.length >= 32
+      ? value.token
+      : 'ctrlmcp_' + crypto.randomBytes(32).toString('base64url'),
+    permissions,
+  };
+}
+
+function loadmcpsettings() {
+  if (mcpsettings) return mcpsettings;
+  let saved = null;
+  try {
+    saved = JSON.parse(fs.readFileSync(mcpsettingspath(), 'utf8'));
+  } catch (e) {}
+  mcpsettings = normalizemcpsettings(saved);
+  savemcpsettings();
+  return mcpsettings;
+}
+
+function savemcpsettings() {
+  if (!mcpsettings) return;
+  try {
+    const filename = mcpsettingspath();
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    const temporary = filename + '.tmp';
+    fs.writeFileSync(temporary, JSON.stringify(mcpsettings, null, 2), { mode: 0o600 });
+    fs.renameSync(temporary, filename);
+    try { fs.chmodSync(filename, 0o600); } catch (e) {}
+  } catch (e) {
+    mcplasterror = e.message || String(e);
+  }
+}
+
+function mcpstatus() {
+  const settings = loadmcpsettings();
+  return {
+    enabled: settings.enabled,
+    running: Boolean(mcpserver),
+    locked: mcplocked,
+    endpoint: mcpserver?.endpoint || 'http://127.0.0.1:12748/mcp',
+    token: settings.enabled ? settings.token : '',
+    permissions: { ...settings.permissions },
+    permissiondefinitions: PERMISSION_DEFINITIONS,
+    error: mcplasterror,
+    activity: mcpactivity.slice(0, 50),
+  };
+}
+
+function broadcastmcpstatus() {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('mcp-status', mcpstatus());
+}
+
+function recordmcpactivity(entry) {
+  mcpactivity.unshift({ ...entry, id: crypto.randomUUID() });
+  if (mcpactivity.length > 100) mcpactivity.length = 100;
+  broadcastmcpstatus();
+}
+
+async function startmcpifneeded() {
+  const settings = loadmcpsettings();
+  if (!settings.enabled || mcpserver) return mcpserver;
+  if (mcpstarting) return mcpstarting;
+  mcpstarting = (async () => {
+    try {
+      const module = await import('./mcp/server.mjs');
+      mcpserver = await module.startmcpserver({
+        host: '127.0.0.1',
+        port: 12748,
+        version: APP_VERSION,
+        gettoken: () => loadmcpsettings().token,
+        getpermissionstatus: () => ({
+          permissions: { ...loadmcpsettings().permissions },
+          note: 'allow runs immediately, ask requires approval in CTRLServers, and deny blocks the operation.',
+        }),
+        execute: executemcpoperation,
+        onactivity: recordmcpactivity,
+        onerror: error => {
+          mcplasterror = error?.message || String(error);
+          broadcastmcpstatus();
+        },
+      });
+      mcplasterror = '';
+      broadcastmcpstatus();
+      return mcpserver;
+    } catch (error) {
+      mcplasterror = error?.message || String(error);
+      mcpserver = null;
+      broadcastmcpstatus();
+      return null;
+    } finally {
+      mcpstarting = null;
+    }
+  })();
+  return mcpstarting;
+}
+
+async function stopmcpserver() {
+  const active = mcpserver;
+  mcpserver = null;
+  if (active) {
+    try { await active.close(); } catch (e) {}
+  }
+  for (const pending of mcppendingoperations.values()) pending.reject(new Error('MCP server was disabled.'));
+  for (const pending of mcppendingapprovals.values()) pending.resolve(false);
+  mcppendingoperations.clear();
+  mcppendingapprovals.clear();
+  broadcastmcpstatus();
+}
+
+function sanitizemcpvalue(value, key = '') {
+  const hidden = new Set(['apikey', 'password', 'privatekey', 'token', 'base64', 'content']);
+  if (hidden.has(String(key).toLowerCase()) || /(password|private.?key|api.?key|token|secret)/i.test(String(key))) {
+    return `[hidden ${typeof value === 'string' ? value.length : 0} characters]`;
+  }
+  if (Array.isArray(value)) {
+    const items = value.slice(0, 20).map(item => sanitizemcpvalue(item));
+    if (value.length > 20) items.push(`... ${value.length - 20} more`);
+    return items;
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([childkey, childvalue]) => [childkey, sanitizemcpvalue(childvalue, childkey)]));
+  }
+  return value;
+}
+
+function sanitizemcpargs(args) {
+  return sanitizemcpvalue(args || {});
+}
+
+function waitformcpapproval(tool, permission, args) {
+  return new Promise(resolve => {
+    const id = 'approval_' + (++mcprequestcounter);
+    const timer = setTimeout(() => {
+      mcppendingapprovals.delete(id);
+      resolve(false);
+    }, 60000);
+    mcppendingapprovals.set(id, {
+      resolve: value => {
+        clearTimeout(timer);
+        resolve(Boolean(value));
+      },
+    });
+    mainWindow.webContents.send('mcp-approval', { id, tool, permission, args: sanitizemcpargs(args) });
+  });
+}
+
+function sendmcpoperation(tool, permission, args) {
+  return new Promise((resolve, reject) => {
+    const id = 'operation_' + (++mcprequestcounter);
+    const timer = setTimeout(() => {
+      mcppendingoperations.delete(id);
+      reject(new Error('CTRLServers did not finish the MCP operation within 180 seconds.'));
+    }, 180000);
+    mcppendingoperations.set(id, {
+      resolve: value => { clearTimeout(timer); resolve(value); },
+      reject: error => { clearTimeout(timer); reject(error); },
+    });
+    mainWindow.webContents.send('mcp-operation', { id, tool, permission, args });
+  });
+}
+
+async function executemcpoperation(tool, args, requestedpermission) {
+  const settings = loadmcpsettings();
+  if (!settings.enabled) throw new Error('The CTRLServers MCP server is disabled.');
+  if (mcplocked) throw new Error('CTRLServers is locked. Unlock the app before using MCP tools.');
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error('CTRLServers is not available.');
+  const permission = permissionfortool(tool, args);
+  if (permission !== requestedpermission) throw new Error('MCP permission classification failed.');
+  const mode = settings.permissions[permission] || 'deny';
+  if (mode === 'deny') throw new Error(`Permission denied by CTRLServers: ${permission}`);
+  if (mode === 'ask') {
+    const approved = await waitformcpapproval(tool, permission, args);
+    if (!approved) throw new Error(`The user declined ${tool}.`);
+  }
+  return sendmcpoperation(tool, permission, args);
+}
+
+ipcMain.handle('mcp-get-status', async () => mcpstatus());
+
+ipcMain.handle('mcp-set-enabled', async (event, enabled) => {
+  const settings = loadmcpsettings();
+  settings.enabled = Boolean(enabled);
+  savemcpsettings();
+  if (settings.enabled) await startmcpifneeded();
+  else await stopmcpserver();
+  return mcpstatus();
+});
+
+ipcMain.handle('mcp-set-permission', async (event, permission, mode) => {
+  const definition = PERMISSION_DEFINITIONS.find(item => item.id === permission);
+  if (!definition) throw new Error('Unknown MCP permission.');
+  if (!['allow', 'ask', 'deny'].includes(mode)) throw new Error('Invalid MCP permission mode.');
+  loadmcpsettings().permissions[permission] = mode;
+  savemcpsettings();
+  broadcastmcpstatus();
+  return mcpstatus();
+});
+
+ipcMain.handle('mcp-set-all-permissions', async (event, mode) => {
+  if (!['allow', 'ask', 'deny'].includes(mode)) throw new Error('Invalid MCP permission mode.');
+  const settings = loadmcpsettings();
+  for (const definition of PERMISSION_DEFINITIONS) settings.permissions[definition.id] = mode;
+  savemcpsettings();
+  broadcastmcpstatus();
+  return mcpstatus();
+});
+
+ipcMain.handle('mcp-regenerate-token', async () => {
+  const settings = loadmcpsettings();
+  settings.token = 'ctrlmcp_' + crypto.randomBytes(32).toString('base64url');
+  savemcpsettings();
+  broadcastmcpstatus();
+  return mcpstatus();
+});
+
+ipcMain.handle('mcp-clear-activity', async () => {
+  mcpactivity = [];
+  broadcastmcpstatus();
+  return mcpstatus();
+});
+
+ipcMain.on('mcp-set-locked', (event, locked) => {
+  if (mainWindow && event.sender === mainWindow.webContents) {
+    mcplocked = Boolean(locked);
+    broadcastmcpstatus();
+  }
+});
+
+ipcMain.on('mcp-approval-result', (event, payload) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents || !payload) return;
+  const pending = mcppendingapprovals.get(payload.id);
+  if (!pending) return;
+  mcppendingapprovals.delete(payload.id);
+  pending.resolve(Boolean(payload.approved));
+});
+
+ipcMain.on('mcp-operation-result', (event, payload) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents || !payload) return;
+  const pending = mcppendingoperations.get(payload.id);
+  if (!pending) return;
+  mcppendingoperations.delete(payload.id);
+  if (payload.ok) pending.resolve(payload.result);
+  else pending.reject(new Error(payload.error || 'MCP operation failed.'));
+});
 
 function createwindow() {
   mainWindow = new BrowserWindow({
@@ -316,6 +585,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  stopmcpserver();
   if (monitorInterval) {
     clearInterval(monitorInterval);
     monitorInterval = null;
@@ -333,7 +603,10 @@ app.on('will-quit', () => {
   wsConnections.clear();
   sshConnections.forEach(ssh => { try { ssh.end(); } catch (e) {} });
   sshConnections.clear();
-  sftpConnections.forEach(sftp => { try { sftp.end(); } catch (e) {} });
+  sftpConnections.forEach(entry => {
+    try { if (entry.sftp) entry.sftp.end(); } catch (e) {}
+    try { if (entry.conn) entry.conn.end(); } catch (e) {}
+  });
   sftpConnections.clear();
 });
 
@@ -746,6 +1019,20 @@ ipcMain.handle('sftp-connect', async (event, config) => {
     });
     conn.on('error', (err) => { reject(err.message || 'SSH connection failed'); });
     conn.connect(buildsftpconfig(config));
+  });
+});
+
+ipcMain.handle('sftp-connect-session', async (event, sshId) => {
+  const sshEntry = sshConnections.get(sshId);
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!sshEntry || sshEntry.closed || sshEntry.win !== win) throw new Error('SSH session is unavailable.');
+  const id = ++sftpIdCounter;
+  return new Promise((resolve, reject) => {
+    sshEntry.conn.sftp((err, sftp) => {
+      if (err) { reject(err.message || 'SFTP setup failed'); return; }
+      sftpConnections.set(id, { conn: null, sftp, sharedSshId: sshId });
+      resolve(id);
+    });
   });
 });
 

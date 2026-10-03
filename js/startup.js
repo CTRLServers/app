@@ -5,10 +5,15 @@ const ServerStartup = {
   variables: [],
   dockerImages: {},
   currentImage: '',
+  _vartimers: {},
+  _autosavedelay: 5000,
+  _server: null,
 
   async load() {
     const s = App.currentServer;
     if (!s || s.type !== 'Pterodactyl') return;
+    this.clearvartimers();
+    this._server = s;
     this.loading = true;
     this.render();
     const apiKey = await Servers.resolveapikey(s);
@@ -16,7 +21,16 @@ const ServerStartup = {
       const data = await Api.fetchstartup(s.panelUrl, apiKey, s.uuid);
       if (data.meta) {
         this.startupCommand = data.meta.startup_command || '';
-        this.variables = (data.data || []).map(v => v.attributes);
+        this.variables = (data.data || []).map(v => {
+          const attributes = { ...v.attributes };
+          attributes.server_value = String(attributes.server_value ?? '');
+          attributes._originalvalue = attributes.server_value;
+          attributes._dirty = false;
+          attributes._saving = false;
+          attributes._saved = false;
+          attributes._error = '';
+          return attributes;
+        });
         this.dockerImages = data.meta.docker_images || {};
         if (data.meta.raw_startup_command) {
           this.currentImage = '';
@@ -38,21 +52,34 @@ const ServerStartup = {
     this.render();
   },
 
+  clearvartimers() {
+    Object.values(this._vartimers).forEach(timer => clearTimeout(timer));
+    this._vartimers = {};
+  },
+
   async updatevariable(idx) {
     const v = this.variables[idx];
-    if (!v) return;
-    const s = App.currentServer;
-    if (!s) return;
-    const apiKey = await Servers.resolveapikey(s);
+    if (!v || !v.is_editable || v._saving || !v._dirty) return;
+    clearTimeout(this._vartimers[idx]);
+    delete this._vartimers[idx];
+    const s = this._server;
+    if (!s || s.type !== 'Pterodactyl') return;
     v._saving = true;
+    v._saved = false;
+    v._error = '';
     this.render();
     try {
-      await Api.updatestartupvariable(s.panelUrl, apiKey, s.uuid, v.env_variable, v.server_value);
-      await this.load();
+      const apiKey = await Servers.resolveapikey(s);
+      const saved = await Api.updatestartupvariable(s.panelUrl, apiKey, s.uuid, v.env_variable, v.server_value);
+      if (!saved) throw new Error('Pterodactyl rejected the variable update');
+      v._originalvalue = v.server_value;
+      v._dirty = false;
+      v._saved = true;
     } catch (e) {
-      console.error(e);
+      v._error = e?.message || 'Failed to update variable';
     } finally {
       v._saving = false;
+      this.render();
     }
   },
 
@@ -122,12 +149,16 @@ const ServerStartup = {
                 <span class="var-name">${Utils.escape(v.name)}</span>
                 <span class="var-key">${Utils.escape(v.env_variable)}</span>
               </div>
-              ${v._saving ? '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg>' : ''}
+              ${v._saving ? '<span class="var-status"><svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg> Saving</span>' : v._saved ? '<span class="var-status var-status-saved">Saved</span>' : v._dirty ? '<span class="var-status">Unsaved</span>' : v.is_editable ? '<span class="var-status"></span>' : ''}
             </div>
             <div class="var-body">
               <p class="settings-note">${Utils.escape(v.description || '')}</p>
-              <input type="text" class="form-input" id="var_${i}" value="${Utils.escape(v.server_value || '')}" placeholder="${Utils.escape(v.default_value || '')}" ${!v.is_editable ? 'disabled' : ''} onchange="ServerStartup.onvarchange(${i}, this.value)" />
+              <div class="var-input-row">
+                <input type="text" class="form-input" id="var_${i}" value="${Utils.escape(v.server_value || '')}" placeholder="${Utils.escape(v.default_value || '')}" ${!v.is_editable || v._saving ? 'disabled' : ''} oninput="ServerStartup.onvarchange(${i}, this.value)" onblur="ServerStartup.onvarblur(${i})" />
+                ${v.is_editable ? `<button type="button" class="btn btn-primary btn-sm var-save-btn" id="var_save_${i}" onclick="ServerStartup.updatevariable(${i})" ${!v._dirty || v._saving ? 'disabled' : ''}>Save</button>` : ''}
+              </div>
               ${!v.is_editable ? '<span class="var-readonly">Read Only</span>' : ''}
+              ${v._error ? `<span class="var-error">${Utils.escape(v._error)}</span>` : ''}
             </div>
           </div>`;
     }
@@ -142,8 +173,28 @@ const ServerStartup = {
   },
 
   onvarchange(idx, val) {
-    if (this.variables[idx]) {
-      this.variables[idx].server_value = val;
+    const v = this.variables[idx];
+    if (!v || !v.is_editable) return;
+    v.server_value = val;
+    v._dirty = val !== v._originalvalue;
+    v._saved = false;
+    v._error = '';
+    clearTimeout(this._vartimers[idx]);
+    if (v._dirty) this._vartimers[idx] = setTimeout(() => this.updatevariable(idx), this._autosavedelay);
+    else delete this._vartimers[idx];
+    const button = Utils.el(`var_save_${idx}`);
+    if (button) button.disabled = !v._dirty || v._saving;
+    const card = Utils.el(`var_${idx}`)?.closest('.var-card');
+    const status = card?.querySelector('.var-status');
+    if (status && !v._saving) {
+      status.textContent = v._dirty ? 'Unsaved' : '';
+      status.classList.remove('var-status-saved');
     }
+  },
+
+  onvarblur(idx) {
+    clearTimeout(this._vartimers[idx]);
+    delete this._vartimers[idx];
+    if (this.variables[idx]?._dirty) return this.updatevariable(idx);
   },
 };

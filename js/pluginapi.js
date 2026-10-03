@@ -230,20 +230,14 @@ const CTRLPlugin = {
     if (!server || server.type !== 'Pterodactyl') throw new Error('Pterodactyl server required');
     const apiKey = await Servers.resolveapikey(server);
     if (!apiKey) throw new Error('No API key');
-    const base = server.panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${server.uuid}/files/contents?file=` + encodeURIComponent(filePath), {
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Accept': 'application/vnd.pterodactyl.v1+json'
-      }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.text();
+    return Api.readfile(server.panelUrl, apiKey, server.uuid, filePath);
   },
 
   async fileWrite(server, filePath, content) {
     if (!server || server.type !== 'Pterodactyl') throw new Error('Pterodactyl server required');
-    await this.pteroApi(server, 'POST', '/files/write', { file: filePath, content: btoa(unescape(encodeURIComponent(content))) });
+    const apiKey = await Servers.resolveapikey(server);
+    if (!apiKey) throw new Error('No API key');
+    await Api.writefile(server.panelUrl, apiKey, server.uuid, filePath, content);
     return true;
   },
 

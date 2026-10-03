@@ -32,13 +32,37 @@ const VPSSSL = {
 
   async fetch() {
     if (!this.server) return;
-    const res = await this.exec('certbot certificates 2>/dev/null || echo "CERTBOT_NOT_FOUND"');
-    if (res?.error) return;
+    const command = [
+      'export LC_ALL=C;',
+      'export PATH="$PATH:/snap/bin";',
+      'if ! command -v certbot >/dev/null 2>&1; then echo "CERTBOT_NOT_FOUND"; exit 0; fi;',
+      'certbot certificates 2>&1;',
+      'for cert in /etc/letsencrypt/live/*/cert.pem; do',
+      '  [ -f "$cert" ] || continue;',
+      '  directory=$(dirname "$cert");',
+      '  name=$(basename "$directory");',
+      '  domains=$(openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | tr -d "\\n" | sed "s/DNS://g; s/,/ /g; s/^[[:space:]]*//; s/[[:space:]][[:space:]]*/ /g");',
+      '  expiry=$(openssl x509 -in "$cert" -noout -enddate 2>/dev/null | sed "s/^notAfter=//");',
+      '  path="$directory/fullchain.pem";',
+      '  [ -f "$path" ] || path="$cert";',
+      '  printf "__CTRL_SSL_CERT__\\t%s\\t%s\\t%s\\t%s\\n" "$name" "$domains" "$expiry" "$path";',
+      'done'
+    ].join(' ');
+    const res = await this.exec(command, { root: true, notify: false });
     this.render();
-    const stdout = res?.stdout || '';
+    const stdout = (res?.stdout || '') + '\n' + (res?.stderr || '');
     const status = Utils.el('sslStatus');
     const certs = Utils.el('sslCerts');
     if (!status || !certs) return;
+
+    if (res?.error || res?.exitCode !== 0) {
+      status.innerHTML = `
+        <div class="vps-ssl-alert vps-ssl-warn">
+          <span>Unable to read SSL certificates. Verify that this user has sudo or root access.</span>
+        </div>`;
+      certs.innerHTML = '';
+      return;
+    }
 
     if (stdout.includes('CERTBOT_NOT_FOUND')) {
       status.innerHTML = `
@@ -52,6 +76,16 @@ const VPSSSL = {
     }
 
     const parsed = this.parsecerts(stdout);
+    this.parsecertfiles(stdout).forEach(cert => {
+      const existing = parsed.find(item => item.name === cert.name);
+      if (!existing) {
+        parsed.push(cert);
+        return;
+      }
+      if (cert.domains.length > 0) existing.domains = cert.domains;
+      if (!Number.isNaN(cert.expiry.getTime())) existing.expiry = cert.expiry;
+      if (cert.path) existing.path = cert.path;
+    });
     const now = Date.now();
     let expiringSoon = 0;
     parsed.forEach(c => {
@@ -99,7 +133,7 @@ const VPSSSL = {
 
   parsecerts(stdout) {
     const certs = [];
-    const blocks = stdout.split('  Certificate Name:');
+    const blocks = stdout.split(/^\s*Certificate Name:\s*/m);
     for (let i = 1; i < blocks.length; i++) {
       const block = blocks[i];
       const nameMatch = block.match(/^(.+)/m);
@@ -116,6 +150,21 @@ const VPSSSL = {
       }
     }
     return certs;
+  },
+
+  parsecertfiles(stdout) {
+    return stdout.split(/\r?\n/).reduce((certs, line) => {
+      if (!line.startsWith('__CTRL_SSL_CERT__\t')) return certs;
+      const fields = line.split('\t');
+      if (!fields[1]) return certs;
+      certs.push({
+        name: fields[1].trim(),
+        domains: (fields[2] || '').trim().split(/\s+/).filter(Boolean),
+        expiry: new Date((fields[3] || '').trim()),
+        path: (fields[4] || '').trim()
+      });
+      return certs;
+    }, []);
   },
 
   showaddcert() {
@@ -180,14 +229,7 @@ const VPSSSL = {
     });
   },
 
-  async exec(command) {
-    const cfg = { host: this.server.host, port: this.server.port || 22, username: this.server.username || 'root' };
-    if (this.server.authType === 'key') { const pk = await Servers.resolvevpsprivatekey(this.server); if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; } }
-    if (!cfg.authType) { cfg.authType = 'password'; cfg.password = this.server.password || ''; }
-    if ((this.server.username || 'root') !== 'root') {
-      const pass = (this.server.password || '').replace(/'/g, "'\\''");
-      return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${command.replace(/'/g, "'\\''")}' 2>/dev/null`);
-    }
-    return await window.electronAPI.sshexec(cfg, command);
+  async exec(command, options = {}) {
+    return await Servers.execvps(this.server, command, { ...options, page: 'ssl' });
   }
 };

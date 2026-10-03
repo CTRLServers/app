@@ -269,6 +269,14 @@
           </svg>
           <span>Services</span>
         </a>
+        <a href="#" class="nav-item hidden" data-server-page="autostart" data-vps>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+            <path d="M8 2h8" />
+          </svg>
+          <span>Auto Start</span>
+        </a>
         <a href="#" class="nav-item hidden" data-server-page="security" data-vps>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -316,12 +324,6 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
           <span>SSL</span>
-        </a>
-        <a href="#" class="nav-item hidden" data-server-page="securityscore" data-vps>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          <span>Security</span>
         </a>
         <a href="#" class="nav-item hidden" data-server-page="docker" data-vps>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -769,7 +771,7 @@
                     </button>
                     <span class="editor-filename" id="editorFilename"></span>
                     <div class="editor-actions">
-                      <button class="btn btn-primary btn-sm" onclick="ServerFiles.savefile()">Save</button>
+                      <button class="btn btn-primary btn-sm" id="fileEditorSave" onclick="ServerFiles.savefile()">Save</button>
                     </div>
                   </div>
                   <div class="editor-wrapper" id="editorWrapper"></div>
@@ -822,13 +824,13 @@
             <div class="server-page-tab" id="tabVpsUsers" style="display:none;"></div>
             <div class="server-page-tab" id="tabCron" style="display:none;"></div>
             <div class="server-page-tab" id="tabServices" style="display:none;"></div>
+            <div class="server-page-tab" id="tabAutostart" style="display:none;"></div>
             <div class="server-page-tab" id="tabSecurity" style="display:none;"></div>
             <div class="server-page-tab" id="tabProcesses" style="display:none;"></div>
             <div class="server-page-tab" id="tabLogs" style="display:none;"></div>
             <div class="server-page-tab" id="tabDisk" style="display:none;"></div>
             <div class="server-page-tab" id="tabVpsNet" style="display:none;"></div>
             <div class="server-page-tab" id="tabSSL" style="display:none;"></div>
-            <div class="server-page-tab" id="tabSecurity" style="display:none;"></div>
             <div class="server-page-tab" id="tabDocker" style="display:none;"></div>
             <div class="server-page-tab" id="tabSelfHost" style="display:none;"></div>
             <div class="server-page-tab" id="tabWebServer" style="display:none;"></div>
@@ -962,6 +964,7 @@
   <script src="js/vps-users.js"></script>
   <script src="js/cron.js"></script>
   <script src="js/services.js"></script>
+  <script src="js/autostart.js"></script>
   <script src="js/security.js"></script>
   <script src="js/docker.js"></script>
   <script src="js/nginx.js"></script>
@@ -976,8 +979,8 @@
   <script src="js/cli.js"></script>
   <script src="js/cheatsheet.js"></script>
   <script src="js/multiterm.js"></script>
-  <script src="js/securityscore.js"></script>
   <script src="js/pluginapi.js"></script>
+  <script src="js/mcp.js"></script>
   <script src="js/cardmanager.js"></script>
   <script src="js/pluginloader.js"></script>
   <script src="js/accept-servers.js"></script>

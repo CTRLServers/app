@@ -140,6 +140,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sftpconnect: (config) => {
     return ipcRenderer.invoke('sftp-connect', config);
   },
+  sftpconnectsession: (sshId) => {
+    return ipcRenderer.invoke('sftp-connect-session', sshId);
+  },
   sftplist: (id, remotePath) => {
     return ipcRenderer.invoke('sftp-list', id, remotePath);
   },
@@ -250,6 +253,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('accept-servers-available', drain);
     drain();
     return () => ipcRenderer.removeListener('accept-servers-available', drain);
+  },
+  mcpgetstatus: () => ipcRenderer.invoke('mcp-get-status'),
+  mcpsetenabled: (enabled) => ipcRenderer.invoke('mcp-set-enabled', enabled),
+  mcpsetpermission: (permission, mode) => ipcRenderer.invoke('mcp-set-permission', permission, mode),
+  mcpsetallpermissions: (mode) => ipcRenderer.invoke('mcp-set-all-permissions', mode),
+  mcpregeneratetoken: () => ipcRenderer.invoke('mcp-regenerate-token'),
+  mcpclearactivity: () => ipcRenderer.invoke('mcp-clear-activity'),
+  mcpsetlocked: (locked) => ipcRenderer.send('mcp-set-locked', locked),
+  mcpoperationresult: (payload) => ipcRenderer.send('mcp-operation-result', payload),
+  mcpapprovalresult: (payload) => ipcRenderer.send('mcp-approval-result', payload),
+  onmcpoperation: (callback) => {
+    const handler = (event, payload) => callback(payload);
+    ipcRenderer.on('mcp-operation', handler);
+    return () => ipcRenderer.removeListener('mcp-operation', handler);
+  },
+  onmcpapproval: (callback) => {
+    const handler = (event, payload) => callback(payload);
+    ipcRenderer.on('mcp-approval', handler);
+    return () => ipcRenderer.removeListener('mcp-approval', handler);
+  },
+  onmcpstatus: (callback) => {
+    const handler = (event, payload) => callback(payload);
+    ipcRenderer.on('mcp-status', handler);
+    return () => ipcRenderer.removeListener('mcp-status', handler);
   },
   winminimize: () => ipcRenderer.invoke('win-minimize'),
   winmaximize: () => ipcRenderer.invoke('win-maximize'),

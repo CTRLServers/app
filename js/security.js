@@ -21,13 +21,28 @@ const Security = {
   },
 
   async fetchdata() {
+    const failedlogincommand = [
+      'export LC_ALL=C;',
+      'failed=$(lastb -n 10 -w 2>/dev/null | sed "/^btmp begins/d; /^[[:space:]]*$/d");',
+      'if [ -n "$failed" ]; then printf "%s\\n" "$failed"; exit 0; fi;',
+      'logs="";',
+      'if command -v journalctl >/dev/null 2>&1; then logs=$(journalctl -t sshd --no-pager -n 2000 -o short-iso 2>/dev/null | grep -Ei "Failed password|Failed publickey|Invalid user|authentication failure" | tail -n 10); fi;',
+      'if [ -z "$logs" ]; then',
+      '  for file in /var/log/auth.log /var/log/secure; do',
+      '    [ -r "$file" ] || continue;',
+      '    logs=$(tail -n 5000 "$file" | grep -Ei "Failed password|Failed publickey|Invalid user|authentication failure" | tail -n 10);',
+      '    [ -n "$logs" ] && break;',
+      '  done;',
+      'fi;',
+      'if [ -n "$logs" ]; then printf "__CTRL_AUTH_LOG__\\n%s\\n" "$logs"; fi'
+    ].join(' ');
     const results = await Promise.allSettled([
       this.exec("ss -tlnp 2>/dev/null | tail -n +2"),
       this.exec("ss -ulnp 2>/dev/null | tail -n +2"),
       this.exec("fail2ban-client status 2>/dev/null || echo 'FAIL2BAN_NOT_INSTALLED'"),
       this.exec("grep -E '^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|MaxAuthTries|Protocol|X11Forwarding)' /etc/ssh/sshd_config 2>/dev/null || echo 'SSH_CONFIG_NOT_FOUND'"),
       this.exec("last -n 10 -w 2>/dev/null || echo ''"),
-      this.exec("lastb -n 10 -w 2>/dev/null || echo ''"),
+      this.exec(failedlogincommand, { root: true, notify: false }),
       this.exec("ufw status 2>/dev/null || firewall-cmd --list-all 2>/dev/null || echo 'NO_FIREWALL'")
     ]);
 
@@ -38,7 +53,8 @@ const Security = {
     const fail2banRaw = get(2);
     const sshConfig = get(3);
     const lastLogins = this.parselast(get(4));
-    const failedLogins = this.parselast(get(5));
+    const failedresult = results[5].status === 'fulfilled' ? results[5].value : null;
+    const failedLogins = this.parsefailedlogins(get(5));
     const firewallRaw = get(6);
 
     this.data = {
@@ -48,6 +64,7 @@ const Security = {
       sshConfig: this.parsesshconfig(sshConfig),
       lastLogins,
       failedLogins,
+      failedLoginsUnavailable: Boolean(failedresult?.error),
       firewallRaw
     };
   },
@@ -118,30 +135,40 @@ const Security = {
     return entries.slice(0, 10);
   },
 
-  async exec(command) {
-    const cfg = {
-      host: this.server.host,
-      port: this.server.port || 22,
-      username: this.server.username || 'root'
-    };
-    if (this.server.authType === 'key') {
-      const pk = await Servers.resolvevpsprivatekey(this.server);
-      if (pk) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = pk;
+  parsefailedlogins(output) {
+    if (!output) return [];
+    const marker = '__CTRL_AUTH_LOG__';
+    if (!output.includes(marker)) return this.parselast(output);
+
+    const entries = [];
+    const seen = new Set();
+    const lines = output.slice(output.indexOf(marker) + marker.length).split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      let match = trimmed.match(/Failed (?:password|publickey) for (?:invalid user )?(\S+) from (\S+)/i);
+      if (!match) match = trimmed.match(/Invalid user (\S+) from (\S+)/i);
+      if (!match) {
+        const user = trimmed.match(/\buser=(\S+)/i)?.[1];
+        const host = trimmed.match(/\brhost=(\S+)/i)?.[1];
+        if (user && host) match = [trimmed, user, host];
       }
+      if (!match) continue;
+
+      const time = trimmed.match(/^\S+\s+\d+\s+\d{2}:\d{2}:\d{2}/)?.[0]
+        || trimmed.match(/^\d{4}-\d{2}-\d{2}T\S+/)?.[0]
+        || '';
+      const key = `${match[1]}|${match[2]}|${time}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      entries.push({ user: match[1], terminal: 'ssh', host: match[2], time });
     }
-    if (!cfg.authType) {
-      cfg.authType = 'password';
-      cfg.password = this.server.password || '';
-    }
-    const isRoot = (this.server.username || 'root') === 'root';
-    if (isRoot) {
-      return await window.electronAPI.sshexec(cfg, command);
-    }
-    const pass = (this.server.password || '').replace(/'/g, "'\\''");
-    const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+    return entries.slice(-10).reverse();
+  },
+
+  async exec(command, options = {}) {
+    return await Servers.execvps(this.server, command, { ...options, page: 'security' });
   },
 
   render() {
@@ -290,7 +317,9 @@ const Security = {
         <div class="fw-card-header"><h3>Failed Login Attempts</h3></div>
         <div class="fw-card-body">`;
 
-    if (d.failedLogins.length) {
+    if (d.failedLoginsUnavailable) {
+      html += '<div class="fw-empty">Failed login records could not be read</div>';
+    } else if (d.failedLogins.length) {
       html += `<table class="fw-table"><thead><tr><th>User</th><th>Terminal</th><th>From</th><th>Time</th></tr></thead><tbody>`;
       for (const l of d.failedLogins) {
         html += `<tr>

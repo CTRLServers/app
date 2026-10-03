@@ -188,7 +188,7 @@ const Servers = {
   },
 
   _vpscommandneedsroot(command) {
-    return /(^|[;&|]\s*)(apt(?:-get)?|dnf|yum|pacman|apk|emerge|systemctl|service|ufw|firewall-cmd|iptables|nft|useradd|userdel|usermod|deluser|chpasswd|kill\s+-|certbot|docker|journalctl|dmesg|find\s+\/|du\s+.*\/|tail\s+.*\/var\/log|cat\s+\/etc\/shadow)\b/.test(command);
+    return /(^|[;&|]\s*)(apt(?:-get)?|dnf|yum|pacman|apk|emerge|systemctl|service|ufw|firewall-cmd|iptables|nft|useradd|userdel|usermod|deluser|chpasswd|kill\s+-|certbot|docker|journalctl|lastb|dmesg|find\s+\/|du\s+.*\/|tail\s+.*\/var\/log|cat\s+\/etc\/shadow)\b/.test(command);
   },
 
   _shellliteral(value) {
@@ -235,11 +235,14 @@ const Servers = {
 
   async execvps(server, command, options = {}) {
     if (!server) return this._vpsresult('connection', 'No VPS/VDS server is selected.');
+    const finish = (result) => options.notify === false
+      ? result
+      : this._notifyvpscommand(server, result, options.page);
     let cfg;
     try {
       cfg = await this._vpsconfig(server);
     } catch (e) {
-      return this._notifyvpscommand(server, this._vpsresult('connection', e?.message || String(e)), options.page);
+      return finish(this._vpsresult('connection', e?.message || String(e)));
     }
 
     const run = async (remoteCommand) => {
@@ -254,27 +257,29 @@ const Servers = {
 
     const needsRoot = options.root === true || (options.root !== false && this._vpscommandneedsroot(command));
     if (!needsRoot || (server.username || 'root') === 'root') {
-      return this._notifyvpscommand(server, await run(command), options.page);
+      return finish(await run(command));
     }
 
     const password = server.password || '';
     const payload = "printf %s " + this._shellliteral(btoa(unescape(encodeURIComponent(command)))) + " | base64 -d | sh";
-    const passPipe = "printf %s " + this._shellliteral(btoa(unescape(encodeURIComponent(password)))) + " | base64 -d | ";
+    const passPipe = "printf '%s\\n' " + this._shellliteral(password) + ' | ';
 
-    const suCheck = await run(passPipe + "su - root -c 'id -u'");
-    if (suCheck.error) return this._notifyvpscommand(server, suCheck, options.page);
-    if (!suCheck.error && suCheck.exitCode === 0 && /^0\s*$/m.test(suCheck.stdout)) {
-      const result = await run(passPipe + 'su - root -c ' + this._shellliteral(payload));
-      result.privilege = 'root';
-      return this._notifyvpscommand(server, result, options.page);
+    const sudoresult = await run(passPipe + "sudo -S -p '' sh -c " + this._shellliteral(payload));
+    if (sudoresult.error) return finish(sudoresult);
+    const sudotext = ((sudoresult.stdout || '') + '\n' + (sudoresult.stderr || '')).toLowerCase();
+    const sudodenied = /sudo:.*(password|sudoers|not allowed|not found|tty|authentication|conversation)|sorry, try again|may not run sudo/.test(sudotext);
+    if (!sudodenied) {
+      sudoresult.privilege = 'root';
+      return finish(sudoresult);
     }
 
-    const sudoCheck = await run(passPipe + "sudo -S -p '' -v");
-    if (sudoCheck.error) return this._notifyvpscommand(server, sudoCheck, options.page);
-    if (!sudoCheck.error && sudoCheck.exitCode === 0) {
-      const result = await run(passPipe + "sudo -S -p '' sh -c " + this._shellliteral(payload));
-      result.privilege = 'root';
-      return this._notifyvpscommand(server, result, options.page);
+    const suresult = await run(passPipe + 'su - root -c ' + this._shellliteral(payload));
+    if (suresult.error) return finish(suresult);
+    const sutext = ((suresult.stdout || '') + '\n' + (suresult.stderr || '')).toLowerCase();
+    const sudenied = /su:.*(authentication failure|permission denied|incorrect password)|authentication failure/.test(sutext);
+    if (!sudenied) {
+      suresult.privilege = 'root';
+      return finish(suresult);
     }
 
     const result = await run(command);
@@ -283,7 +288,7 @@ const Servers = {
     if (result.exitCode !== 0 && /(permission denied|operation not permitted|must be root|not root|superuser)/.test(combined)) {
       result.error = { type: 'root', message: 'Oops... You must have Root permissions for this Tab.' };
     }
-    return this._notifyvpscommand(server, result, options.page);
+    return finish(result);
   },
 
   load() {
@@ -373,14 +378,15 @@ const Servers = {
   render() {
     const grid = Utils.el('serversGrid');
     const empty = Utils.el('emptyState');
+    const showdashboard = typeof App === 'undefined' || (App.currentPage === 'dashboard' && !App.currentServer);
     this.renderfilterbar();
     if (this.list.length === 0) {
-      empty.style.display = 'flex';
+      empty.style.display = showdashboard ? 'flex' : 'none';
       grid.style.display = 'none';
       Utils.el('pinnedServers').style.display = 'none';
     } else {
       empty.style.display = 'none';
-      grid.style.display = 'grid';
+      grid.style.display = showdashboard ? 'grid' : 'none';
       this.rendercards();
     }
   },
@@ -530,11 +536,12 @@ const Servers = {
     const grid = Utils.el('serversGrid');
     const pinnedSection = Utils.el('pinnedServers');
     const pinnedGrid = Utils.el('pinnedGrid');
+    const showdashboard = typeof App === 'undefined' || (App.currentPage === 'dashboard' && !App.currentServer);
     const filtered = this._filterlist();
     const pinned = filtered.filter(s => s.pinned);
     const unpinned = filtered.filter(s => !s.pinned);
 
-    if (pinned.length > 0) {
+    if (showdashboard && pinned.length > 0) {
       pinnedSection.style.display = '';
       pinnedGrid.innerHTML = pinned.map((server) => {
         const realindex = this.list.indexOf(server);
@@ -1080,7 +1087,8 @@ const Servers = {
   renderfilterbar() {
     const bar = Utils.el('dashboardFilterBar');
     if (!bar) return;
-    bar.style.display = '';
+    const showdashboard = typeof App === 'undefined' || (App.currentPage === 'dashboard' && !App.currentServer);
+    bar.style.display = showdashboard ? '' : 'none';
     const tags = this._collecttags();
     let html = '';
     if (tags.length > 0) {

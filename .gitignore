@@ -8,3 +8,11 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+mcp/**/*.test.*
+mcp/**/*.spec.*
+mcp/**/*-smoke.cjs
+mcp/**/*-smoke.png
+.mcp-ui-test-data/
+mcp-server-plan.txt
+user-can-do.txt
+we-dont-need-this.txt

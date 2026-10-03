@@ -419,7 +419,12 @@ const ServerConsole = {
       btnStop.disabled = false;
       btnRestart.disabled = false;
       btnKill.disabled = false;
-    } else if (state === 'starting' || state === 'stopping') {
+    } else if (state === 'starting') {
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      btnRestart.disabled = false;
+      btnKill.disabled = false;
+    } else if (state === 'stopping') {
       btnStart.disabled = true;
       btnStop.disabled = false;
       btnRestart.disabled = true;

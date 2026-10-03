@@ -5,6 +5,7 @@ const ServerFiles = {
   editor: null,
   _editingPath: null,
   _editingName: null,
+  _saving: false,
   selected: new Set(),
   _searchQuery: '',
   _filterTab: 'all',
@@ -82,7 +83,7 @@ const ServerFiles = {
         this.opendir(f.attributes.name);
       } else {
         const filePath = this.currentPath === '/' ? '/' + f.attributes.name : this.currentPath + '/' + f.attributes.name;
-        this.openfile(filePath, f.attributes.name, f.attributes.size);
+        this.openfile(filePath, f.attributes.name, f.attributes.size, f.attributes.mimetype || f.attributes.mime_type || '');
       }
     });
 
@@ -126,11 +127,16 @@ const ServerFiles = {
     return this.BINARY_EXTS.some(ext => name.toLowerCase().endsWith(ext));
   },
 
-  istextfile(name, size) {
+  istextfile(name, size, mimetype = '') {
     if (size && size > 5 * 1024 * 1024) return false;
     if (this.isimage(name) || this.isvideo(name) || this.isaudio(name) || this.isarchive(name)) return false;
+    const mime = String(mimetype || '').toLowerCase();
+    if (mime.startsWith('image/') || mime.startsWith('video/') || mime.startsWith('audio/')) return false;
+    if (mime.startsWith('text/') || /json|xml|yaml|javascript|shell|toml|ini|config/.test(mime)) return true;
     const ext = this.getext(name);
-    return ext in this.MODE_MAP || name === 'Dockerfile' || name === 'Makefile' || name === 'Jenkinsfile';
+    if (ext in this.MODE_MAP || name === 'Dockerfile' || name === 'Makefile' || name === 'Jenkinsfile') return true;
+    if (name.startsWith('.') && !name.slice(1).includes('.')) return true;
+    return !this.isbinary(name);
   },
 
   getext(name) {
@@ -311,7 +317,7 @@ const ServerFiles = {
     }
   },
 
-  async openfile(path, name, size) {
+  async openfile(path, name, size, mimetype = '') {
     const s = App.currentServer;
     if (!s) return;
 
@@ -364,7 +370,7 @@ const ServerFiles = {
       return;
     }
 
-    if (this.istextfile(name, size)) {
+    if (this.istextfile(name, size, mimetype)) {
       const apiKey = await Servers.resolveapikey(s);
       try {
         const content = await Api.readfile(s.panelUrl, apiKey, s.uuid, path);
@@ -398,6 +404,7 @@ const ServerFiles = {
   showeditor(path, name, content) {
     this._editingPath = path;
     this._editingName = name;
+    this._saving = false;
 
     Utils.el('filesInfoCards').style.display = 'none';
     Utils.el('massActions').style.display = 'none';
@@ -454,6 +461,15 @@ const ServerFiles = {
 
     this.editor.setSize('100%', '100%');
 
+    const savingoverlay = document.createElement('div');
+    savingoverlay.id = 'fileEditorSaving';
+    savingoverlay.className = 'file-editor-saving';
+    savingoverlay.setAttribute('role', 'status');
+    savingoverlay.setAttribute('aria-label', 'Saving file');
+    savingoverlay.setAttribute('aria-hidden', 'true');
+    savingoverlay.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
+    wrapper.appendChild(savingoverlay);
+
     this.editor.on('inputRead', (cm, change) => {
       if (change.text[0] && /[a-zA-Z_.]/.test(change.text[0])) {
         clearTimeout(this._autocompleteTimer);
@@ -493,14 +509,46 @@ const ServerFiles = {
   },
 
   async savefile() {
-    if (!this.editor || !this._editingPath) return;
+    if (!this.editor || !this._editingPath || this._saving) return;
     const s = App.currentServer;
     if (!s) return;
-    const apiKey = await Servers.resolveapikey(s);
+    const path = this._editingPath;
     const content = this.editor.getValue();
+    this.setsaving(true);
     try {
-      await Api.writefile(s.panelUrl, apiKey, s.uuid, this._editingPath, content);
-    } catch (e) {}
+      const apiKey = await Servers.resolveapikey(s);
+      await Api.writefile(s.panelUrl, apiKey, s.uuid, path, content);
+      this.showtoast('File updated successfully.');
+    } catch (e) {
+      this.showtoast(e?.message ? `Failed to update file: ${e.message}` : 'Failed to update file.', 'error');
+    } finally {
+      this.setsaving(false);
+    }
+  },
+
+  setsaving(saving) {
+    this._saving = saving;
+    const overlay = Utils.el('fileEditorSaving');
+    if (overlay) {
+      overlay.classList.toggle('visible', saving);
+      overlay.setAttribute('aria-hidden', saving ? 'false' : 'true');
+    }
+    const button = Utils.el('fileEditorSave');
+    if (button) button.disabled = saving;
+    if (this.editor) this.editor.setOption('readOnly', saving ? 'nocursor' : false);
+  },
+
+  showtoast(message, type = 'success') {
+    document.querySelector('.file-toast')?.remove();
+    const toast = document.createElement('div');
+    toast.className = `toast file-toast file-toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   },
 
   createfolder() {

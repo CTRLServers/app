@@ -29,17 +29,20 @@ const Firewall = {
 
   async detect() {
     this.fwType = null;
-    const r1 = await this.exec('which ufw 2>/dev/null');
+    this.active = false;
+    this.rules = [];
+    this.rawOutput = '';
+    const r1 = await this.exec('command -v ufw 2>/dev/null');
     if (r1.exitCode === 0 && r1.stdout.trim()) {
       this.fwType = 'ufw';
       return;
     }
-    const r2 = await this.exec('which firewall-cmd 2>/dev/null');
+    const r2 = await this.exec('command -v firewall-cmd 2>/dev/null');
     if (r2.exitCode === 0 && r2.stdout.trim()) {
       this.fwType = 'firewalld';
       return;
     }
-    const r3 = await this.exec('which iptables 2>/dev/null');
+    const r3 = await this.exec('command -v iptables 2>/dev/null');
     if (r3.exitCode === 0 && r3.stdout.trim()) {
       this.fwType = 'iptables';
     }
@@ -48,13 +51,16 @@ const Firewall = {
   async fetchstatus() {
     if (this.fwType === 'ufw') {
       const r = await this.exec('ufw status 2>/dev/null');
-      this.active = r.stdout.toLowerCase().includes('active');
+      this.active = r.exitCode === 0 && /^Status:\s+active\s*$/im.test(r.stdout || '');
     } else if (this.fwType === 'firewalld') {
       const r = await this.exec('firewall-cmd --state 2>/dev/null');
       this.active = r.exitCode === 0 && r.stdout.trim() === 'running';
     } else if (this.fwType === 'iptables') {
-      const r = await this.exec('iptables -L -n 2>/dev/null | head -5');
-      this.active = r.exitCode === 0 && r.stdout.length > 10;
+      const r = await this.exec('iptables -S 2>/dev/null', { notify: false });
+      const output = r.stdout || '';
+      const restrictive = /^-P\s+INPUT\s+(DROP|REJECT)\s*$/im.test(output);
+      const hasrules = /^-A\s+INPUT\b/im.test(output);
+      this.active = !r.error && r.exitCode === 0 && (restrictive || hasrules);
     }
   },
 
@@ -68,6 +74,9 @@ const Firewall = {
       const r = await this.exec('firewall-cmd --list-all 2>/dev/null');
       this.rawOutput = r.stdout || '';
       this.parsefirewalldrules(r.stdout || '');
+    } else if (this.fwType === 'iptables') {
+      const r = await this.exec('iptables -S 2>/dev/null', { notify: false });
+      this.rawOutput = r.stdout || '';
     }
   },
 
@@ -139,30 +148,8 @@ const Firewall = {
     this.render();
   },
 
-  async exec(command) {
-    const cfg = {
-      host: this.server.host,
-      port: this.server.port || 22,
-      username: this.server.username || 'root'
-    };
-    if (this.server.authType === 'key') {
-      const pk = await Servers.resolvevpsprivatekey(this.server);
-      if (pk) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = pk;
-      }
-    }
-    if (!cfg.authType) {
-      cfg.authType = 'password';
-      cfg.password = this.server.password || '';
-    }
-    const isRoot = (this.server.username || 'root') === 'root';
-    if (isRoot) {
-      return await window.electronAPI.sshexec(cfg, command);
-    }
-    const pass = (this.server.password || '').replace(/'/g, "'\\''");
-    const wrapped = command.replace(/'/g, "'\\''");
-    return await window.electronAPI.sshexec(cfg, `echo '${pass}' | sudo -S sh -c '${wrapped}' 2>/dev/null`);
+  async exec(command, options = {}) {
+    return await Servers.execvps(this.server, command, { ...options, page: 'firewall' });
   },
 
   render() {
@@ -196,9 +183,9 @@ const Firewall = {
             <span>${fwLabel} — ${this.rules.length} rule${this.rules.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
-        <button class="btn btn-sm ${this.active ? 'btn-red' : 'btn-green'}" onclick="Firewall.togglefirewall()">
+        ${this.fwType === 'iptables' ? '' : `<button class="btn btn-sm ${this.active ? 'btn-red' : 'btn-green'}" onclick="Firewall.togglefirewall()">
           ${this.active ? 'Disable' : 'Enable'}
-        </button>
+        </button>`}
       </div>
 
       <div class="fw-card">
