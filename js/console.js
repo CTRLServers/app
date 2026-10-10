@@ -14,6 +14,13 @@ const ServerConsole = {
   _graphHistory: { cpu: [], ram: [], disk: [] },
   _graphMax: 60,
   _cache: {},
+  _pingInterval: null,
+  _pingTimeout: null,
+  _pingStartedAt: 0,
+  _connecting: false,
+  _refreshingToken: false,
+  _tokenRefreshTimer: null,
+  _reconnectTimer: null,
 
   init(server) {
     const cached = this._cache[server.uuid];
@@ -32,6 +39,8 @@ const ServerConsole = {
       this._updateconsolestate();
       this._updatebuttons(server.status || 'offline');
       this._applyfilter();
+      this._setconnectionstatus(cached.connected);
+      if (server.type === 'Calagopus' && cached.connected) this._startping();
       return;
     }
     this.destroy();
@@ -53,6 +62,7 @@ const ServerConsole = {
     this._updateconsolestate();
     this._updatebuttons(server.status || 'offline');
     this._applyfilter();
+    this._setconnectionstatus(false);
   },
 
   detach() {
@@ -73,6 +83,11 @@ const ServerConsole = {
   },
 
   destroy() {
+    this._stopping();
+    this._clearreconnect();
+    this._cleartokenrefresh();
+    this._connecting = false;
+    this._refreshingToken = false;
     if (this.wsId !== null) {
       window.electronAPI.closews(this.wsId);
       this.wsId = null;
@@ -80,6 +95,7 @@ const ServerConsole = {
     this.server = null;
     this.serverInfo = null;
     this.connected = false;
+    this._setconnectionstatus(false);
   },
 
   credentialsChanged(server, oldUuid) {
@@ -98,13 +114,28 @@ const ServerConsole = {
       if (id !== this.wsId) return;
       try {
         const msg = JSON.parse(data);
+        if (this.server?.type === 'Calagopus') {
+          calagopussettings.socketevent(this.server, msg);
+          ServerFiles.socketevent(this.server, msg);
+        }
         switch (msg.event) {
           case 'auth success':
             this.connected = true;
+            this._cleartokenrefresh();
             this.log('system', 'Authenticated');
             this._updateconsolestate();
+            this._setconnectionstatus(true);
             window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send logs', args: [null] }));
             window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'send stats', args: [null] }));
+            if (this.server?.type === 'Calagopus') this._startping();
+            break;
+          case 'pong':
+            if (this.server?.type === 'Calagopus' && this._pingStartedAt) {
+              if (this._pingTimeout) clearTimeout(this._pingTimeout);
+              this._pingTimeout = null;
+              this._setconnectionstatus(true, Math.max(0, Date.now() - this._pingStartedAt));
+              this._pingStartedAt = 0;
+            }
             break;
           case 'console output':
             if (msg.args && msg.args[0]) {
@@ -122,7 +153,7 @@ const ServerConsole = {
           case 'auth error':
           case 'auth failed':
           case 'jwt error':
-            this.log('error', 'Authentication failed');
+            this._refreshwebsockettoken(id, 0, true, 'Authentication failed');
             break;
           case 'daemon message':
             if (msg.args && msg.args[0]) this.log('system', msg.args[0]);
@@ -130,9 +161,14 @@ const ServerConsole = {
           case 'install output':
             if (msg.args && msg.args[0]) this.log('system', msg.args[0]);
             break;
+          case 'install completed':
+            if (this.server?.type === 'Calagopus') this.log(msg.args?.[0] === 'true' ? 'system' : 'error', msg.args?.[0] === 'true' ? 'Server installation completed' : 'Server installation failed');
+            break;
+          case 'token expiring':
+            this._refreshwebsockettoken(id);
+            break;
           case 'token expired':
-            this.log('error', 'Token expired');
-            if (this.wsId !== null) window.electronAPI.closews(this.wsId);
+            this._refreshwebsockettoken(id, 1000, true, 'Token expired');
             break;
         }
       } catch (e) {}
@@ -140,12 +176,13 @@ const ServerConsole = {
 
     window.electronAPI.onwsclose((id, code, reason) => {
       if (id !== this.wsId) return;
+      this.wsId = null;
       this.connected = false;
+      this._stopping();
+      this._setconnectionstatus(false);
       this.log('system', 'Disconnected (code: ' + code + ')');
       this._updateconsolestate();
-      if (this.server) {
-        setTimeout(() => this.connect(), 5000);
-      }
+      this._schedulereconnect(5000);
     });
 
     window.electronAPI.onwserror((id, err) => {
@@ -174,7 +211,9 @@ const ServerConsole = {
     const server = this.server;
     try {
       const apiKey = await Servers.resolveapikey(server);
-      const serverInfo = await Api.getcachedserver(server.panelUrl, apiKey, server.uuid);
+      const serverInfo = server.type === 'Calagopus'
+        ? await Api.fetchcalagopusserver(server.panelUrl, apiKey, server.uuid)
+        : await Api.getcachedserver(server.panelUrl, apiKey, server.uuid);
       if (this.server !== server) return;
       this.serverInfo = serverInfo;
       this.updateallocation();
@@ -205,6 +244,16 @@ const ServerConsole = {
     const value = Utils.el('resServerIp');
     if (!value || !this.server) return;
 
+    if (this.server.type === 'Calagopus') {
+      const allocation = this.serverInfo?.allocation || this.server.allocation || {};
+      const host = allocation.ip_alias || allocation.ip || this.server.host || '';
+      const port = allocation.port || this.server.port || '';
+      const displayHost = host && host.includes(':') ? `[${host}]` : host;
+      const address = displayHost ? displayHost + (port ? ':' + port : '') : 'вЂ”';
+      value.textContent = address;
+      value.title = address === 'вЂ”' ? '' : address;
+      return;
+    }
     const apiAllocations = this.serverInfo?.relationships?.allocations?.data || [];
     const apiAllocation = apiAllocations.find(item => item.attributes?.is_default) || apiAllocations[0];
     const savedAllocation = this.server.allocations?.find(item => item.is_default) || this.server.allocations?.[0];
@@ -342,13 +391,18 @@ const ServerConsole = {
 
   async connect() {
     if (!this.server || !this.server.panelUrl) return;
-    if (this.connected) return;
+    if (this.connected || this._connecting) return;
 
-    const apiKey = await Servers.resolveapikey(this.server);
-    if (!apiKey) return;
+    const server = this.server;
+    this._connecting = true;
 
     try {
-      const data = await Api.fetchwebsocket(this.server.panelUrl, apiKey, this.server.uuid);
+      const apiKey = await Servers.resolveapikey(server);
+      if (!apiKey || this.server !== server) return;
+      const data = server.type === 'Calagopus'
+        ? await Api.fetchcalagopuswebsocket(server.panelUrl, apiKey, server.uuid)
+        : await Api.fetchwebsocket(server.panelUrl, apiKey, server.uuid);
+      if (this.server !== server) return;
       if (!data || !data.socket || !data.token) {
         this.log('error', 'Invalid WebSocket response');
         return;
@@ -357,15 +411,92 @@ const ServerConsole = {
       this.log('system', 'Connecting...');
       const id = await window.electronAPI.connectwebsocket(data.socket, data.token, {
         'Authorization': 'Bearer ' + apiKey,
-        'Accept': 'application/vnd.pterodactyl.v1+json'
-      }, this.server.panelUrl);
-      this.wsId = id;
-    } catch (e) {
-      this.log('error', 'Failed: ' + e.message);
-      if (this.server) {
-        setTimeout(() => this.connect(), 5000);
+        'Accept': server.type === 'Calagopus' ? 'application/json' : 'application/vnd.pterodactyl.v1+json'
+      }, server.panelUrl);
+      if (this.server !== server) {
+        window.electronAPI.closews(id);
+        return;
       }
+      this.wsId = id;
+      window.electronAPI.sendws(id, JSON.stringify({ event: 'auth', args: [data.token] }));
+    } catch (e) {
+      if (this.server === server) {
+        this.log('error', 'Failed: ' + e.message);
+        this._schedulereconnect(5000);
+      }
+    } finally {
+      this._connecting = false;
     }
+  },
+
+  async _refreshwebsockettoken(id, delay = 0, authenticationGapped = false, message = '') {
+    if (delay > 0) {
+      if (id !== this.wsId || !this.server || this._tokenRefreshTimer) return;
+      if (authenticationGapped) this._setauthenticationgap(message);
+      this._tokenRefreshTimer = setTimeout(() => {
+        this._tokenRefreshTimer = null;
+        this._refreshwebsockettoken(id, 0, authenticationGapped, '');
+      }, delay);
+      return;
+    }
+    if (id !== this.wsId || !this.server || this._refreshingToken) return;
+    if (authenticationGapped) this._setauthenticationgap(message);
+    const server = this.server;
+    this._refreshingToken = true;
+    try {
+      const apiKey = await Servers.resolveapikey(server);
+      if (!apiKey || this.server !== server || id !== this.wsId) return;
+      const data = server.type === 'Calagopus'
+        ? await Api.fetchcalagopuswebsocket(server.panelUrl, apiKey, server.uuid)
+        : await Api.fetchwebsocket(server.panelUrl, apiKey, server.uuid);
+      if (!data?.token || this.server !== server || id !== this.wsId) return;
+      window.electronAPI.sendws(id, JSON.stringify({ event: 'auth', args: [data.token] }));
+    } catch (e) {
+      if (this.server === server && id === this.wsId) {
+        this._reconnectwithfreshtoken(id, 'Token refresh failed: ' + e.message);
+      }
+    } finally {
+      this._refreshingToken = false;
+    }
+  },
+
+  _setauthenticationgap(message) {
+    if (message) this.log('error', message);
+    this.connected = false;
+    this._stopping();
+    this._setconnectionstatus(false);
+    this._updateconsolestate();
+  },
+
+  _reconnectwithfreshtoken(id, message) {
+    if (id !== this.wsId) return;
+    this.log('error', message);
+    this.connected = false;
+    this._refreshingToken = false;
+    this._stopping();
+    this._setconnectionstatus(false);
+    this._updateconsolestate();
+    this.wsId = null;
+    window.electronAPI.closews(id);
+    this._schedulereconnect(0);
+  },
+
+  _schedulereconnect(delay) {
+    if (!this.server || this._reconnectTimer) return;
+    this._reconnectTimer = setTimeout(() => {
+      this._reconnectTimer = null;
+      this.connect();
+    }, delay);
+  },
+
+  _clearreconnect() {
+    if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
+    this._reconnectTimer = null;
+  },
+
+  _cleartokenrefresh() {
+    if (this._tokenRefreshTimer) clearTimeout(this._tokenRefreshTimer);
+    this._tokenRefreshTimer = null;
   },
 
   handlestats(raw) {
@@ -414,6 +545,11 @@ const ServerConsole = {
     if (!btnStart) return;
     this._updatestatebadge(state);
 
+    if (this.server?.type === 'Calagopus' && calagopussettings.blocked()) {
+      [btnStart, btnStop, btnRestart, btnKill].forEach(button => { if (button) button.disabled = true; });
+      return;
+    }
+
     if (state === 'running') {
       btnStart.disabled = true;
       btnStop.disabled = false;
@@ -438,6 +574,7 @@ const ServerConsole = {
   },
 
   send() {
+    if (this.server?.type === 'Calagopus' && calagopussettings.blocked()) return;
     const input = Utils.el('consoleInput');
     const cmd = input.value.trim();
     if (!cmd || !this.connected || this.wsId === null) return;
@@ -488,6 +625,10 @@ const ServerConsole = {
     const offline = Utils.el('consoleOffline');
     const connecting = Utils.el('consoleConnecting');
     if (!empty || !offline) return;
+    if (this.server?.type === 'Calagopus' && calagopussettings.active() && calagopussettings.session.detail?.status === 'installing') {
+      [empty, offline, connecting].forEach(element => { if (element) element.style.display = 'none'; });
+      return;
+    }
 
     if (this._hasOutput) {
       if (connecting) connecting.style.display = 'none';
@@ -526,11 +667,20 @@ const ServerConsole = {
   },
 
   async sendpower(signal) {
+    if (this.server?.type === 'Calagopus' && calagopussettings.blocked()) return;
     if (this.connected && this.wsId !== null) {
       window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'set state', args: [signal] }));
     } else {
       const apiKey = await Servers.resolveapikey(this.server);
-      if (apiKey) Api.power(this.server.panelUrl, apiKey, this.server.uuid, signal);
+      if (apiKey) {
+        try {
+          if (this.server.type === 'Calagopus') await Api.calagopuspower(this.server.panelUrl, apiKey, this.server.uuid, signal);
+          else await Api.power(this.server.panelUrl, apiKey, this.server.uuid, signal);
+        } catch (error) {
+          Modal.alert('Power Error', error.message || String(error));
+          return;
+        }
+      }
     }
     if (typeof CTRLPlugin !== 'undefined') {
       CTRLPlugin.emit('server:' + signal, { server: this.server, uuid: this.server.uuid });
@@ -731,5 +881,44 @@ const ServerConsole = {
     this._searchmarks = [];
     this._searchidx = -1;
     this._updateconsolestate();
+  },
+
+  _setconnectionstatus(connected, ping) {
+    const wrap = Utils.el('consoleConnection');
+    const text = Utils.el('consoleConnectionText');
+    const show = this.server?.type === 'Calagopus';
+    if (wrap) {
+      wrap.style.display = show ? 'flex' : 'none';
+      wrap.dataset.state = connected ? 'connected' : 'disconnected';
+    }
+    if (text && show) {
+      text.textContent = connected
+        ? `Connected${Number.isFinite(ping) ? ` (${ping}ms ping)` : ''}`
+        : 'Disconnected';
+    }
+  },
+
+  _startping() {
+    this._stopping();
+    const ping = () => {
+      if (!this.connected || this.wsId === null || this.server?.type !== 'Calagopus') return;
+      this._pingStartedAt = Date.now();
+      window.electronAPI.sendws(this.wsId, JSON.stringify({ event: 'ping', args: [] }));
+      if (this._pingTimeout) clearTimeout(this._pingTimeout);
+      this._pingTimeout = setTimeout(() => {
+        this._pingTimeout = null;
+        this._setconnectionstatus(false);
+      }, 10000);
+    };
+    ping();
+    this._pingInterval = setInterval(ping, 10000);
+  },
+
+  _stopping() {
+    if (this._pingInterval) clearInterval(this._pingInterval);
+    if (this._pingTimeout) clearTimeout(this._pingTimeout);
+    this._pingInterval = null;
+    this._pingTimeout = null;
+    this._pingStartedAt = 0;
   }
 };

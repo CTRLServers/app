@@ -102,7 +102,7 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
           </svg>
-          <span>Self-Host</span>
+          <span>Monitoring</span>
           <span style="font-size:9px;padding:1px 5px;background:rgba(99,102,241,0.2);color:#818cf8;border-radius:4px;font-weight:600;margin-left:4px;">BETA</span>
         </a>
 
@@ -121,14 +121,58 @@
       </div>
 
       <nav class="sidebar-nav server-nav" id="serverNav" style="display:none;">
-        <a href="#" class="nav-item" data-server-page="console" data-pterodactyl>
+        <a href="#" class="nav-item hidden" data-server-page="paneloverview" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>Overview</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panelsettings" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21h-4v-.05a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.05a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21v4h-.05a1.7 1.7 0 0 0-1.55 1z"/></svg>
+          <span>Settings</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panelapplicationapi" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-3 3 3 3"/><path d="M16 9l3 3-3 3"/><path d="M14 5l-4 14"/></svg>
+          <span>Application API</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="paneldatabases" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
+          <span>Databases</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panellocations" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Locations</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panelnodes" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="6" rx="2"/><rect x="3" y="15" width="18" height="6" rx="2"/><path d="M7 6h.01M7 18h.01"/></svg>
+          <span>Nodes</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panelservers" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
+          <span>Servers</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panelusers" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+          <span id="server-users-label">Users</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panelmounts" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 17h20v4H2z"/><path d="M8 9h8"/></svg>
+          <span>Mounts</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="panelnests" data-paneladmin>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg>
+          <span>Nests</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="console" data-pterodactyl data-pufferpanel>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="4 17 10 11 4 5" />
             <line x1="12" y1="19" x2="20" y2="19" />
           </svg>
           <span>Console</span>
         </a>
-        <a href="#" class="nav-item" data-server-page="files" data-pterodactyl>
+        <a href="#" class="nav-item hidden" data-server-page="statistics" data-pufferpanel>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
+          <span>Statistics</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="files" data-pterodactyl data-pufferpanel>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
@@ -155,7 +199,7 @@
           </svg>
           <span>Keychain</span>
         </a>
-        <a href="#" class="nav-item" data-server-page="users" data-pterodactyl>
+        <a href="#" class="nav-item" data-server-page="users" data-pterodactyl data-pufferpanel>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
             <circle cx="9" cy="7" r="4" />
@@ -164,7 +208,7 @@
           </svg>
           <span>Users</span>
         </a>
-        <a href="#" class="nav-item" data-server-page="backups" data-pterodactyl>
+        <a href="#" class="nav-item" data-server-page="backups" data-pterodactyl data-pufferpanel>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
             <polyline points="17 21 17 13 7 13 7 21" />
@@ -186,12 +230,27 @@
           </svg>
           <span>Startup</span>
         </a>
-        <a href="#" class="nav-item" data-server-page="settings" data-pterodactyl>
+        <a href="#" class="nav-item hidden" data-server-page="mounts">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6h16v12H4z" />
+            <path d="M8 10h8M8 14h5" />
+          </svg>
+          <span>Mounts</span>
+        </a>
+        <a href="#" class="nav-item" data-server-page="settings" data-pterodactyl data-pufferpanel>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
           <span>Settings</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="pufferadmin" data-pufferpanel>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 3 7v5c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V7z"/><path d="M9 12h6M12 9v6"/></svg>
+          <span>Admin</span>
+        </a>
+        <a href="#" class="nav-item hidden" data-server-page="puffersftp" data-pufferpanel>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v13H3z"/><path d="M7 7V4h10v3"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+          <span>SFTP</span>
         </a>
         <a href="#" class="nav-item" data-server-page="activity" data-pterodactyl>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -343,7 +402,7 @@
           <span>Web Server</span>
         </a>
         <div class="nav-separator"></div>
-        <a href="#" class="nav-item" id="backToServers" data-pterodactyl data-vps>
+        <a href="#" class="nav-item" id="backToServers" data-pterodactyl data-vps data-paneladmin>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="19" y1="12" x2="5" y2="12" />
             <polyline points="12 19 5 12 12 5" />
@@ -488,6 +547,7 @@
           </div>
 
           <div class="server-page" id="serverPage">
+            <div id="calagopus-installation" class="calagopus-installation" role="status" hidden></div>
             <div class="server-page-tab" id="tabConsole">
               <div class="console-layout">
                 <div class="console-container">
@@ -544,6 +604,10 @@
                   </div>
                 </div>
                 <div class="console-toolbar" id="consoleToolbar">
+                  <div class="console-connection" id="consoleConnection" style="display:none;" data-state="disconnected">
+                    <span class="console-connection-dot"></span>
+                    <span id="consoleConnectionText">Disconnected</span>
+                  </div>
                   <div class="console-search-wrap" id="consoleSearchWrap" style="display:none;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input type="text" class="console-search-input" id="consoleSearchInput" placeholder="Search..." oninput="ServerConsole.onsearch(this.value)" />
@@ -672,29 +736,60 @@
               <div class="files-container" id="filesContainer">
                 <div class="files-toolbar" id="filesToolbar">
                   <div class="files-breadcrumb" id="filesBreadcrumb"></div>
+                  <div class="files-view-switch" aria-label="File manager view">
+                    <button class="files-view-btn active" data-view="normal" onclick="ServerFiles.setview('normal')">Normal</button>
+                    <button class="files-view-btn" data-view="ide" onclick="ServerFiles.setview('ide')">IDE</button>
+                  </div>
                   <div class="files-search-wrap">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input type="text" class="files-search-input" id="filesSearchInput" placeholder="Search files..." oninput="ServerFiles.onsearch(this.value)" />
                   </div>
                   <div class="files-actions" id="filesActions">
                     <input type="file" id="fileUploadInput" style="display:none;" multiple />
-                    <button class="btn btn-upload" onclick="Utils.el('fileUploadInput').click()">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                      Upload
-                    </button>
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfolder()">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-                      New Folder
-                    </button>
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.createfile()">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                      New File
-                    </button>
+                    <input type="file" id="folderUploadInput" style="display:none;" webkitdirectory multiple />
+                    <div class="files-dropdown-wrap calagopus-files-only" id="file-operations-wrap" style="display:none;">
+                      <button class="file-operations-button" type="button" title="File operations" onclick="ServerFiles.toggledropdown('file-operations-menu', event)">
+                        <span id="file-operations-progress"></span>
+                      </button>
+                      <div class="files-dropdown file-operations-menu" id="file-operations-menu"></div>
+                    </div>
+                    <div class="files-dropdown-wrap calagopus-files-only">
+                      <button class="btn btn-secondary btn-sm" onclick="ServerFiles.toggledropdown('filesConnectMenu', event)">
+                        Connect
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                      <div class="files-dropdown" id="filesConnectMenu">
+                        <button onclick="ServerFiles.opensftp()"><span>SFTP</span>Via SFTP</button>
+                        <button onclick="ServerFiles.openvscode()"><span>&lt;/&gt;</span>Via VS Code</button>
+                      </div>
+                    </div>
+                    <div class="files-dropdown-wrap" id="files-new-wrap">
+                      <button class="btn btn-primary btn-sm" onclick="ServerFiles.toggledropdown('filesNewMenu', event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                        New
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                      <div class="files-dropdown" id="filesNewMenu">
+                        <button class="pterodactyl-files-only" onclick="ServerFiles.createfile()"><span>+</span>New file</button>
+                        <button class="pterodactyl-files-only" onclick="ServerFiles.createfolder()"><span>+</span>New folder</button>
+                        <div class="files-dropdown-separator pterodactyl-files-only"></div>
+                        <button class="pterodactyl-files-only" onclick="Utils.el('fileUploadInput').click()"><span>+</span>Upload files</button>
+                        <button class="pterodactyl-files-only" onclick="Utils.el('folderUploadInput').click()"><span>+</span>Upload folder</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.createfile()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg></span>File from Editor</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.createfolder()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h6l2 2h10v12H3z"/><path d="M12 10v6M9 13h6"/></svg></span>Directory</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.createsymlink()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span>Symlink</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.pullfile()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>File from Pull</button>
+                        <button class="calagopus-files-only" onclick="Utils.el('fileUploadInput').click()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9M7 14l5-5 5 5"/><path d="M5 3h14"/></svg></span>File from Upload</button>
+                        <button class="calagopus-files-only" onclick="Utils.el('folderUploadInput').click()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h6l2 2h10v12H3z"/><path d="M12 17v-6M9 14l3-3 3 3"/></svg></span>Directory from Upload</button>
+                      </div>
+                    </div>
                     <button class="btn btn-secondary btn-sm" onclick="ServerFiles.doreload()" title="Refresh">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
                   </div>
                 </div>
+                <div class="files-workspace">
+                <div class="files-browser-pane" id="filesBrowserPane">
                 <div class="files-info-cards" id="filesInfoCards">
                   <div class="files-info-card">
                     <div class="files-info-card-value" id="filesInfoRoot">/</div>
@@ -763,18 +858,22 @@
                   </div>
                   <div class="files-list" id="filesList"></div>
                 </div>
+                <div class="files-ide-tree" id="filesIdeTree" style="display:none;"></div>
+                </div>
                 <div class="editor-container" id="editorContainer" style="display:none;">
                   <div class="editor-header" id="editorHeader">
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.closeeditor()">
+                    <button class="btn btn-secondary btn-sm" id="editorBackBtn" onclick="ServerFiles.backfromeditor()">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                       Back
                     </button>
                     <span class="editor-filename" id="editorFilename"></span>
+                    <div class="file-editor-tabs" id="fileEditorTabs"></div>
                     <div class="editor-actions">
                       <button class="btn btn-primary btn-sm" id="fileEditorSave" onclick="ServerFiles.savefile()">Save</button>
                     </div>
                   </div>
                   <div class="editor-wrapper" id="editorWrapper"></div>
+                </div>
                 </div>
               </div>
             </div>
@@ -785,8 +884,19 @@
             <div class="server-page-tab" id="tabBackups" style="display:none;"></div>
             <div class="server-page-tab" id="tabNetwork" style="display:none;"></div>
             <div class="server-page-tab" id="tabStartup" style="display:none;"></div>
+            <div class="server-page-tab" id="tabMounts" style="display:none;"></div>
             <div class="server-page-tab" id="tabSettings" style="display:none;"></div>
             <div class="server-page-tab" id="tabActivity" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpaneloverview" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanelsettings" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanelapplicationapi" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpaneldatabases" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanellocations" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanelnodes" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanelservers" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanelusers" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanelmounts" style="display:none;"></div>
+            <div class="server-page-tab" id="tabpanelnests" style="display:none;"></div>
             <div class="server-page-tab" id="tabPlugins" style="display:none;flex-direction:column;gap:16px;padding:20px;">
               <div style="display:flex;align-items:center;gap:12px;">
                 <div style="position:relative;flex:1;max-width:400px;">
@@ -938,6 +1048,16 @@
   <script src="js/codemirror/mode/elixir/elixir.min.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/pufferpanel.js"></script>
+  <script src="js/adminpanel.js"></script>
+  <script src="js/adminapplicationapi.js"></script>
+  <script src="js/admindatabases.js"></script>
+  <script src="js/adminusers.js"></script>
+  <script src="js/adminlocations.js"></script>
+  <script src="js/adminnodes.js"></script>
+  <script src="js/adminservers.js"></script>
+  <script src="js/adminnests.js"></script>
+  <script src="js/adminmounts.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/modal.js"></script>
   <script src="js/servers.js"></script>
@@ -950,7 +1070,18 @@
   <script src="js/network.js"></script>
   <script src="js/backups.js"></script>
   <script src="js/databases.js"></script>
+  <script src="node_modules/@msgpack/msgpack/dist.umd/msgpack.min.js"></script>
+  <script src="js/calagopusdatabases.js"></script>
   <script src="js/schedules.js"></script>
+  <script src="js/calagopusschedules.js"></script>
+  <script src="js/calagopussubusers.js"></script>
+  <script src="js/calagopusnetwork.js"></script>
+  <script src="js/calagopusstartup.js"></script>
+  <script src="js/calagopusbackups.js"></script>
+  <script src="js/calagopusmounts.js"></script>
+  <script src="js/calagopusactivity.js"></script>
+  <script src="js/calagopustimezones.js"></script>
+  <script src="js/calagopussettings.js"></script>
   <script src="js/keychain.js"></script>
   <script src="js/vps.js"></script>
   <script src="js/vps-processes.js"></script>

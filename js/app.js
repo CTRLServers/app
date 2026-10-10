@@ -11,7 +11,7 @@ const Windows = {
       if (server.host) window.electronAPI.openexternal(server.host);
       return;
     }
-    if (server.type !== 'Pterodactyl' && server.type !== 'VPS/VDS') return;
+    if (server.type !== 'Pterodactyl' && server.type !== 'Calagopus' && server.type !== 'PufferPanel' && server.type !== 'Pterodactyl Admin' && server.type !== 'VPS/VDS') return;
 
     const existing = this.windows.find(w => w.serverIndex === serverIndex);
     if (existing) {
@@ -65,6 +65,7 @@ const Windows = {
     const server = Servers.list[win.serverIndex];
     this.windows = this.windows.filter(w => w.id !== id);
     if (server) {
+      if (server.type === 'PufferPanel' && typeof pufferpanel !== 'undefined') pufferpanel.stop_live();
       if (server.type !== 'VPS/VDS') {
         delete ServerConsole._cache[server.uuid];
         if (ServerConsole.server && ServerConsole.server.uuid === server.uuid) ServerConsole.destroy();
@@ -99,10 +100,12 @@ const Windows = {
   },
 
   _hidewindow() {
+    if (typeof pufferpanel !== 'undefined') pufferpanel.stop_live();
     if (App.currentServer) {
       if (App.currentServer.type === 'VPS/VDS') VPSConsole.detach();
-      else if (App.currentServer.panelUrl) ServerConsole.detach();
+      else if (App.currentServer.type === 'Pterodactyl' || App.currentServer.type === 'Calagopus') ServerConsole.detach();
     }
+    calagopusactivity.start(null);
     App.currentServer = null;
     Servers._didrag = false;
     const detail = Utils.el('serverDetail');
@@ -120,13 +123,15 @@ const Windows = {
     Utils.el('sidebarFooter').style.display = '';
     Utils.el('sidebarWorkspaces').style.display = '';
     Utils.el('workspacesSeparator').style.display = '';
-    Utils.el('topbarResources').style.display = 'none';
+    const topbar_resources = Utils.el('topbarResources');
+    if (topbar_resources) topbar_resources.style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
     Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
     Utils.el('pinnedServers').style.display = 'none';
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('topbarActions').style.display = '';
-    Utils.el('topbarServerActions').style.display = 'none';
+    const topbar_server_actions = Utils.el('topbarServerActions');
+    if (topbar_server_actions) topbar_server_actions.style.display = 'none';
     Utils.el('pageTitle').textContent = 'Dashboard';
     Utils.el('pageTitle').style.display = '';
     Utils.el('vpsInfoCard').style.display = 'none';
@@ -564,10 +569,11 @@ const App = {
   },
 
   showserverlist() {
+    if (typeof pufferpanel !== 'undefined') pufferpanel.stop_live();
     if (ServerFiles.editor) ServerFiles.closeeditor();
     if (this.currentServer) {
       if (this.currentServer.type === 'VPS/VDS') VPSConsole.detach();
-      else if (this.currentServer.panelUrl) ServerConsole.detach();
+      else if (this.currentServer.type === 'Pterodactyl' || this.currentServer.type === 'Calagopus') ServerConsole.detach();
     }
     const shTab = Utils.el('tabSelfHost');
     if (shTab && shTab._inServerPage && shTab._parentBeforeMove) {
@@ -581,6 +587,7 @@ const App = {
       shTab._parentBeforeMove = null;
       shTab._nextSibling = null;
     }
+    calagopusactivity.start(null);
     this.currentServer = null;
     Servers._didrag = false;
     if (Windows.windows.length === 0) {
@@ -602,13 +609,15 @@ const App = {
     Utils.el('sidebarFooter').style.display = '';
     Utils.el('sidebarWorkspaces').style.display = '';
     Utils.el('workspacesSeparator').style.display = '';
-    Utils.el('topbarResources').style.display = 'none';
+    const dashboard_resources = Utils.el('topbarResources');
+    if (dashboard_resources) dashboard_resources.style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
     Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
     Utils.el('pinnedServers').style.display = 'none';
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('topbarActions').style.display = '';
-    Utils.el('topbarServerActions').style.display = 'none';
+    const dashboard_server_actions = Utils.el('topbarServerActions');
+    if (dashboard_server_actions) dashboard_server_actions.style.display = 'none';
     Utils.el('pageTitle').textContent = 'Dashboard';
     Utils.el('pageTitle').style.display = '';
     Utils.el('vpsInfoCard').style.display = 'none';
@@ -638,7 +647,7 @@ const App = {
       if (server.host) window.electronAPI.openexternal(server.host);
       return;
     }
-    if (server.type !== 'Pterodactyl' && server.type !== 'VPS/VDS') return;
+    if (server.type !== 'Pterodactyl' && server.type !== 'Calagopus' && server.type !== 'PufferPanel' && server.type !== 'Pterodactyl Admin' && server.type !== 'VPS/VDS') return;
 
     const existing = Windows.windows.find(w => w.serverIndex === index);
     if (existing) {
@@ -664,10 +673,13 @@ const App = {
 
   _showservercontent(server) {
     if (this.currentServer && this.currentServer !== server) {
+      if (typeof pufferpanel !== 'undefined') pufferpanel.stop_live();
       if (this.currentServer.type === 'VPS/VDS') VPSConsole.detach();
-      else if (this.currentServer.panelUrl) ServerConsole.detach();
+      else if (this.currentServer.type === 'Pterodactyl' || this.currentServer.type === 'Calagopus') ServerConsole.detach();
     }
     this.currentServer = server;
+    calagopussettings.start(server);
+    calagopusactivity.start(server);
     if (typeof CTRLPlugin !== 'undefined') {
       CTRLPlugin.emit('server:select', { server });
     }
@@ -702,7 +714,20 @@ const App = {
     const navPlugins = Utils.el('navplugins');
     const navMods = Utils.el('navmods');
 
-    if (server.type === 'VPS/VDS') {
+    if (server.type === 'Pterodactyl Admin') {
+      document.querySelectorAll('#serverNav .nav-item[data-paneladmin]').forEach(item => {
+        item.classList.remove('hidden');
+      });
+      Utils.el('topbarActions').style.display = 'none';
+      Utils.el('topbarServerActions').style.display = 'none';
+      Utils.el('topbarResources').style.display = 'none';
+      document.querySelectorAll('#serverNav .nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.serverPage === 'paneloverview');
+      });
+      this.switchserverpage('paneloverview');
+      if (navPlugins) navPlugins.style.display = 'none';
+      if (navMods) navMods.style.display = 'none';
+    } else if (server.type === 'VPS/VDS') {
       document.querySelectorAll('#serverNav .nav-item[data-vps]').forEach(item => {
         item.classList.remove('hidden');
       });
@@ -719,10 +744,24 @@ const App = {
       VPSConsole.init(server);
       if (navPlugins) navPlugins.style.display = 'none';
       if (navMods) navMods.style.display = 'none';
+    } else if (server.type === 'PufferPanel') {
+      document.querySelectorAll('#serverNav .nav-item[data-pufferpanel], #serverNav .nav-item#backToServers').forEach(item => item.classList.remove('hidden'));
+      Utils.el('topbarActions').style.display = 'none';
+      Utils.el('topbarServerActions').style.display = 'none';
+      Utils.el('topbarResources').style.display = 'none';
+      document.querySelectorAll('#serverNav .nav-item').forEach(item => item.classList.toggle('active', item.dataset.serverPage === 'console'));
+      this.switchserverpage('console');
     } else {
-      document.querySelectorAll('#serverNav .nav-item[data-pterodactyl]').forEach(item => {
+      const selector = server.type === 'Calagopus'
+        ? '#serverNav .nav-item[data-server-page="console"], #serverNav .nav-item[data-server-page="files"], #serverNav .nav-item[data-server-page="databases"], #serverNav .nav-item[data-server-page="schedules"], #serverNav .nav-item[data-server-page="users"], #serverNav .nav-item[data-server-page="backups"], #serverNav .nav-item[data-server-page="network"], #serverNav .nav-item[data-server-page="startup"], #serverNav .nav-item[data-server-page="mounts"], #serverNav .nav-item[data-server-page="settings"], #serverNav .nav-item[data-server-page="activity"], #serverNav .nav-item#backToServers'
+        : '#serverNav .nav-item[data-pterodactyl]';
+      document.querySelectorAll(selector).forEach(item => {
         item.classList.remove('hidden');
       });
+      if (server.type === 'Calagopus') calagopusmounts.syncnav(server);
+      if (server.type === 'Calagopus') calagopusactivity.permissionpromise = calagopusactivity.syncnav(server);
+      const userslabel = Utils.el('server-users-label');
+      if (userslabel) userslabel.textContent = server.type === 'Calagopus' ? 'Subusers' : 'Users';
       Utils.el('topbarActions').style.display = 'none';
       Utils.el('topbarServerActions').style.display = '';
       Utils.el('topbarResources').style.display = '';
@@ -734,10 +773,10 @@ const App = {
       this.switchserverpage('console');
       ServerConsole.init(server);
 
-      Plugins.detect(server).then(() => {
+      if (server.type === 'Pterodactyl') Plugins.detect(server).then(() => {
         if (navPlugins) navPlugins.style.display = Plugins.hasplugins ? '' : 'none';
       });
-      Mods.detect(server).then(() => {
+      if (server.type === 'Pterodactyl') Mods.detect(server).then(() => {
         if (navMods) navMods.style.display = Mods.hasmods ? '' : 'none';
       });
     }
@@ -748,6 +787,8 @@ const App = {
   },
 
   switchserverpage(page) {
+    page = calagopussettings.guard(page);
+    if (calagopusactivity.blocknavigation(page)) return;
     if (page !== 'files' && ServerFiles.editor) {
       ServerFiles.closeeditor();
     }
@@ -756,7 +797,9 @@ const App = {
     if (page !== 'disk' && VPSDisk.destroy) VPSDisk.destroy();
     if (page !== 'vpsNet' && VPSNet.destroy) VPSNet.destroy();
     if (page !== 'ssl' && VPSSSL.destroy) VPSSSL.destroy();
+    if (this.currentServer?.type === 'PufferPanel') pufferpanel.stop_live();
     this.currentServerPage = page;
+    calagopusactivity.pagechanged(page);
     if (typeof CTRLPlugin !== 'undefined') {
       CTRLPlugin.emit('page:serverpage', { page, server: this.currentServer });
     }
@@ -765,6 +808,13 @@ const App = {
     });
     document.querySelectorAll('.server-page-tab').forEach(tab => tab.style.display = 'none');
     document.querySelectorAll('[id^="tabServerPluginPage-"]').forEach(el => el.style.display = 'none');
+
+    if (page && page.startsWith('panel')) {
+      const paneltab = Utils.el('tab' + page);
+      if (paneltab) paneltab.style.display = 'flex';
+      adminpanel.load(page);
+      return;
+    }
 
     if (page && page.startsWith('plugin-')) {
       const pageId = page.slice(7);
@@ -803,22 +853,55 @@ const App = {
 
     const tab = Utils.el('tab' + page.charAt(0).toUpperCase() + page.slice(1));
     if (tab) tab.style.display = 'flex';
+    if (this.currentServer?.type === 'PufferPanel') {
+      if (tab) tab.style.display = 'none';
+      pufferpanel.load_page(page, this.currentServer);
+      return;
+    }
+    if (App.currentServer?.type === 'Calagopus') calagopussettings.updatebanner();
 
     const vpsTabMap = { vpsNet: 'tabVpsNet', ssl: 'tabSSL' };
     if (vpsTabMap[page]) {
       const vpsTab = Utils.el(vpsTabMap[page]);
       if (vpsTab) vpsTab.style.display = 'flex';
     }
-    if (page === 'files' && App.currentServer) ServerFiles.load(ServerFiles.currentPath || '/');
-    if (page === 'activity' && App.currentServer) ServerActivity.load();
-    if (page === 'users' && App.currentServer) ServerUsers.load();
-    if (page === 'databases' && App.currentServer) ServerDatabases.load();
-    if (page === 'schedules' && App.currentServer) ServerSchedules.load();
+    if (page === 'files' && App.currentServer) {
+      if (App.currentServer.type !== 'Calagopus' || !calagopusactivity.usefileview()) ServerFiles.load(ServerFiles.currentPath || '/');
+    }
+    if (page === 'activity' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopusactivity.load();
+      else ServerActivity.load();
+    }
+    if (page === 'users' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopussubusers.load();
+      else ServerUsers.load();
+    }
+    if (page === 'databases' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopusdatabases.load();
+      else ServerDatabases.load();
+    }
+    if (page === 'schedules' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopusschedules.load();
+      else ServerSchedules.load();
+    }
     if (page === 'keychain' && App.currentServer) ServerKeychain.load();
-    if (page === 'startup' && App.currentServer) ServerStartup.load();
-    if (page === 'network' && App.currentServer) ServerNetwork.load();
-    if (page === 'backups' && App.currentServer) ServerBackups.load();
-    if (page === 'settings' && App.currentServer) ServerSettings.load();
+    if (page === 'startup' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopusstartup.load();
+      else ServerStartup.load();
+    }
+    if (page === 'network' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopusnetwork.load();
+      else ServerNetwork.load();
+    }
+    if (page === 'mounts' && App.currentServer?.type === 'Calagopus') calagopusmounts.load();
+    if (page === 'backups' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopusbackups.load();
+      else ServerBackups.load();
+    }
+    if (page === 'settings' && App.currentServer) {
+      if (App.currentServer.type === 'Calagopus') calagopussettings.load();
+      else ServerSettings.load();
+    }
     if (page === 'packages' && App.currentServer) Packages.load();
     if (page === 'info' && App.currentServer) VPSInfo.load();
     if (page === 'firewall' && App.currentServer) Firewall.load();

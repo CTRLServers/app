@@ -64,21 +64,18 @@ const Utils = {
         while (j < str.length && str[j] >= '0' && str[j] <= '?') j++;
         if (j < str.length && str[j] >= '@' && str[j] <= '~') {
           const raw = str.substring(i + 2, j);
-          const params = raw.split(';').map(Number);
+          const params = raw === '' ? [0] : raw.split(';').map(Number);
           const cmd = str[j];
           i = j + 1;
           if (cmd === 'm') {
-            if (params.length === 0 || params.includes(0)) {
-              while (openSpans > 0) { result += '</span>'; openSpans--; }
-            } else {
-              for (const code of params) {
-                if (code === 1) { result += '<span style="font-weight:bold">'; openSpans++; }
-                else if (code === 3) { result += '<span style="font-style:italic">'; openSpans++; }
-                else if (code === 4) { result += '<span style="text-decoration:underline">'; openSpans++; }
-                else if (code >= 30 && code <= 37) { result += `<span style="color:${colors[code - 30]}">`; openSpans++; }
-                else if (code >= 90 && code <= 97) { result += `<span style="color:${bright[code - 90]}">`; openSpans++; }
-                else if (code >= 40 && code <= 47) { result += `<span style="background-color:${colors[code - 40]}">`; openSpans++; }
-              }
+            for (const code of params) {
+              if (code === 0) { while (openSpans > 0) { result += '</span>'; openSpans--; } }
+              else if (code === 1) { result += '<span style="font-weight:bold">'; openSpans++; }
+              else if (code === 3) { result += '<span style="font-style:italic">'; openSpans++; }
+              else if (code === 4) { result += '<span style="text-decoration:underline">'; openSpans++; }
+              else if (code >= 30 && code <= 37) { result += `<span style="color:${colors[code - 30]}">`; openSpans++; }
+              else if (code >= 90 && code <= 97) { result += `<span style="color:${bright[code - 90]}">`; openSpans++; }
+              else if (code >= 40 && code <= 47) { result += `<span style="background-color:${colors[code - 40]}">`; openSpans++; }
             }
           }
           continue;

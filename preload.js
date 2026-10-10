@@ -218,6 +218,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cryptodecrypt: (data) => {
     return ipcRenderer.invoke('crypto-decrypt', data);
   },
+  panelrequest: (url, options) => {
+    return ipcRenderer.invoke('panel-request', url, options);
+  },
   plugindir: () => {
     return ipcRenderer.invoke('plugin-dir');
   },

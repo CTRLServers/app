@@ -1,5 +1,31 @@
+const nativepanelfetch = window.fetch.bind(window);
+
+window.fetch = async (url, options = {}) => {
+  try {
+    return await nativepanelfetch(url, options);
+  } catch (error) {
+    const address = typeof url === 'string' ? url : url?.url;
+    const body = options?.body;
+    if (!address || !/^https?:\/\//i.test(address) || body instanceof FormData || body instanceof Blob || body instanceof ArrayBuffer || !window.electronAPI?.panelrequest) throw error;
+    const result = await window.electronAPI.panelrequest(address, {
+      method: options.method || 'GET',
+      headers: Object.fromEntries(new Headers(options.headers || {}).entries()),
+      body: body == null ? null : String(body)
+    });
+    const binary = atob(result.body || '');
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+    return new Response(bytes.length ? bytes : null, {
+      status: result.status,
+      statusText: result.statustext || '',
+      headers: result.headers || {}
+    });
+  }
+};
+
 const Api = {
   _cache: {},
+  _daemonroutes: {},
 
   headers(apiKey) {
     return {
@@ -7,6 +33,183 @@ const Api = {
       'Accept': 'application/vnd.pterodactyl.v1+json',
       'Content-Type': 'application/json'
     };
+  },
+
+  async pterodactylrequest(panelurl, apikey, uuid, path, options = {}) {
+    const base = panelurl.replace(/\/+$/, '');
+    const requestoptions = { ...options, headers: options.headers || this.headers(apikey) };
+    const routekey = `${base}|${uuid}`;
+    const routes = [
+      `${base}/api/client/servers/${uuid}${path}`,
+      `${base}/api/client/servers/wings/${uuid}${path}`,
+      `${base}/api/client/servers/elytra/${uuid}${path}`
+    ];
+    const knownroute = this._daemonroutes[routekey];
+    if (knownroute !== undefined) return fetch(routes[knownroute], requestoptions);
+    let response;
+    for (let routeindex = 0; routeindex < routes.length; routeindex++) {
+      response = await fetch(routes[routeindex], requestoptions);
+      if (response.status !== 404) {
+        this._daemonroutes[routekey] = routeindex;
+        return response;
+      }
+    }
+    return response;
+  },
+
+  calagopusheaders(apiKey) {
+    return {
+      'Authorization': `Bearer ${apiKey}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+  },
+
+  calagopuserror(raw, status) {
+    let message = `HTTP ${status}`;
+    try {
+      const data = raw ? JSON.parse(raw) : {};
+      const errors = Array.isArray(data.errors) ? data.errors : Object.values(data.errors || {});
+      message = errors.map(item => typeof item === 'string' ? item : item.detail || item.message || JSON.stringify(item)).join('; ') || data.message || message;
+    } catch (error) {
+      if (raw) message += `: ${raw.slice(0, 500)}`;
+    }
+    return message;
+  },
+
+  async fetchcalagopusservers(panelUrl, apiKey) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const servers = [];
+    let page = 1;
+    let lastPage = 1;
+    do {
+      const res = await fetch(`${base}/api/client/servers?page=${page}&per_page=100`, {
+        headers: this.calagopusheaders(apiKey)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const pagination = data.servers || {};
+      servers.push(...(pagination.data || []));
+      lastPage = Math.max(1, Math.ceil((pagination.total || servers.length) / (pagination.per_page || 100)));
+      page++;
+    } while (page <= lastPage);
+    return servers;
+  },
+
+  async fetchcalagopusserver(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}`, { headers: this.calagopusheaders(apiKey) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.server || data;
+  },
+
+  async fetchcalagopusresources(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/resources`, { headers: this.calagopusheaders(apiKey) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.resources || data;
+  },
+
+  async fetchcalagopuswebsocket(panelUrl, apiKey, uuid) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/websocket`, { headers: this.calagopusheaders(apiKey) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return { token: data.token, socket: data.url };
+  },
+
+  async calagopuspower(panelUrl, apiKey, uuid, action) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/servers/${uuid}/power`, {
+      method: 'POST',
+      headers: this.calagopusheaders(apiKey),
+      body: JSON.stringify({ action })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return true;
+  },
+
+  async fetchcalagopusaccount(panelUrl, apiKey) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/client/account`, { headers: this.calagopusheaders(apiKey) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.user || data;
+  },
+
+  async listcalagopusfiles(panelUrl, apiKey, uuid, directory = '/') {
+    const base = panelUrl.replace(/\/+$/, '');
+    const files = [];
+    let page = 1;
+    let total = 0;
+    let metadata = {};
+    do {
+      const params = new URLSearchParams({ directory, page: String(page), per_page: '100', sort: 'name_asc' });
+      const res = await fetch(`${base}/api/client/servers/${uuid}/files/list?${params}`, {
+        headers: this.calagopusheaders(apiKey)
+      });
+      if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
+      const data = await res.json();
+      metadata = data;
+      const entries = data.entries || {};
+      const batch = entries.data || [];
+      files.push(...batch.map(entry => ({ attributes: {
+        name: entry.name,
+        mimetype: entry.directory ? 'inode/directory' : (entry.mime || 'application/octet-stream'),
+        is_file: !!entry.file,
+        is_directory: !!entry.directory,
+        is_symlink: !!entry.symlink,
+        is_virtual: !!entry.virtual,
+        editable: entry.editable !== false,
+        inner_editable: !!entry.inner_editable,
+        size: entry.size || 0,
+        physical_size: entry.size_physical || 0,
+        modified_at: entry.modified,
+        created_at: entry.created,
+        mode: entry.mode,
+        mode_bits: entry.mode_bits
+      }})));
+      total = Number(entries.total || files.length);
+      page++;
+    } while (files.length < total);
+    files.filesystemwritable = metadata.is_filesystem_writable !== false;
+    files.filesystemprimary = metadata.is_filesystem_primary !== false;
+    files.filesystemfast = metadata.is_filesystem_fast !== false;
+    files.uploads = metadata.uploads || [];
+    return files;
+  },
+
+  async calagopusfileaction(panelUrl, apiKey, uuid, endpoint, method = 'POST', body = null, query = '') {
+    const base = panelUrl.replace(/\/+$/, '');
+    const options = { method, headers: this.calagopusheaders(apiKey) };
+    if (body !== null) options.body = typeof body === 'string' ? body : JSON.stringify(body);
+    if (typeof body === 'string') options.headers['Content-Type'] = 'text/plain; charset=UTF-8';
+    const res = await fetch(`${base}/api/client/servers/${uuid}/files/${endpoint}${query}`, options);
+    if (!res.ok) {
+      throw new Error(this.calagopuserror(await res.text(), res.status));
+    }
+    const type = res.headers.get('content-type') || '';
+    return type.includes('application/json') ? res.json() : res.text();
+  },
+
+  async uploadcalagopusfiles(panelUrl, apiKey, uuid, directory, files) {
+    const base = panelUrl.replace(/\/+$/, '');
+    const urlRes = await fetch(`${base}/api/client/servers/${uuid}/files/upload`, {
+      headers: this.calagopusheaders(apiKey)
+    });
+    if (!urlRes.ok) throw new Error(this.calagopuserror(await urlRes.text(), urlRes.status));
+    const data = await urlRes.json();
+    if (!data.url) throw new Error('No upload URL returned');
+    const form = new FormData();
+    files.forEach(item => form.append('files', item.file, item.relPath.replace(/\\/g, '/')));
+    const separator = data.url.includes('?') ? '&' : '?';
+    const res = await fetch(`${data.url}${separator}directory=${encodeURIComponent(directory || '/')}`, {
+      method: 'POST', body: form
+    });
+    if (!res.ok) throw new Error(`Upload failed: ${this.calagopuserror(await res.text(), res.status)}`);
+    return true;
   },
 
   async fetchservers(panelUrl, apiKey) {
@@ -34,36 +237,31 @@ const Api = {
   },
 
   async fetchwebsocket(panelUrl, apiKey, uuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/websocket`, { headers: this.headers(apiKey) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/websocket');
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return data.data || data;
   },
 
   async power(panelUrl, apiKey, uuid, signal) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/power`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/power', {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ signal })
     });
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     return res.ok;
   },
 
   async listfiles(panelUrl, apiKey, uuid, directory = '/') {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/list?directory=${encodeURIComponent(directory)}`, {
-      headers: this.headers(apiKey)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/files/list?directory=${encodeURIComponent(directory)}`);
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return data.data || [];
   },
 
   async readfile(panelUrl, apiKey, uuid, file) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/contents?file=${encodeURIComponent(file)}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/files/contents?file=${encodeURIComponent(file)}`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Accept': 'application/vnd.pterodactyl.v1+json'
@@ -73,7 +271,7 @@ const Api = {
     const content = new TextDecoder('utf-8').decode(await res.arrayBuffer());
     if (content.length) return content;
 
-    const downloadres = await fetch(`${base}/api/client/servers/${uuid}/files/download?file=${encodeURIComponent(file)}`, {
+    const downloadres = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/files/download?file=${encodeURIComponent(file)}`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Accept': 'application/vnd.pterodactyl.v1+json'
@@ -89,8 +287,7 @@ const Api = {
   },
 
   async createfolder(panelUrl, apiKey, uuid, name, path) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/create-folder`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/create-folder', {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ root: path || '/', name })
@@ -99,8 +296,7 @@ const Api = {
   },
 
   async writefile(panelUrl, apiKey, uuid, file, content) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/write?file=${encodeURIComponent(file)}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/files/write?file=${encodeURIComponent(file)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -117,9 +313,8 @@ const Api = {
   },
 
   async uploadfiles(panelUrl, apiKey, uuid, directory, files) {
-    const base = panelUrl.replace(/\/+$/, '');
     const dir = directory || '/';
-    const urlRes = await fetch(`${base}/api/client/servers/${uuid}/files/upload?directory=${encodeURIComponent(dir)}`, {
+    const urlRes = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/files/upload?directory=${encodeURIComponent(dir)}`, {
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/vnd.pterodactyl.v1+json' }
     });
     if (!urlRes.ok) throw new Error('Failed to get upload URL');
@@ -140,8 +335,7 @@ const Api = {
   },
 
   async renamefile(panelUrl, apiKey, uuid, root, file, newName) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/rename`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/rename', {
       method: 'PUT',
       headers: this.headers(apiKey),
       body: JSON.stringify({ root, files: [{ from: file, to: newName }] })
@@ -150,8 +344,7 @@ const Api = {
   },
 
   async movefiles(panelUrl, apiKey, uuid, root, files, directory) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/move`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/move', {
       method: 'PUT',
       headers: this.headers(apiKey),
       body: JSON.stringify({ root, files, directory })
@@ -160,8 +353,7 @@ const Api = {
   },
 
   async copyfile(panelUrl, apiKey, uuid, location) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/copy`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/copy', {
       method: 'POST',
       headers: this.headers(apiKey),
       body: JSON.stringify({ location })
@@ -170,8 +362,7 @@ const Api = {
   },
 
   async deletefiles(panelUrl, apiKey, uuid, root, files) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/delete`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/delete', {
       method: 'POST',
       headers: this.headers(apiKey),
       body: JSON.stringify({ root, files })
@@ -180,8 +371,7 @@ const Api = {
   },
 
   async compressfiles(panelUrl, apiKey, uuid, root, files, directory, prefix) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/compress`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/compress', {
       method: 'POST',
       headers: this.headers(apiKey),
       body: JSON.stringify({ root, files, directory, prefix })
@@ -190,8 +380,7 @@ const Api = {
   },
 
   async decompressfile(panelUrl, apiKey, uuid, root, file) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/decompress`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/decompress', {
       method: 'POST',
       headers: this.headers(apiKey),
       body: JSON.stringify({ root, file })
@@ -200,8 +389,7 @@ const Api = {
   },
 
   async changefilepermissions(panelUrl, apiKey, uuid, root, file, mode) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/files/chmod`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/files/chmod', {
       method: 'POST',
       headers: this.headers(apiKey),
       body: JSON.stringify({ root, files: [{ file, mode }] })
@@ -219,27 +407,20 @@ const Api = {
   },
 
   async fetchactivity(panelUrl, apiKey, uuid, page = 1) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/activity?sort=-timestamp&page=${page}&include%5B%5D=actor`, {
-      headers: this.headers(apiKey)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/activity?sort=-timestamp&page=${page}&include%5B%5D=actor`);
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     return await res.json();
   },
 
   async fetchsubusers(panelUrl, apiKey, uuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/users`, {
-      headers: this.headers(apiKey)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/users');
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return data.data || [];
   },
 
   async invitesubuser(panelUrl, apiKey, uuid, email, permissions) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/users`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/users', {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, permissions })
@@ -248,8 +429,7 @@ const Api = {
   },
 
   async updatesubuser(panelUrl, apiKey, uuid, userUuid, permissions) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/users/${userUuid}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/users/${userUuid}`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ permissions })
@@ -258,8 +438,7 @@ const Api = {
   },
 
   async deletesubuser(panelUrl, apiKey, uuid, userUuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/users/${userUuid}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/users/${userUuid}`, {
       method: 'DELETE',
       headers: this.headers(apiKey)
     });
@@ -275,15 +454,13 @@ const Api = {
   },
 
   async fetchstartup(panelUrl, apiKey, uuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/startup`, { headers: this.headers(apiKey) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/startup');
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     return await res.json();
   },
 
   async updatestartupvariable(panelUrl, apiKey, uuid, key, value) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/startup/variable`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/startup/variable', {
       method: 'PUT',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, value })
@@ -292,12 +469,18 @@ const Api = {
   },
 
   async updatedockerimage(panelUrl, apiKey, uuid, docker_image) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/startup/image`, {
+    let res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/startup/image', {
       method: 'PUT',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ docker_image })
     });
+    if (res.status === 404) {
+      res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/settings/docker-image', {
+        method: 'PUT',
+        headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docker_image })
+      });
+    }
     return res.ok;
   },
 
@@ -312,19 +495,17 @@ const Api = {
   },
 
   async fetchnetwork(panelUrl, apiKey, uuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations`, { headers: this.headers(apiKey) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/network/allocations');
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return data.data || [];
   },
 
   async createallocation(panelUrl, apiKey, uuid, ip, port) {
-    const base = panelUrl.replace(/\/+$/, '');
     const body = {};
     if (ip) body.ip = ip;
     if (port) body.port = port;
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/network/allocations', {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -333,8 +514,7 @@ const Api = {
   },
 
   async setprimaryallocation(panelUrl, apiKey, uuid, allocationId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationId}/primary`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/network/allocations/${allocationId}/primary`, {
       method: 'POST',
       headers: this.headers(apiKey)
     });
@@ -342,8 +522,7 @@ const Api = {
   },
 
   async setallocationnotes(panelUrl, apiKey, uuid, allocationId, notes) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationId}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/network/allocations/${allocationId}`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes })
@@ -352,8 +531,7 @@ const Api = {
   },
 
   async deleteallocation(panelUrl, apiKey, uuid, allocationId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/network/allocations/${allocationId}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/network/allocations/${allocationId}`, {
       method: 'DELETE',
       headers: this.headers(apiKey)
     });
@@ -361,20 +539,18 @@ const Api = {
   },
 
   async fetchbackups(panelUrl, apiKey, uuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups`, { headers: this.headers(apiKey) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/backups');
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return data.data || [];
   },
 
   async createbackup(panelUrl, apiKey, uuid, name, ignored, isLocked) {
-    const base = panelUrl.replace(/\/+$/, '');
     const body = {};
     if (name) body.name = name;
     if (ignored) body.ignored = ignored;
     if (isLocked) body.is_locked = true;
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/backups', {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -383,8 +559,7 @@ const Api = {
   },
 
   async deletebackup(panelUrl, apiKey, uuid, backupUuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/backups/${backupUuid}`, {
       method: 'DELETE',
       headers: this.headers(apiKey)
     });
@@ -392,8 +567,7 @@ const Api = {
   },
 
   async restorebackup(panelUrl, apiKey, uuid, backupUuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}/restore`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/backups/${backupUuid}/restore`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ truncate: true })
@@ -402,18 +576,14 @@ const Api = {
   },
 
   async downloadbackup(panelUrl, apiKey, uuid, backupUuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}/download`, {
-      headers: this.headers(apiKey)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/backups/${backupUuid}/download`);
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return (data.attributes && data.attributes.url) || data.url || '';
   },
 
   async togglebackuplock(panelUrl, apiKey, uuid, backupUuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/backups/${backupUuid}/lock`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/backups/${backupUuid}/lock`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -422,16 +592,14 @@ const Api = {
   },
 
   async fetchdatabases(panelUrl, apiKey, uuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/databases?include=password`, { headers: this.headers(apiKey) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/databases?include=password');
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return data.data || [];
   },
 
   async createdatabase(panelUrl, apiKey, uuid, database, remote) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/databases`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/databases', {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({ database, remote })
@@ -440,8 +608,7 @@ const Api = {
   },
 
   async deletedatabase(panelUrl, apiKey, uuid, dbId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/databases/${dbId}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/databases/${dbId}`, {
       method: 'DELETE',
       headers: this.headers(apiKey)
     });
@@ -449,8 +616,7 @@ const Api = {
   },
 
   async rotatedatabasepassword(panelUrl, apiKey, uuid, dbId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/databases/${dbId}/rotate-password`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/databases/${dbId}/rotate-password`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -459,17 +625,15 @@ const Api = {
   },
 
   async fetchschedules(panelUrl, apiKey, uuid) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules`, { headers: this.headers(apiKey) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/schedules');
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     return data.data || [];
   },
 
   async fetchscheduledetail(panelUrl, apiKey, uuid, scheduleId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}?include=tasks`, { headers: this.headers(apiKey) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/schedules/${scheduleId}?include=tasks`);
+    if (!res.ok) throw new Error(this.calagopuserror(await res.text(), res.status));
     const data = await res.json();
     const raw = data.data || data;
     const attrs = raw.attributes || raw;
@@ -481,8 +645,7 @@ const Api = {
   },
 
   async createschedule(panelUrl, apiKey, uuid, payload) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, '/schedules', {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -491,8 +654,7 @@ const Api = {
   },
 
   async updateschedule(panelUrl, apiKey, uuid, scheduleId, payload) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/schedules/${scheduleId}`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -501,8 +663,7 @@ const Api = {
   },
 
   async deleteschedule(panelUrl, apiKey, uuid, scheduleId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/schedules/${scheduleId}`, {
       method: 'DELETE',
       headers: this.headers(apiKey)
     });
@@ -510,8 +671,7 @@ const Api = {
   },
 
   async executeschedule(panelUrl, apiKey, uuid, scheduleId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}/execute`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/schedules/${scheduleId}/execute`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -520,8 +680,7 @@ const Api = {
   },
 
   async createscheduletask(panelUrl, apiKey, uuid, scheduleId, payload) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}/tasks`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/schedules/${scheduleId}/tasks`, {
       method: 'POST',
       headers: { ...this.headers(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -534,11 +693,35 @@ const Api = {
   },
 
   async deletescheduletask(panelUrl, apiKey, uuid, scheduleId, taskId) {
-    const base = panelUrl.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/client/servers/${uuid}/schedules/${scheduleId}/tasks/${taskId}`, {
+    const res = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/schedules/${scheduleId}/tasks/${taskId}`, {
       method: 'DELETE',
       headers: this.headers(apiKey)
     });
     return res.ok;
+  },
+
+  async adminrequest(panelurl, apikey, endpoint, method = 'GET', payload = null) {
+    const base = panelurl.replace(/\/+$/, '');
+    const options = {
+      method,
+      headers: this.headers(apikey)
+    };
+    if (payload !== null) options.body = JSON.stringify(payload);
+    const response = await fetch(base + endpoint, options);
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (error) {}
+    if (!response.ok) {
+      const errors = data?.errors;
+      let detail = '';
+      if (Array.isArray(errors)) detail = errors[0]?.detail || '';
+      else if (errors && typeof errors === 'object') detail = Object.values(errors).flat()[0] || '';
+      const message = data?.message || detail || `HTTP ${response.status}`;
+      const requesterror = new Error(message);
+      requesterror.status = response.status;
+      throw requesterror;
+    }
+    return data || {};
   }
 };

@@ -121,6 +121,8 @@ const Servers = {
     if (typeopt) {
       const t = typeopt.dataset.addType;
       if (t === 'pterodactyl') this.showpterodactylform();
+      else if (t === 'calagopus') this.showcalagopusform();
+      else if (t === 'pufferpanel') this.showpufferpanelform();
       else if (t === 'vps') this.showvpsform();
       else if (t === 'link') this.showlinkform();
       return;
@@ -133,9 +135,12 @@ const Servers = {
     const btn = e.target.closest('[data-modal-action]');
     if (!btn) return;
     const action = btn.dataset.modalAction;
-    if (action === 'add-back' || action === 'ptero-back' || action === 'vps-back' || action === 'link-back') this.openaddmodal();
+    if (action === 'add-back' || action === 'ptero-back' || action === 'calagopus-back' || action === 'vps-back' || action === 'link-back') this.openaddmodal();
     else if (action === 'ptero-connect') this.fetchpterodactyl();
-    else if (action === 'ptero-select-back') this.showpterodactylform();
+    else if (action === 'calagopus-connect') this.fetchcalagopus();
+    else if (action === 'pufferpanel-connect') this.fetchpufferpanel();
+    else if (action === 'open-admin-extension') window.electronAPI.openexternal('https://github.com/CTRLServers/adminextension');
+    else if (action === 'ptero-select-back') this._addData?.type === 'Calagopus' ? this.showcalagopusform() : this._addData?.type === 'PufferPanel' ? this.showpufferpanelform() : this.showpterodactylform();
     else if (action === 'add-select-all') this.toggleaddall();
     else if (action === 'add-selected') this.addselected();
     else if (action === 'vps-add') this.addvps();
@@ -327,7 +332,9 @@ const Servers = {
   },
 
   geticon(server) {
-    if (server.type === 'Pterodactyl') return '<img class="server-icon" src="assets/pterodactyl.png" alt="" />';
+    if (server.type === 'Pterodactyl' || server.type === 'Pterodactyl Admin') return '<img class="server-icon" src="assets/pterodactyl.png" alt="" />';
+    if (server.type === 'Calagopus') return '<div class="server-icon server-icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V7l8-4 8 4v10l-8 4-8-4z"/><path d="M8 9l4-2 4 2v6l-4 2-4-2V9z"/><path d="M12 7v10"/></svg></div>';
+    if (server.type === 'PufferPanel') return '<div class="server-icon server-icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 3h7a5 5 0 0 1 0 10H9v8H7z"/><path d="M9 6h5a2 2 0 0 1 0 4H9z"/></svg></div>';
     if (server.type === 'Link') return '<div class="server-icon server-icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>';
     if (server.type === 'VPS/VDS') {
       const os = (server.os || '').toLowerCase();
@@ -425,11 +432,22 @@ const Servers = {
 
   async quickpower(index, signal) {
     const server = this.list[index];
-    if (!server || server.type !== 'Pterodactyl' || !server.panelUrl) return;
-    const apiKey = await this.resolveapikey(server);
-    if (!apiKey) return;
+    if (!server || !['Pterodactyl', 'Calagopus', 'PufferPanel'].includes(server.type)) return;
+    if (server.type === 'PufferPanel') {
+      try {
+        await pufferpanel.action(server, signal);
+        this.resources[server.uuid] = this.resources[server.uuid] || {};
+        this.resources[server.uuid].state = signal === 'stop' ? 'stopping' : 'starting';
+        this.updatecard(server.uuid);
+      } catch (error) { Modal.alert('Power Error', error.message); }
+      return;
+    }
+    if (!server.panelUrl) return;
+    const apikey = await this.resolveapikey(server);
+    if (!apikey) return;
     try {
-      await Api.power(server.panelUrl, apiKey, server.uuid, signal);
+      if (server.type === 'Calagopus') await Api.calagopuspower(server.panelUrl, apikey, server.uuid, signal);
+      else await Api.power(server.panelUrl, apikey, server.uuid, signal);
       this.resources[server.uuid] = this.resources[server.uuid] || {};
       this.resources[server.uuid].state = signal === 'start' || signal === 'restart' ? 'starting' : 'stopping';
       this.updatecard(server.uuid);
@@ -451,19 +469,24 @@ const Servers = {
       const apiKey = await this.resolveapikey(server);
       if (!apiKey) return;
       try {
-        const data = await Api.fetchresources(server.panelUrl, apiKey, uuid);
+        const data = server.type === 'Calagopus'
+          ? await Api.fetchcalagopusresources(server.panelUrl, apiKey, uuid)
+          : await Api.fetchresources(server.panelUrl, apiKey, uuid);
+        const resources = server.type === 'Calagopus' ? data : data.resources;
         this.resources[uuid] = {
-          state: data.current_state,
-          memory_bytes: data.resources.memory_bytes,
-          cpu: data.resources.cpu_absolute,
-          disk_bytes: data.resources.disk_bytes,
-          uptime: data.resources.uptime
+          state: server.type === 'Calagopus' ? resources.state : data.current_state,
+          memory_bytes: resources.memory_bytes,
+          memory_limit_bytes: resources.memory_limit_bytes,
+          cpu: resources.cpu_absolute,
+          disk_bytes: resources.disk_bytes,
+          network: resources.network,
+          uptime: resources.uptime
         };
-        server.status = data.current_state;
+        server.status = this.resources[uuid].state;
         this.save();
         this.updatecard(uuid);
         if (typeof CTRLPlugin !== 'undefined') CTRLPlugin.emit('_serverupdate', { uuid, resources: this.resources[uuid] });
-        if (data.current_state === 'running' || data.current_state === 'stopped') return;
+        if (this.resources[uuid].state === 'running' || ['stopped', 'offline'].includes(this.resources[uuid].state)) return;
         this._pollafterpower(uuid, attempt + 1);
       } catch (e) {
         this._pollafterpower(uuid, attempt + 1);
@@ -566,7 +589,7 @@ const Servers = {
   _rendercard(server, index) {
       const res = this.resources[server.uuid] || {};
       const memUsed = res.memory_bytes || 0;
-      const memTotal = (server.limits?.memory || 0) * 1024 * 1024;
+      const memTotal = res.memory_limit_bytes || (server.limits?.memory || 0) * 1024 * 1024;
       const diskUsed = res.disk_bytes || 0;
       const diskTotal = (server.limits?.disk || 0) * 1024 * 1024;
       const cpu = res.cpu || 0;
@@ -606,7 +629,7 @@ const Servers = {
             <span>${Utils.escape(server.node)}</span>
           </div>` : ''}
         </div>
-        ${server.type === 'Pterodactyl' ? `
+        ${server.type === 'Pterodactyl' || server.type === 'Calagopus' || server.type === 'PufferPanel' ? `
         <div class="server-stats">
           <div class="stat-row">
             <div class="stat-label">CPU</div>
@@ -616,13 +639,15 @@ const Servers = {
           <div class="stat-row">
             <div class="stat-label">RAM</div>
             <div class="stat-bar-wrap"><div class="stat-bar" style="--bar-pct:${rampct}"></div></div>
-            <div class="stat-value">${Utils.formatbytes(memUsed)} / ${Utils.formatmb(server.limits?.memory)}</div>
+            <div class="stat-value">${server.type === 'PufferPanel' ? Utils.formatbytes(memUsed) : `${Utils.formatbytes(memUsed)} / ${Utils.formatmb(server.limits?.memory)}`}</div>
           </div>
+          ${server.type !== 'PufferPanel' ? `
           <div class="stat-row">
             <div class="stat-label">Disk</div>
             <div class="stat-bar-wrap"><div class="stat-bar" style="--bar-pct:${diskpct}"></div></div>
             <div class="stat-value">${Utils.formatbytes(diskUsed)} / ${Utils.formatmb(server.limits?.disk)}</div>
           </div>
+          ` : ''}
         </div>` : ''}
         ${server.type === 'VPS/VDS' && this.vpsstats[server.id] ? this._rendervpsstats(this.vpsstats[server.id]) : ''}
         ${(server.tags && server.tags.length > 0) ? `<div class="server-card-tags">${server.tags.map(t => `<span class="server-tag" style="--tag-color:${this._tagcolor(t)}">${Utils.escape(t)}</span>`).join('')}</div>` : ''}
@@ -633,7 +658,7 @@ const Servers = {
           </div>
           <div class="server-card-actions">
             ${res.uptime ? `<span class="status-uptime">${Utils.formatuptime(res.uptime)}</span>` : ''}
-            ${server.type === 'Pterodactyl' && server.apiKey && server.panelUrl && (state === 'running' || state === 'stopped' || state === 'offline') ? `
+            ${((server.type === 'Pterodactyl' || server.type === 'Calagopus') && server.apiKey && server.panelUrl || server.type === 'PufferPanel') && (state === 'running' || state === 'stopped' || state === 'offline') ? `
               <button type="button" class="card-action-btn" data-power="start" data-action="start" title="Start" ${state === 'running' ? 'disabled' : ''}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               </button>
@@ -652,6 +677,8 @@ const Servers = {
   async pollresources() {
     if (App.currentPage !== 'dashboard' || App.currentServer) return;
     const ptero = this.list.filter(s => s.type === 'Pterodactyl' && s.panelUrl);
+    const calagopus = this.list.filter(s => s.type === 'Calagopus' && s.panelUrl);
+    const puffer_servers = this.list.filter(server => server.type === 'PufferPanel' && server.panel_url);
     const vps = this.list.filter(s => s.type === 'VPS/VDS' && s.host && s.port);
     for (const server of ptero) {
       const apiKey = await this.resolveapikey(server);
@@ -674,6 +701,49 @@ const Servers = {
         }
       } catch (e) {
         console.error('pollresources error for', server.name, e);
+      }
+    }
+    for (const server of calagopus) {
+      const apiKey = await this.resolveapikey(server);
+      if (!apiKey) continue;
+      try {
+        const data = await Api.fetchcalagopusresources(server.panelUrl, apiKey, server.uuid);
+        this.resources[server.uuid] = {
+          state: data.state,
+          memory_bytes: data.memory_bytes,
+          memory_limit_bytes: data.memory_limit_bytes,
+          cpu: data.cpu_absolute,
+          disk_bytes: data.disk_bytes,
+          network: data.network,
+          uptime: data.uptime
+        };
+        server.status = data.state;
+        this.save();
+        this.updatecard(server.uuid);
+      } catch (e) {
+        console.error('pollresources error for', server.name, e);
+      }
+    }
+    for (const server of puffer_servers) {
+      const results = await Promise.allSettled([pufferpanel.status(server), pufferpanel.stats(server)]);
+      const status = results[0].status === 'fulfilled' ? results[0].value : null;
+      const stats = results[1].status === 'fulfilled' ? results[1].value : null;
+      if (status || stats) {
+        const previous = this.resources[server.uuid] || {};
+        this.resources[server.uuid] = {
+          ...previous,
+          state: status ? status.installing ? 'starting' : status.running ? 'running' : 'offline' : previous.state || server.status || 'offline',
+          memory_bytes: stats ? Number(stats.memory || 0) : previous.memory_bytes || 0,
+          memory_limit_bytes: stats ? Number(stats.jvm?.heapTotal || 0) : previous.memory_limit_bytes || 0,
+          cpu: stats ? Number(stats.cpu || 0) : previous.cpu || 0,
+          disk_bytes: 0
+        };
+        server.status = this.resources[server.uuid].state;
+        this.save();
+        this.updatecard(server.uuid);
+      } else {
+        server.status = 'offline';
+        this.updatecard(server.uuid);
       }
     }
     for (const server of vps) {
@@ -709,9 +779,14 @@ const Servers = {
       try {
         const apiServers = await Api.fetchservers(panelUrl, apiKey);
         for (const saved of servers) {
-          const api = apiServers.find(a => a.attributes.uuid === saved.uuid || (saved.uuid && a.attributes.uuid.startsWith(saved.uuid)));
+          const api = apiServers.find(item => {
+            const attributes = item.attributes || {};
+            const savedids = [saved.identifier, saved.serveruuid, saved.uuid].filter(Boolean);
+            return savedids.some(value => value === attributes.identifier || value === attributes.uuid || attributes.uuid?.startsWith(value));
+          });
           if (api) {
             const a = api.attributes;
+            const oldid = saved.uuid;
             saved.name = a.name || saved.name;
             saved.description = a.description || saved.description || '';
             saved.node = a.node || saved.node || '';
@@ -721,12 +796,51 @@ const Servers = {
               saved.host = saved.allocations[0].ip || saved.host;
               saved.port = saved.allocations[0].port || saved.port;
             }
-            if (saved.uuid !== a.uuid) saved.uuid = a.uuid;
+            saved.serveruuid = a.uuid || saved.serveruuid || '';
+            saved.identifier = a.identifier || saved.identifier || saved.uuid;
+            saved.uuid = saved.identifier;
+            if (oldid !== saved.uuid && App.currentServer === saved && typeof ServerConsole !== 'undefined') ServerConsole.credentialsChanged(saved, oldid);
           }
         }
       } catch (e) {
         console.error('fetchallfromapi error for panel', panelUrl, e);
       }
+    }
+    const calagopusPanels = new Map();
+    this.list.filter(s => s.type === 'Calagopus' && s.panelUrl).forEach(s => {
+      if (!calagopusPanels.has(s.panelUrl)) calagopusPanels.set(s.panelUrl, []);
+      calagopusPanels.get(s.panelUrl).push(s);
+    });
+    for (const [panelUrl, servers] of calagopusPanels) {
+      const apiKey = await this.resolveapikey(servers[0]);
+      if (!apiKey) continue;
+      try {
+        const apiServers = await Api.fetchcalagopusservers(panelUrl, apiKey);
+        for (const saved of servers) {
+          const api = apiServers.find(item => item.uuid === saved.uuid || item.uuid_short === saved.uuid);
+          if (!api) continue;
+          saved.name = api.name || saved.name;
+          saved.description = api.description || '';
+          saved.node = api.node_name || saved.node || '';
+          saved.limits = api.limits || saved.limits || {};
+          saved.host = api.allocation?.ip_alias || api.allocation?.ip || saved.host;
+          saved.port = api.allocation?.port || saved.port;
+          saved.allocation = api.allocation || saved.allocation;
+          saved.uuid = api.uuid;
+        }
+      } catch (e) {
+        console.error('fetchallfromapi error for Calagopus panel', panelUrl, e);
+      }
+    }
+    for (const saved of this.list.filter(server => server.type === 'PufferPanel' && server.panel_url)) {
+      try {
+        const data = await pufferpanel.server_info(saved);
+        const remote = data.server || data;
+        saved.name = remote.name || saved.name;
+        saved.description = remote.type || saved.description || '';
+        saved.host = remote.ip || saved.host;
+        saved.port = remote.port || saved.port;
+      } catch (error) {}
     }
     this.save();
     this.render();
@@ -752,10 +866,10 @@ const Servers = {
     if (startbtn) startbtn.disabled = state === 'running';
     if (stopbtn) stopbtn.disabled = state === 'stopped' || state === 'offline';
 
-    if (server && server.type === 'Pterodactyl') {
+    if (server && (server.type === 'Pterodactyl' || server.type === 'Calagopus' || server.type === 'PufferPanel')) {
     const bars = card.querySelectorAll('.stat-row');
     const memUsed = res.memory_bytes || 0;
-    const memTotal = (server.limits?.memory || 0) * 1024 * 1024;
+    const memTotal = res.memory_limit_bytes || (server.limits?.memory || 0) * 1024 * 1024;
     const diskUsed = res.disk_bytes || 0;
     const diskTotal = (server.limits?.disk || 0) * 1024 * 1024;
     const cpu = res.cpu || 0;
@@ -766,7 +880,7 @@ const Servers = {
     }
     if (bars[1]) {
       this._setbarwidth(bars[1].querySelector('.stat-bar'), memTotal > 0 ? (memUsed / memTotal) * 100 : 0);
-      bars[1].querySelector('.stat-value').textContent = Utils.formatbytes(memUsed) + ' / ' + Utils.formatmb(server.limits?.memory);
+      bars[1].querySelector('.stat-value').textContent = server.type === 'PufferPanel' ? Utils.formatbytes(memUsed) : Utils.formatbytes(memUsed) + ' / ' + Utils.formatmb(server.limits?.memory);
     }
     if (bars[2]) {
       this._setbarwidth(bars[2].querySelector('.stat-bar'), diskTotal > 0 ? (diskUsed / diskTotal) * 100 : 0);
@@ -1190,6 +1304,19 @@ const Servers = {
             <div class="server-type-desc">Connect via Panel URL and API Key</div>
           </div>
         </div>
+        <div class="server-type-option" data-add-type="calagopus">
+          <div class="server-type-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V7l8-4 8 4v10l-8 4-8-4z"/><path d="M8 9l4-2 4 2v6l-4 2-4-2V9z"/><path d="M12 7v10"/></svg>
+          </div>
+          <div class="server-type-info">
+            <div class="server-type-name">Calagopus</div>
+            <div class="server-type-desc">Connect via Panel URL and API Key</div>
+          </div>
+        </div>
+        <div class="server-type-option" data-add-type="pufferpanel">
+          <div class="server-type-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7a5 5 0 0 1 0 10H9v8H7z"/><path d="M9 6h5a2 2 0 0 1 0 4H9z"/></svg></div>
+          <div class="server-type-info"><div class="server-type-name">PufferPanel</div><div class="server-type-desc">Connect with OAuth2 credentials</div></div>
+        </div>
         <div class="server-type-option" data-add-type="vps">
           <div class="server-type-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1218,14 +1345,15 @@ const Servers = {
 
   async cloneserver(index) {
     const server = this.list[index];
-    if (!server || server.type !== 'Pterodactyl') return;
-    const apiKey = await this.resolveapikey(server);
+    if (!server || (server.type !== 'Pterodactyl' && server.type !== 'Pterodactyl Admin')) return;
+    const apikey = await this.resolveapikey(server);
     this.showpterodactylform();
     setTimeout(() => {
-      const urlEl = Utils.el('panelUrl');
-      const keyEl = Utils.el('apiKey');
-      if (urlEl) urlEl.value = server.panelUrl || '';
-      if (keyEl) keyEl.value = apiKey || '';
+      const urlel = Utils.el('panelurl');
+      const keyel = Utils.el('apikey');
+      if (urlel) urlel.value = server.panelUrl || '';
+      if (keyel) keyel.value = apikey || '';
+      this.updatepterodactylkeywarning();
     }, 50);
   },
 
@@ -1233,13 +1361,18 @@ const Servers = {
     Modal.open('Pterodactyl', `
       <div class="form-group">
         <label class="form-label">Panel URL</label>
-        <input class="form-input" type="url" id="panelUrl" placeholder="https://panel.example.com" />
+        <input class="form-input" type="url" id="panelurl" placeholder="https://panel.example.com" />
       </div>
       <div class="form-group">
         <label class="form-label">API Key</label>
-        <input class="form-input" type="password" id="apiKey" placeholder="ptlc_..." />
+        <input class="form-input" type="password" id="apikey" placeholder="ptlc_..., ptla_..., hydro..., pacc... or rtlc..." oninput="Servers.updatepterodactylkeywarning()" />
+        <div class="pterodactyl-key-warning" id="pterodactylkeywarning" style="display:none;">
+          <strong>Warning!</strong> To work properly in CTRLServers, make sure the key have all the permissions in Read &amp; Write.
+          <span>And, you must install our extension so all features will work:</span>
+          <button type="button" class="pterodactyl-extension-link" data-modal-action="open-admin-extension">https://github.com/CTRLServers/adminextension</button>
+        </div>
       </div>
-      <div id="pterodactylError"></div>
+      <div id="pterodactylerror"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" data-modal-action="ptero-back">Back</button>
         <button type="button" class="btn btn-primary" data-modal-action="ptero-connect">Connect</button>
@@ -1247,24 +1380,167 @@ const Servers = {
     `);
   },
 
-  async fetchpterodactyl() {
-    const panelUrl = Utils.el('panelUrl').value.trim();
-    const apiKey = Utils.el('apiKey').value.trim();
-    const err = Utils.el('pterodactylError');
-    if (!panelUrl || !apiKey) { err.innerHTML = '<div class="error-msg">Fill all fields</div>'; return; }
+  showcalagopusform() {
+    Modal.open('Calagopus', `
+      <div class="form-group">
+        <label class="form-label">Panel URL</label>
+        <input class="form-input" type="url" id="panelurl" placeholder="https://panel.example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <input class="form-input" type="password" id="apikey" placeholder="Calagopus API key" />
+      </div>
+      <div id="pterodactylerror"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-modal-action="calagopus-back">Back</button>
+        <button type="button" class="btn btn-primary" data-modal-action="calagopus-connect">Connect</button>
+      </div>
+    `);
+  },
 
-    Utils.el('modalBody').innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Fetching servers...</div></div>';
+  showpufferpanelform() {
+    Modal.open('PufferPanel', `
+      <div class="form-group"><label class="form-label">Panel URL</label><input class="form-input" type="url" id="puffer_panel_url" placeholder="https://panel.example.com" /></div>
+      <div class="form-group"><label class="form-label">Client ID</label><input class="form-input" id="puffer_client_id" autocomplete="off" /></div>
+      <div class="form-group"><label class="form-label">Client Secret</label><input class="form-input" type="password" id="puffer_client_secret" autocomplete="off" /></div>
+      <div id="puffer_connect_error"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-modal-action="ptero-back">Back</button><button type="button" class="btn btn-primary" data-modal-action="pufferpanel-connect">Continue</button></div>
+    `);
+  },
 
+  async fetchpufferpanel() {
+    const panel_url = Utils.el('puffer_panel_url')?.value.trim();
+    const client_id = Utils.el('puffer_client_id')?.value.trim();
+    const client_secret = Utils.el('puffer_client_secret')?.value || '';
+    const error_element = Utils.el('puffer_connect_error');
+    if (!panel_url || !client_id || !client_secret) {
+      if (error_element) error_element.innerHTML = '<div class="form-error">All three fields are required.</div>';
+      return;
+    }
     try {
-      const servers = await Api.fetchservers(panelUrl, apiKey);
-      this._addData = { panelUrl: panelUrl.replace(/\/+$/, ''), apiKey, servers };
+      const normalized_url = pufferpanel.normalize_url(panel_url);
+      const servers = await pufferpanel.list_servers(normalized_url, client_id, client_secret);
+      this._addData = {
+        type: 'PufferPanel',
+        panel_url: normalized_url,
+        client_id,
+        client_secret,
+        servers: servers.map(server => ({ attributes: { name: server.name, node: server.node?.name || `Node ${server.nodeId || ''}`, identifier: server.id, uuid: server.id }, puffer_server: server }))
+      };
+      this.showserverselect(this._addData.servers);
+    } catch (error) {
+      if (error_element) error_element.innerHTML = `<div class="form-error">${Utils.escape(error.message || 'Unable to connect to PufferPanel.')}</div>`;
+    }
+  },
+
+  normalizepanelurl(value) {
+    const parsed = new URL(String(value || '').trim());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('Panel URL must use HTTP or HTTPS');
+    parsed.hash = '';
+    parsed.search = '';
+    parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+    return parsed.href.replace(/\/+$/, '');
+  },
+
+  async fetchcalagopus() {
+    const enteredurl = Utils.el('panelurl').value.trim();
+    const apikey = Utils.el('apikey').value.trim();
+    const errorbox = Utils.el('pterodactylerror');
+    if (!enteredurl || !apikey) { errorbox.innerHTML = '<div class="error-msg">Fill all fields</div>'; return; }
+    Utils.el('modalBody').innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Fetching servers...</div></div>';
+    let panelurl = enteredurl;
+    try {
+      const normalizedurl = this.normalizepanelurl(panelurl);
+      const servers = await Api.fetchcalagopusservers(normalizedurl, apikey);
+      const normalized = servers.map(s => ({ attributes: {
+        uuid: s.uuid,
+        identifier: s.uuid_short,
+        name: s.name,
+        description: s.description || '',
+        node: s.node_name || '',
+        limits: s.limits || {},
+        allocation: s.allocation || null,
+        feature_limits: s.feature_limits || {}
+      }}));
+      this._addData = { type: 'Calagopus', panelUrl: normalizedurl, apiKey: apikey, servers: normalized };
+      this.showserverselect(normalized);
+    } catch (e) {
+      this.showcalagopusform();
+      Utils.el('panelurl').value = panelurl;
+      Utils.el('apikey').value = apikey;
+      Utils.el('pterodactylerror').innerHTML = `<div class="error-msg">${Utils.escape(e.message)}</div>`;
+    }
+  },
+
+  updatepterodactylkeywarning() {
+    const warning = Utils.el('pterodactylkeywarning');
+    const apikey = Utils.el('apikey')?.value.trim().toLowerCase() || '';
+    if (warning) warning.style.display = apikey.startsWith('ptla_') ? 'flex' : 'none';
+  },
+
+  async fetchpterodactyl() {
+    const enteredurl = Utils.el('panelurl').value.trim();
+    const apikey = Utils.el('apikey').value.trim();
+    const errorbox = Utils.el('pterodactylerror');
+    if (!enteredurl || !apikey) { errorbox.innerHTML = '<div class="error-msg">Fill all fields</div>'; return; }
+
+    if (!apikey.startsWith('ptlc_') && !apikey.startsWith('ptla_') && !apikey.startsWith('hydro_') && !apikey.startsWith('pacc_') && !apikey.startsWith('rtlc_')) {
+      errorbox.innerHTML = '<div class="error-msg">Enter a valid ptlc_, ptla_, hydro_, pacc_ or rtlc_ API key</div>';
+      return;
+    }
+
+    Utils.el('modalBody').innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${apikey.startsWith('ptla_') ? 'Connecting to panel...' : 'Fetching servers...'}</div></div>`;
+
+    let panelurl = enteredurl;
+    try {
+      panelurl = this.normalizepanelurl(panelurl);
+      if (apikey.startsWith('ptla_')) {
+        await this.addpterodactyladmin(panelurl, apikey);
+        return;
+      }
+      const servers = await Api.fetchservers(panelurl, apikey);
+      this._addData = { panelUrl: panelurl.replace(/\/+$/, ''), apiKey: apikey, servers };
       this.showserverselect(servers);
     } catch (e) {
-      err.innerHTML = `<div class="error-msg">${e.message}</div>`;
       this.showpterodactylform();
-      Utils.el('panelUrl').value = panelUrl;
-      Utils.el('apiKey').value = apiKey;
+      Utils.el('panelurl').value = panelurl;
+      Utils.el('apikey').value = apikey;
+      this.updatepterodactylkeywarning();
+      const message = apikey.startsWith('ptla_') && e.status === 404
+        ? 'CTRLServers Admin Extension was not found on this panel.'
+        : e.message;
+      Utils.el('pterodactylerror').innerHTML = `<div class="error-msg">${Utils.escape(message)}</div>`;
     }
+  },
+
+  async addpterodactyladmin(panelurl, apikey) {
+    const normalizedurl = panelurl.replace(/\/+$/, '');
+    if (this.list.some(server => server.type === 'Pterodactyl Admin' && server.panelUrl === normalizedurl)) {
+      throw new Error('This panel is already added');
+    }
+    const information = await Api.adminrequest(normalizedurl, apikey, '/admin/gettitle');
+    let encryptedkey = apikey;
+    try {
+      encryptedkey = 'enc:' + await window.electronAPI.cryptoencrypt(apikey);
+    } catch (error) {}
+    let host = normalizedurl.replace(/^https?:\/\//, '');
+    try {
+      host = new URL(normalizedurl).host;
+    } catch (error) {}
+    this.list.push({
+      id: Date.now() + Math.random(),
+      type: 'Pterodactyl Admin',
+      name: information.title || host,
+      description: 'Pterodactyl panel administration',
+      panelUrl: normalizedurl,
+      apiKey: encryptedkey,
+      host,
+      status: 'online'
+    });
+    this.save();
+    this.render();
+    CTRLCloud.autosyncupload('add');
+    Modal.close();
   },
 
   showserverselect(servers) {
@@ -1313,29 +1589,66 @@ const Servers = {
   },
 
   async addselected() {
-    const { panelUrl, apiKey, servers } = this._addData;
+    const { type = 'Pterodactyl', panelUrl, apiKey, servers } = this._addData;
     if (!this._addselected.size) return;
+    if (type === 'PufferPanel') {
+      let encrypted_secret = this._addData.client_secret;
+      try { encrypted_secret = 'enc:' + await window.electronAPI.cryptoencrypt(encrypted_secret); } catch (error) {}
+      for (const index of this._addselected) {
+        const remote = servers[index]?.puffer_server;
+        if (!remote) continue;
+        const server_key = `${this._addData.panel_url}|${remote.id}`;
+        if (this.list.some(server => server.type === 'PufferPanel' && server.server_key === server_key)) continue;
+        this.list.push({
+          id: Date.now() + Math.random(),
+          type: 'PufferPanel',
+          name: remote.name || remote.id,
+          description: remote.type || '',
+          panel_url: this._addData.panel_url,
+          client_id: this._addData.client_id,
+          client_secret: encrypted_secret,
+          server_id: remote.id,
+          server_key,
+          uuid: server_key,
+          host: remote.ip || new URL(this._addData.panel_url).hostname,
+          port: remote.port || '',
+          status: 'offline'
+        });
+      }
+      this.save();
+      this.render();
+      CTRLCloud.autosyncupload('add');
+      Modal.close();
+      return;
+    }
     let encryptedApiKey = apiKey;
     try {
       encryptedApiKey = 'enc:' + await window.electronAPI.cryptoencrypt(apiKey);
     } catch (e) {}
     for (const i of this._addselected) {
       const s = servers[i];
-      if (!s || this.list.some(x => x.uuid === s.attributes.uuid && x.panelUrl === panelUrl)) continue;
-      const alloc = s.attributes.relationships?.allocations?.data?.[0]?.attributes;
+      if (!s) continue;
+      const serverid = type === 'Calagopus' ? s.attributes.uuid : (s.attributes.identifier || s.attributes.uuid);
+      const remoteids = [serverid, s.attributes.uuid, s.attributes.identifier].filter(Boolean);
+      if (this.list.some(item => item.panelUrl === panelUrl && remoteids.some(value => [item.uuid, item.identifier, item.serveruuid].includes(value)))) continue;
+      const alloc = type === 'Calagopus' ? s.attributes.allocation : s.attributes.relationships?.allocations?.data?.[0]?.attributes;
       this.list.push({
         id: Date.now() + Math.random(),
-        type: 'Pterodactyl',
+        type,
         name: s.attributes.name,
         description: s.attributes.description || '',
         panelUrl,
         apiKey: encryptedApiKey,
-        uuid: s.attributes.uuid,
+        uuid: serverid,
+        identifier: type === 'Calagopus' ? s.attributes.identifier : serverid,
+        serveruuid: type === 'Calagopus' ? undefined : s.attributes.uuid,
         node: s.attributes.node,
-        host: alloc?.ip || panelUrl.replace(/^https?:\/\//, ''),
+        host: alloc?.ip_alias || alloc?.ip || panelUrl.replace(/^https?:\/\//, ''),
         port: alloc?.port || '',
         limits: s.attributes.limits || {},
-        allocations: (s.attributes.relationships?.allocations?.data || []).map(a => ({ id: a.attributes.id, ip: a.attributes.ip, port: a.attributes.port })),
+        featurelimits: s.attributes.feature_limits || {},
+        allocation: type === 'Calagopus' ? alloc : undefined,
+        allocations: type === 'Calagopus' ? [] : (s.attributes.relationships?.allocations?.data || []).map(a => ({ id: a.attributes.id, ip: a.attributes.ip, port: a.attributes.port })),
         status: 'offline'
       });
     }
@@ -1812,11 +2125,12 @@ const Servers = {
   async getexportdata() {
     const servers = await Promise.all(this.list.map(async (server) => {
       const copy = { ...server };
-      if (copy.type === 'Pterodactyl' && typeof copy.apiKey === 'string' && copy.apiKey.startsWith('enc:')) {
+      if ((copy.type === 'Pterodactyl' || copy.type === 'Pterodactyl Admin' || copy.type === 'Calagopus') && typeof copy.apiKey === 'string' && copy.apiKey.startsWith('enc:')) {
         const apiKey = await this.resolveapikey(server);
         if (!apiKey) throw new Error('Unable to decrypt API key');
         copy.apiKey = apiKey;
       }
+      if (copy.type === 'PufferPanel' && typeof copy.client_secret === 'string' && copy.client_secret.startsWith('enc:')) copy.client_secret = await pufferpanel.resolve_secret(server);
       return copy;
     }));
     return {
@@ -1934,10 +2248,13 @@ const Servers = {
             for (const s of data.servers) {
               if (!this.list.find(x => x.uuid && x.uuid === s.uuid || x.id && x.id === s.id)) {
                 const importedServer = { ...s };
-                if (importedServer.type === 'Pterodactyl' && importedServer.apiKey && !importedServer.apiKey.startsWith('enc:')) {
+                if ((importedServer.type === 'Pterodactyl' || importedServer.type === 'Pterodactyl Admin' || importedServer.type === 'Calagopus') && importedServer.apiKey && !importedServer.apiKey.startsWith('enc:')) {
                   try {
                     importedServer.apiKey = 'enc:' + await window.electronAPI.cryptoencrypt(importedServer.apiKey);
                   } catch (e) {}
+                }
+                if (importedServer.type === 'PufferPanel' && importedServer.client_secret && !importedServer.client_secret.startsWith('enc:')) {
+                  try { importedServer.client_secret = 'enc:' + await window.electronAPI.cryptoencrypt(importedServer.client_secret); } catch (error) {}
                 }
                 this.list.push(importedServer);
                 imported.push(importedServer);

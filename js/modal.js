@@ -5,18 +5,21 @@ const Modal = {
     });
     Utils.el('modalClose').addEventListener('click', () => this.close());
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.close();
+      if (e.key === 'Escape') this.close(e);
     });
   },
 
   open(title, html, cls) {
+    this.closeguard = null;
     Utils.el('modalTitle').textContent = title;
     Utils.el('modalBody').innerHTML = html;
     const overlay = Utils.el('modalOverlay');
     overlay.className = 'modal-overlay active' + (cls ? ' ' + cls : '');
   },
 
-  close() {
+  close(event) {
+    if (this.closeguard && !this.closeguard(event)) return;
+    this.closeguard = null;
     Utils.el('modalOverlay').classList.remove('active');
   },
 

@@ -227,6 +227,32 @@ ipcMain.handle('crypto-decrypt', async (event, data) => {
   return decrypted.toString('utf8');
 });
 
+ipcMain.handle('panel-request', async (event, url, options = {}) => {
+  const parsed = new URL(String(url || ''));
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('Only HTTP and HTTPS panel URLs are allowed');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(parsed.href, {
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      body: options.bodybase64 ? Buffer.from(options.bodybase64, 'base64') : options.body == null ? undefined : String(options.body),
+      redirect: 'follow',
+      signal: controller.signal
+    });
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > 50 * 1024 * 1024) throw new Error('Panel response is too large');
+    return {
+      status: response.status,
+      statustext: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      body: buffer.toString('base64')
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
 function validsftppath(remotePath) {
   if (!remotePath || typeof remotePath !== 'string') return false;
   const normalized = remotePath.replace(/\\/g, '/').replace(/\/+/g, '/');
@@ -617,10 +643,6 @@ ipcMain.handle('ws-connect', async (event, url, token, headers, origin) => {
   if (!url || (!url.startsWith('wss://') && !url.startsWith('ws://'))) {
     throw new Error('Invalid WebSocket URL');
   }
-  if (!url.startsWith('wss://')) {
-    throw new Error('Only secure WebSocket connections (wss://) are allowed');
-  }
-
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url, {
       headers: {
@@ -633,7 +655,6 @@ ipcMain.handle('ws-connect', async (event, url, token, headers, origin) => {
     wsConnections.set(id, ws);
 
     ws.on('open', () => {
-      ws.send(JSON.stringify({ event: 'auth', args: [token] }));
       resolve(id);
     });
 
