@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const { PERMISSION_DEFINITIONS, defaultpermissions, permissionfortool } = require('./mcp/permissions.cjs');
 
-const APP_VERSION = '1.1.7';
+const APP_VERSION = '1.1.8';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
