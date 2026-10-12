@@ -18,6 +18,7 @@ const AppSettings = {
     } catch (e) {
       this._data = Object.assign({}, this._defaults);
     }
+    this.updatelockbutton();
   },
 
   save() {
@@ -84,12 +85,18 @@ const AppSettings = {
     return localStorage.getItem(this.PASSCODE_ENABLED_KEY) === 'true';
   },
 
+  updatelockbutton() {
+    const button = Utils.el('lockAppBtn');
+    if (button) button.style.display = this.ispasscodeenabled() ? '' : 'none';
+  },
+
   async setpasscode(passcode) {
     const salt = this.generatesalt();
     const hash = await this.hashpasscode(passcode, salt);
     localStorage.setItem(this.PASSCODE_HASH_KEY, hash);
     localStorage.setItem(this.PASSCODE_SALT_KEY, salt);
     localStorage.setItem(this.PASSCODE_ENABLED_KEY, 'true');
+    this.updatelockbutton();
   },
 
   async verifypasscode(passcode) {
@@ -104,6 +111,7 @@ const AppSettings = {
     localStorage.removeItem(this.PASSCODE_HASH_KEY);
     localStorage.removeItem(this.PASSCODE_SALT_KEY);
     localStorage.setItem(this.PASSCODE_ENABLED_KEY, 'false');
+    this.updatelockbutton();
   },
 
   opendevtools() {

@@ -12,6 +12,7 @@ const serverid = z.string().min(1).max(500);
 const remotepath = z.string().min(1).max(4096);
 const pathlist = z.array(remotepath).min(1).max(500);
 const optionalhash = z.string().regex(/^[a-f0-9]{64}$/i).optional();
+const panel_request = z.object({ serverid, method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('GET'), endpoint: z.string().startsWith('/').max(4096), body: z.unknown().optional() });
 
 const tooldefinitions = [
   ['listpermissions', 'Show the MCP permissions selected by the CTRLServers user.', z.object({}), { readOnlyHint: true }],
@@ -37,7 +38,12 @@ const tooldefinitions = [
   ['extractpath', 'Extract a remote archive into a destination directory.', z.object({ serverid, archive: remotepath, destination: remotepath }), { destructiveHint: true, openWorldHint: true }],
   ['readbinaryfile', 'Read a remote binary file as base64. The maximum file size is 8 MiB.', z.object({ serverid, path: remotepath }), { readOnlyHint: true, openWorldHint: true }],
   ['writebinaryfile', 'Create or replace a remote binary file from base64. The maximum decoded size is 8 MiB.', z.object({ serverid, path: remotepath, base64: z.string().max(12 * 1024 * 1024), expectedhash: optionalhash }), { destructiveHint: true, openWorldHint: true }],
-  ['pterodactylrequest', 'Call a relative Pterodactyl client API endpoint. CTRLServers maps the endpoint and method to the matching user-selected permission.', z.object({ serverid, method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('GET'), endpoint: z.string().startsWith('/').max(4096), body: z.unknown().optional() }), { destructiveHint: true, openWorldHint: true }],
+  ['pterodactylrequest', 'Call a relative Pterodactyl client server API endpoint.', panel_request, { destructiveHint: true, openWorldHint: true }],
+  ['hydrodactylrequest', 'Call a relative HydroDactyl server API endpoint using its compatible Wings or Elytra route.', panel_request, { destructiveHint: true, openWorldHint: true }],
+  ['reviactylrequest', 'Call a relative Reviactyl client server API endpoint.', panel_request, { destructiveHint: true, openWorldHint: true }],
+  ['pelicanrequest', 'Call a relative Pelican client server API endpoint.', panel_request, { destructiveHint: true, openWorldHint: true }],
+  ['calagopusrequest', 'Call a relative Calagopus client server API endpoint.', panel_request, { destructiveHint: true, openWorldHint: true }],
+  ['pufferpanelrequest', 'Call a relative PufferPanel server API endpoint using OAuth2 authentication.', panel_request, { destructiveHint: true, openWorldHint: true }],
 ];
 
 function timingequals(left, right) {

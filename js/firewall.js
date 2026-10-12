@@ -180,7 +180,7 @@ const Firewall = {
           </div>
           <div class="fw-status-info">
             <h3>Firewall ${this.active ? 'Active' : 'Inactive'}</h3>
-            <span>${fwLabel} — ${this.rules.length} rule${this.rules.length !== 1 ? 's' : ''}</span>
+            <span>${fwLabel} - ${this.rules.length} rule${this.rules.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
         ${this.fwType === 'iptables' ? '' : `<button class="btn btn-sm ${this.active ? 'btn-red' : 'btn-green'}" onclick="Firewall.togglefirewall()">

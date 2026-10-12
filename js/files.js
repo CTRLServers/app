@@ -587,8 +587,8 @@ const ServerFiles = {
       const isDir = this.isdirectory(a);
       const name = a.name;
       const icon = this.geticon(name, isDir, !!a.is_symlink);
-      const size = !isDir ? this.formatsize(a.size) : '—';
-      const modified = a.modified_at ? this.formatdatetime(a.modified_at) : '—';
+      const size = !isDir ? this.formatsize(a.size) : '-';
+      const modified = a.modified_at ? this.formatdatetime(a.modified_at) : '-';
       const realIdx = this.files.indexOf(f);
 
       return `<div class="file-item${isDir ? ' is-dir' : ''}${this.selected.has(realIdx) ? ' selected' : ''}" data-index="${realIdx}">
@@ -2453,7 +2453,7 @@ const ServerFiles = {
   },
 
   formatdatetime(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     const d = new Date(iso);
     const now = new Date();
     const diff = now - d;

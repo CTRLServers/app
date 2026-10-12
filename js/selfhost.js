@@ -464,7 +464,7 @@ const SelfHost = {
     let html = `
       <div class="sh-create-form" style="margin-bottom:16px;">
         <div class="sh-form-group">
-          <label style="font-weight:600;font-size:14px;">Edit Embed Messages — ${this.escape(conn.name)}</label>
+          <label style="font-weight:600;font-size:14px;">Edit Embed Messages - ${this.escape(conn.name)}</label>
           <div class="sh-muted" style="font-size:12px;margin-bottom:12px;">Available variables: <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:11px;">${vars}</code></div>
         </div>`;
 

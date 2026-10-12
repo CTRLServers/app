@@ -206,44 +206,6 @@ const Windows = {
   }
 };
 
-function trackvisitor() {
-  try {
-    let uuid = localStorage.getItem('visitor_uuid');
-    if (!uuid) {
-      uuid = crypto.randomUUID();
-      localStorage.setItem('visitor_uuid', uuid);
-    }
-    const ua = navigator.userAgent;
-    let device = 'Desktop';
-    if (/Mobile|Android|iPhone|iPad/i.test(ua)) device = 'Mobile';
-    else if (/Tablet|iPad/i.test(ua)) device = 'Tablet';
-
-    let browser = 'Other';
-    if (/Edg\//i.test(ua)) browser = 'Edge';
-    else if (/Chrome/i.test(ua)) browser = 'Chrome';
-    else if (/Firefox/i.test(ua)) browser = 'Firefox';
-    else if (/Safari/i.test(ua)) browser = 'Safari';
-
-    let os = 'Other';
-    if (/Windows/i.test(ua)) os = 'Windows';
-    else if (/Mac OS/i.test(ua)) os = 'macOS';
-    else if (/Linux/i.test(ua)) os = 'Linux';
-    else if (/Android/i.test(ua)) os = 'Android';
-    else if (/iPhone|iPad/i.test(ua)) os = 'iOS';
-
-    fetch(`https://backend.ctrlservers.xyz/api/visitor-token?uuid=${encodeURIComponent(uuid)}`)
-      .then(r => r.json())
-      .then(data => {
-        if (!data.token) return;
-        return fetch('https://backend.ctrlservers.xyz/api/track-visitor', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uuid, userAgent: ua, device, browser, os, token: data.token }),
-        });
-      }).catch(() => {});
-  } catch {}
-}
-
 const App = {
   currentPage: 'dashboard',
   currentServer: null,
@@ -275,17 +237,17 @@ const App = {
     this.bindwindowcontrols();
     this.wirevpsexecutors();
     Servers.render();
-    trackvisitor();
     this.checkforupdate();
     DiscordRPC.init();
 
     Utils.el('taskbarStart').addEventListener('click', () => {
+      const dashboard_active = this.currentPage === 'dashboard' && !this.currentServer;
       if (Windows.windows.length > 0) {
         Windows.windows.forEach(w => {
           if (!w.minimized) Windows.minimize(w.id);
         });
       }
-      this.showserverlist();
+      if (!dashboard_active) this.showserverlist();
     });
 
     Utils.el('appSettingsBtn').addEventListener('click', () => {

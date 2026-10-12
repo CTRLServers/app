@@ -3,11 +3,21 @@ const MultiTerm = {
   _running: false,
   _listeners: [],
 
+  _available_servers() {
+    return Servers.list.filter(server => {
+      if (server.type === 'VPS/VDS') return Boolean(server.host);
+      if (server.type === 'PufferPanel') {
+        return Boolean(server.panel_url && server.client_id && server.client_secret && server.server_id);
+      }
+      return Boolean(server.panelUrl && server.apiKey && server.uuid);
+    });
+  },
+
   load() {
     const el = Utils.el('tabMultiTerm');
     if (!el) return;
     this._cleanup();
-    const all = Servers.list.filter(s => (s.type === 'VPS/VDS' && s.host) || (s.type !== 'VPS/VDS' && s.panelUrl && s.apiKey && s.uuid));
+    const all = this._available_servers();
     el.innerHTML = `
       <div class="multiterm-container">
         <div class="multiterm-sidebar">
@@ -21,7 +31,7 @@ const MultiTerm = {
               const idx = Servers.list.indexOf(s);
               const checked = this._selected.has(idx) ? 'checked' : '';
               const isVps = s.type === 'VPS/VDS';
-              const sub = isVps ? Utils.escape(s.host) + ':' + (s.port || 22) : Utils.escape(s.panelUrl || '');
+              const sub = isVps ? Utils.escape(s.host) + ':' + (s.port || 22) : Utils.escape(s.panel_url || s.panelUrl || '');
               const display = sub.length > 20 ? sub.slice(0, 20) + '...' : sub;
               return `
                 <label class="multiterm-server-item">
@@ -63,7 +73,7 @@ const MultiTerm = {
   },
 
   selectall() {
-    const all = Servers.list.filter(s => (s.type === 'VPS/VDS' && s.host) || (s.type !== 'VPS/VDS' && s.panelUrl && s.apiKey && s.uuid));
+    const all = this._available_servers();
     const allSelected = all.length > 0 && all.every(s => this._selected.has(Servers.list.indexOf(s)));
     if (allSelected) {
       this._selected.clear();
@@ -77,7 +87,7 @@ const MultiTerm = {
     if (this._selected.has(idx)) this._selected.delete(idx);
     else this._selected.add(idx);
     const countEl = document.querySelector('.multiterm-count');
-    const all = Servers.list.filter(s => (s.type === 'VPS/VDS' && s.host) || (s.type !== 'VPS/VDS' && s.panelUrl && s.apiKey && s.uuid));
+    const all = this._available_servers();
     if (countEl) countEl.textContent = this._selected.size + ' of ' + all.length + ' selected';
   },
 
@@ -110,10 +120,11 @@ const MultiTerm = {
     const promises = selectedIdxs.map(async (idx) => {
       const server = Servers.list[idx];
       if (!server) return;
-      const isVps = server.type === 'VPS/VDS';
       try {
-        if (isVps) {
+        if (server.type === 'VPS/VDS') {
           await this._runvps(server, cmd);
+        } else if (server.type === 'PufferPanel') {
+          await this._runpufferpanel(server, cmd);
         } else {
           await this._runpterodactyl(server, cmd);
         }
@@ -145,7 +156,11 @@ const MultiTerm = {
 
   async _runpterodactyl(server, cmd) {
     const apiKey = await Servers.resolveapikey(server);
-    const data = await Api.fetchwebsocket(server.panelUrl, apiKey, server.uuid);
+    if (!apiKey) throw new Error('API key is unavailable');
+    const is_calagopus = server.type === 'Calagopus';
+    const data = is_calagopus
+      ? await Api.fetchcalagopuswebsocket(server.panelUrl, apiKey, server.uuid)
+      : await Api.fetchwebsocket(server.panelUrl, apiKey, server.uuid);
     if (!data || !data.socket || !data.token) throw new Error('Invalid WebSocket response');
 
     return new Promise((resolve, reject) => {
@@ -153,14 +168,30 @@ const MultiTerm = {
       let wsId = null;
       let output = '';
       let timeout = null;
+      let settle_timeout = null;
+      let command_sent = false;
       const offFns = [];
 
       const cleanup = () => {
         if (timeout) clearTimeout(timeout);
+        if (settle_timeout) clearTimeout(settle_timeout);
         this._offlisteners(offFns);
         if (wsId !== null) {
           try { window.electronAPI.closews(wsId); } catch (e) {}
         }
+      };
+
+      const finish = (fallback = '(no output)') => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        this._appendoutput('server', server.name, cmd, output.trim() || fallback, false);
+        resolve();
+      };
+
+      const schedule_finish = (delay) => {
+        if (settle_timeout) clearTimeout(settle_timeout);
+        settle_timeout = setTimeout(() => finish(), delay);
       };
 
       const msgCb = (id, rawData) => {
@@ -168,9 +199,17 @@ const MultiTerm = {
         try {
           const msg = JSON.parse(rawData);
           if (msg.event === 'auth success') {
-            window.electronAPI.sendws(wsId, JSON.stringify({ event: 'send command', args: [cmd] }));
+            if (!command_sent) {
+              command_sent = true;
+              window.electronAPI.sendws(wsId, JSON.stringify({ event: 'send command', args: [cmd] }));
+              schedule_finish(3500);
+            }
           } else if (msg.event === 'console output') {
-            if (msg.args && msg.args[0]) output += this._stripansi(msg.args[0]);
+            if (msg.args && msg.args[0]) {
+              output += this._stripansi(msg.args[0]);
+              if (!output.endsWith('\n')) output += '\n';
+              schedule_finish(1200);
+            }
           } else if (msg.event === 'token expired') {
             cleanup();
             if (!resolved) { resolved = true; reject(new Error('Token expired')); }
@@ -182,12 +221,7 @@ const MultiTerm = {
 
       const closeCb = (id) => {
         if (id !== wsId) return;
-        cleanup();
-        if (!resolved) {
-          resolved = true;
-          this._appendoutput('server', server.name, cmd, output.trim() || '(no output)', false);
-          resolve();
-        }
+        finish();
       };
       window.electronAPI.onwsclose(closeCb);
       offFns.push(() => window.electronAPI.offwsclose(closeCb));
@@ -195,19 +229,15 @@ const MultiTerm = {
       this._listeners.push(cleanup);
 
       timeout = setTimeout(() => {
-        cleanup();
-        if (!resolved) {
-          resolved = true;
-          this._appendoutput('server', server.name, cmd, output.trim() || '(timed out)', false);
-          resolve();
-        }
+        finish('(timed out)');
       }, 15000);
 
       window.electronAPI.connectwebsocket(data.socket, data.token, {
         'Authorization': 'Bearer ' + apiKey,
-        'Accept': 'application/vnd.pterodactyl.v1+json'
+        'Accept': is_calagopus ? 'application/json' : 'application/vnd.pterodactyl.v1+json'
       }, server.panelUrl).then(id => {
         wsId = id;
+        window.electronAPI.sendws(wsId, JSON.stringify({ event: 'auth', args: [data.token] }));
       }).catch(e => {
         cleanup();
         if (!resolved) { resolved = true; reject(e); }
@@ -215,11 +245,42 @@ const MultiTerm = {
     });
   },
 
+  async _runpufferpanel(server, cmd) {
+    const server_id = encodeURIComponent(server.server_id);
+    let console_epoch = 0;
+    try {
+      const initial_response = await pufferpanel.request(server, `/api/servers/${server_id}/console?time=0`);
+      const initial_data = await initial_response.json();
+      console_epoch = Number(initial_data.epoch || 0);
+    } catch (error) {
+      if (error.status === 403) throw error;
+    }
+
+    await pufferpanel.request(server, `/api/servers/${server_id}/console`, {
+      method: 'POST',
+      body: JSON.stringify(cmd)
+    });
+
+    let output = '';
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 500 : 750));
+      const response = await pufferpanel.request(server, `/api/servers/${server_id}/console?time=${console_epoch}`);
+      const data = await response.json();
+      const bytes = pufferpanel.decode_bytes(data.logs);
+      const text = this._stripansi(new TextDecoder().decode(bytes));
+      if (text) output += text + (text.endsWith('\n') ? '' : '\n');
+      console_epoch = Number(data.epoch || console_epoch);
+      if (output && attempt > 0) break;
+    }
+
+    this._appendoutput('server', server.name, cmd, output.trim() || '(no output)', false);
+  },
+
   _stripansi(str) {
     return (str || '')
-      .replace(/\x1b\[[\d;]*[A-Z]/gi, '')
-      .replace(/\x1b\[\?[1-9][\d]*[hl]/gi, '')
-      .replace(/\x1b\[[\d]*[A-Z]/gi, '')
+      .replace(/\x1b[=>78]/g, '')
+      .replace(/(?:\x1b\[|\x9b)[0-?]*[ -/]*[@-~]/g, '')
+      .replace(/\[\?[\d;]*[a-z]/gi, '')
       .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
       .replace(/[\r\x00]/g, '');
   },

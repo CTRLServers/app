@@ -24,7 +24,19 @@ const MCP = {
   },
 
   serverid(server) {
-    return String(server?.uuid || server?.id || server?.identifier || '');
+    return String(server?.server_key || server?.uuid || server?.id || server?.identifier || '');
+  },
+
+  async panelkind(server) {
+    if (server?.type === 'Calagopus') return 'Calagopus';
+    if (server?.type === 'PufferPanel') return 'PufferPanel';
+    if (server?.type !== 'Pterodactyl') return server?.type || '';
+    if (server.panel_kind) return server.panel_kind;
+    const apikey = await Servers.resolveapikey(server);
+    if (apikey?.startsWith('hydro_')) return 'HydroDactyl';
+    if (apikey?.startsWith('rtlc_')) return 'Reviactyl';
+    if (apikey?.startsWith('pacc_')) return 'Pelican';
+    return 'Pterodactyl';
   },
 
   getserver(id) {
@@ -44,7 +56,7 @@ const MCP = {
       host: server.host || '',
       port: server.port || '',
       username: server.type === 'VPS/VDS' ? server.username || 'root' : undefined,
-      panelurl: server.type === 'Pterodactyl' ? server.panelUrl || '' : undefined,
+      panelurl: server.panelUrl || server.panel_url || undefined,
       identifier: server.identifier || undefined,
       uuid: server.uuid || undefined,
       node: server.node || undefined,
@@ -54,6 +66,12 @@ const MCP = {
       tags: Array.isArray(server.tags) ? [...server.tags] : [],
       resources,
     };
+  },
+
+  async sanitizeserverasync(server) {
+    const sanitized = this.sanitizeserver(server);
+    sanitized.panelkind = await this.panelkind(server);
+    return sanitized;
   },
 
   normalizepath(value) {
@@ -103,25 +121,16 @@ const MCP = {
     return bytes;
   },
 
-  async pterorequest(server, method, endpoint, body, responsekind = 'auto') {
-    if (server.type !== 'Pterodactyl') throw new Error('A Pterodactyl server is required.');
+  validaterelativeendpoint(endpoint, panel_name) {
     const relative = String(endpoint || '');
-    if (!relative.startsWith('/') || relative.includes('://') || /[\r\n]/.test(relative)) throw new Error('Invalid Pterodactyl endpoint.');
-    const apikey = await Servers.resolveapikey(server);
-    if (!apikey) throw new Error('No API key is available for this server.');
-    const options = {
-      method: String(method || 'GET').toUpperCase(),
-      headers: {
-        'Authorization': 'Bearer ' + apikey,
-        'Accept': 'application/vnd.pterodactyl.v1+json',
-        'Content-Type': 'application/json',
-      },
-    };
-    if (body !== undefined && options.method !== 'GET') options.body = JSON.stringify(body);
-    const response = await fetch(server.panelUrl.replace(/\/+$/, '') + '/api/client/servers/' + encodeURIComponent(server.uuid) + relative, options);
+    if (!relative.startsWith('/') || relative.includes('://') || /[\r\n]/.test(relative)) throw new Error(`Invalid ${panel_name} endpoint.`);
+    return relative;
+  },
+
+  async readpanelresponse(response, responsekind = 'auto', panel_name = 'Panel') {
     if (!response.ok) {
       const details = (await response.text()).slice(0, 2000);
-      throw new Error(`Pterodactyl HTTP ${response.status}${details ? ': ' + details : ''}`);
+      throw new Error(`${panel_name} HTTP ${response.status}${details ? ': ' + details : ''}`);
     }
     const contentlength = Number(response.headers.get('content-length') || 0);
     if (contentlength > 8 * 1024 * 1024) throw new Error('MCP responses are limited to 8 MiB.');
@@ -139,8 +148,51 @@ const MCP = {
     const contenttype = response.headers.get('content-type') || '';
     const text = await response.text();
     if (new TextEncoder().encode(text).length > 8 * 1024 * 1024) throw new Error('MCP responses are limited to 8 MiB.');
-    if (contenttype.includes('application/json')) return JSON.parse(text);
+    if (contenttype.includes('application/json')) return text ? JSON.parse(text) : {};
     return text;
+  },
+
+  async pterorequest(server, method, endpoint, body, responsekind = 'auto') {
+    if (server.type !== 'Pterodactyl') throw new Error('A Pterodactyl-compatible server is required.');
+    const relative = this.validaterelativeendpoint(endpoint, await this.panelkind(server));
+    const apikey = await Servers.resolveapikey(server);
+    if (!apikey) throw new Error('No API key is available for this server.');
+    const options = {
+      method: String(method || 'GET').toUpperCase(),
+      headers: {
+        'Authorization': 'Bearer ' + apikey,
+        'Accept': 'application/vnd.pterodactyl.v1+json',
+        'Content-Type': 'application/json',
+      },
+    };
+    if (body !== undefined && options.method !== 'GET') options.body = JSON.stringify(body);
+    const response = await Api.pterodactylrequest(server.panelUrl, apikey, server.uuid, relative, options);
+    return this.readpanelresponse(response, responsekind, await this.panelkind(server));
+  },
+
+  async calagopusrequest(server, method, endpoint, body, responsekind = 'auto') {
+    if (server.type !== 'Calagopus') throw new Error('A Calagopus server is required.');
+    const relative = this.validaterelativeendpoint(endpoint, 'Calagopus');
+    const apikey = await Servers.resolveapikey(server);
+    if (!apikey) throw new Error('No API key is available for this server.');
+    const options = { method: String(method || 'GET').toUpperCase(), headers: Api.calagopusheaders(apikey) };
+    if (body !== undefined && options.method !== 'GET') {
+      options.body = typeof body === 'string' ? body : JSON.stringify(body);
+      if (typeof body === 'string') options.headers['Content-Type'] = 'text/plain; charset=UTF-8';
+    }
+    const base = server.panelUrl.replace(/\/+$/, '');
+    const response = await fetch(`${base}/api/client/servers/${encodeURIComponent(server.uuid)}${relative}`, options);
+    return this.readpanelresponse(response, responsekind, 'Calagopus');
+  },
+
+  async pufferrequest(server, method, endpoint, body, responsekind = 'auto') {
+    if (server.type !== 'PufferPanel') throw new Error('A PufferPanel server is required.');
+    const relative = this.validaterelativeendpoint(endpoint, 'PufferPanel');
+    const options = { method: String(method || 'GET').toUpperCase() };
+    if (body !== undefined && options.method !== 'GET') options.body = JSON.stringify(body);
+    const root = `/api/servers/${encodeURIComponent(server.server_id)}`;
+    const response = await pufferpanel.request(server, root + relative, options);
+    return this.readpanelresponse(response, responsekind, 'PufferPanel');
   },
 
   async opensftp(server) {
@@ -267,8 +319,8 @@ const MCP = {
   },
 
   async execute(tool, args, permission) {
-    if (tool === 'listservers') return { servers: Servers.list.map(server => this.sanitizeserver(server)) };
-    if (tool === 'getserver') return this.sanitizeserver(this.getserver(args.serverid));
+    if (tool === 'listservers') return { servers: await Promise.all(Servers.list.map(server => this.sanitizeserverasync(server))) };
+    if (tool === 'getserver') return this.sanitizeserverasync(this.getserver(args.serverid));
     if (tool === 'moveserver') return this.moveserver(args);
     if (tool === 'updateserverorganization') return this.updateserverorganization(args);
     if (tool === 'addserver') return await this.addserver(args);
@@ -291,7 +343,12 @@ const MCP = {
     if (tool === 'extractpath') return await this.extractpath(server, args.archive, args.destination);
     if (tool === 'readbinaryfile') return await this.readbinaryfile(server, args.path);
     if (tool === 'writebinaryfile') return await this.writebinaryfile(server, args.path, args.base64, args.expectedhash);
-    if (tool === 'pterodactylrequest') return await this.genericpterodactylrequest(server, args, permission);
+    if (tool === 'pterodactylrequest') return await this.genericpanelrequest(server, args, permission, 'Pterodactyl');
+    if (tool === 'hydrodactylrequest') return await this.genericpanelrequest(server, args, permission, 'HydroDactyl');
+    if (tool === 'reviactylrequest') return await this.genericpanelrequest(server, args, permission, 'Reviactyl');
+    if (tool === 'pelicanrequest') return await this.genericpanelrequest(server, args, permission, 'Pelican');
+    if (tool === 'calagopusrequest') return await this.genericpanelrequest(server, args, permission, 'Calagopus');
+    if (tool === 'pufferpanelrequest') return await this.genericpanelrequest(server, args, permission, 'PufferPanel');
     throw new Error('Unknown MCP tool.');
   },
 
@@ -609,9 +666,14 @@ const MCP = {
     return result;
   },
 
-  async genericpterodactylrequest(server, args, permission) {
-    const result = await this.pterorequest(server, args.method, args.endpoint, args.body);
-    return permission === 'databases.credentials' || permission === 'pterodactyl.advanced' ? result : this.redactsecrets(result);
+  async genericpanelrequest(server, args, permission, panel_kind) {
+    const actual_kind = await this.panelkind(server);
+    if (actual_kind !== panel_kind) throw new Error(`This server uses ${actual_kind || 'an unsupported panel'}, not ${panel_kind}.`);
+    let result;
+    if (panel_kind === 'Calagopus') result = await this.calagopusrequest(server, args.method, args.endpoint, args.body);
+    else if (panel_kind === 'PufferPanel') result = await this.pufferrequest(server, args.method, args.endpoint, args.body);
+    else result = await this.pterorequest(server, args.method, args.endpoint, args.body);
+    return permission === 'databases.credentials' || permission.endsWith('.advanced') ? result : this.redactsecrets(result);
   },
 
   async toggleserver() {

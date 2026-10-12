@@ -222,12 +222,12 @@ const ServerConsole = {
 
   _resetresourcepanel() {
     const values = {
-      resCpu: '—',
-      resRam: '—',
-      resDisk: '—',
+      resCpu: '-',
+      resRam: '-',
+      resDisk: '-',
       resNetworkIn: '0 B',
       resNetworkOut: '0 B',
-      resUptime: '—'
+      resUptime: '-'
     };
     Object.entries(values).forEach(([id, value]) => {
       const el = Utils.el(id);
@@ -261,10 +261,10 @@ const ServerConsole = {
     const host = allocation.ip_alias || allocation.ip || this.server.host || '';
     const port = allocation.port || this.server.port || '';
     const displayHost = host && host.includes(':') ? `[${host}]` : host;
-    const address = displayHost ? displayHost + (port ? ':' + port : '') : '—';
+    const address = displayHost ? displayHost + (port ? ':' + port : '') : '-';
 
     value.textContent = address;
-    value.title = address === '—' ? '' : address;
+    value.title = address === '-' ? '' : address;
   },
 
   _updatestatebadge(state) {

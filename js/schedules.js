@@ -496,7 +496,7 @@ const ServerSchedules = {
       for (const task of this.tasks) {
         const payloadText = task.action === 'power'
           ? ({start:'Start',stop:'Stop',restart:'Restart',kill:'Kill'}[task.payload] || task.payload)
-          : (task.payload || '—');
+          : (task.payload || '-');
         html += `
             <div class="task-card">
               <div class="task-main">
