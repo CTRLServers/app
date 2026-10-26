@@ -352,21 +352,13 @@ const VPSConsole = {
       host: this.server.host,
       port: this.server.port || 22,
       username: this.server.username || 'root',
+      secretId: this.server.secretId,
+      keySecretId: this.server.keySecretId,
       cols: this.term ? this.term.cols : 80,
       rows: this.term ? this.term.rows : 24
     };
 
-    if (this.server.authType === 'key') {
-      const pk = await Servers.resolvevpsprivatekey(this.server);
-      if (pk) {
-        config.authType = 'privateKey';
-        config.privateKey = pk;
-      }
-    }
-    if (!config.authType) {
-      config.authType = 'password';
-      config.password = this.server.password || '';
-    }
+    config.authType = this.server.authType || 'password';
 
     if (this.term) this.term.writeln('\x1b[36mConnecting to ' + this.server.host + '...\x1b[0m');
 

@@ -9,7 +9,7 @@ const CTRLCloud = {
   _deepLinkBound: false,
 
   init() {
-    this.token = localStorage.getItem('ctrl_cloud_token');
+    this.token = SecretStorage.tokenref('cloud');
     this.user = JSON.parse(localStorage.getItem('ctrl_cloud_user') || 'null');
     const as = localStorage.getItem('ctrl_cloud_autosync');
     if (as) {
@@ -44,15 +44,15 @@ const CTRLCloud = {
     return data;
   },
 
-  saveauth() {
-    localStorage.setItem('ctrl_cloud_token', this.token || '');
+  async saveauth() {
+    if (this.token && !this.token.startsWith('ctrlservers-token:')) this.token = await SecretStorage.savetoken('cloud', this.token);
     localStorage.setItem('ctrl_cloud_user', JSON.stringify(this.user));
   },
 
   clearauth() {
     this.token = null;
     this.user = null;
-    localStorage.removeItem('ctrl_cloud_token');
+    SecretStorage.savetoken('cloud', '');
     localStorage.removeItem('ctrl_cloud_user');
   },
 

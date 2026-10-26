@@ -125,9 +125,10 @@ const AppSettings = {
       localStorage.removeItem('ctrl_servers');
       localStorage.removeItem(ServerKeychain.STORAGE_KEY);
       localStorage.removeItem('ctrlservers_sftp');
+      await window.electronAPI.securestoreclear();
       ServerKeychain.keys = [];
       this.render();
-      Modal.show('Cache Cleared', '<p style="color:var(--text-secondary);font-size:14px;margin:0;">Server data and connections have been cleared.</p>');
+      Modal.alert('Cache Cleared', '<span style="color:var(--text-secondary);">Server data and connections have been cleared.</span>');
     } catch (e) {}
   },
 
@@ -226,6 +227,16 @@ const AppSettings = {
               </div>
               <div id="passcodeError" style="display:none" class="settings-error"></div>
             </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            <h3>SSH Host Keys</h3>
+          </div>
+          <div class="settings-body" id="hostKeysBody">
+            <div class="mcp-loading"><span class="spinner-sm"></span> Loading host keys...</div>
           </div>
         </div>
 
@@ -345,6 +356,61 @@ const AppSettings = {
 
     this.loadmonitor();
     this.loadmcp();
+    this.loadhostkeys();
+  },
+
+  async loadhostkeys() {
+    const body = Utils.el('hostKeysBody');
+    if (!body) return;
+    try {
+      const keys = (await window.electronAPI?.hostkeyslist?.()) || [];
+      const rows = keys.map(key => `
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label" style="font-family:monospace;word-break:break-all;">
+              ${Utils.escape(key.host)}${key.port && key.port !== 22 ? ':' + Utils.escape(String(key.port)) : ''} · ${Utils.escape(key.keyType)}${key.revoked ? ' · <span style="color:#ef4444;">revoked</span>' : ''}
+            </div>
+            <div class="settings-row-desc" style="font-family:monospace;word-break:break-all;">${Utils.escape(key.fingerprint)}</div>
+          </div>
+          <button class="btn btn-danger btn-sm" data-host-key-id="${Utils.escape(key.id)}" onclick="AppSettings.removehostkey(this.dataset.hostKeyId)">Forget</button>
+        </div>`).join('');
+      body.innerHTML = `
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Trusted fingerprints</div>
+            <div class="settings-row-desc">${keys.length} stored. Connections are confirmed on first use and refused if a fingerprint changes.</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="AppSettings.importknownhosts()">Import known_hosts</button>
+            ${keys.length ? '<button class="btn btn-danger btn-sm" onclick="AppSettings.clearhostkeys()">Clear all</button>' : ''}
+          </div>
+        </div>
+        ${rows || '<p class="settings-note">No host keys stored yet. You will be asked to confirm a fingerprint the first time you connect to a host.</p>'}`;
+    } catch (error) {
+      body.innerHTML = `<div class="settings-error">${Utils.escape(error?.message || String(error))}</div>`;
+    }
+  },
+
+  async importknownhosts() {
+    try {
+      const result = await window.electronAPI?.hostkeysimport?.();
+      if (!result) return;
+      Modal.alert('Import complete', `Added ${result.added}, updated ${result.updated}, skipped ${result.skipped} entries.`);
+      this.loadhostkeys();
+    } catch (error) {
+      Modal.alert('Import failed', Utils.escape(error?.message || String(error)));
+    }
+  },
+
+  async removehostkey(id) {
+    if (!id) return;
+    try { await window.electronAPI?.hostkeysremove?.(id); } catch (error) {}
+    this.loadhostkeys();
+  },
+
+  async clearhostkeys() {
+    try { await window.electronAPI?.hostkeysclear?.(); } catch (error) {}
+    this.loadhostkeys();
   },
 
   async loadmcp() {
@@ -509,7 +575,7 @@ const AppSettings = {
     input.value = '';
     confirm.value = '';
     this.render();
-    Modal.show('Passcode Saved', '<p style="color:var(--text-secondary);font-size:14px;margin:0;">Passcode has been set. You will be prompted on next launch.</p>');
+    Modal.alert('Passcode Saved', '<span style="color:var(--text-secondary);">Passcode has been set. You will be prompted on next launch.</span>');
   },
 
   disablepasscode() {
@@ -664,20 +730,13 @@ const AppSettings = {
         host: s.host,
         port: s.port,
         panelUrl: s.panelUrl,
-        apiKey: s.apiKey,
+        secretId: s.secretId,
         uuid: s.uuid,
       };
-      if (s.type === 'Pterodactyl') {
-        entry.apiKey = await Servers.resolveapikey(s);
-      }
       if (s.type === 'VPS/VDS') {
         entry.username = s.username || 'root';
         entry.authType = s.authType;
-        if (s.authType === 'key') {
-          entry.privateKey = await Servers.resolvevpsprivatekey(s);
-        } else {
-          entry.password = s.password || '';
-        }
+        entry.keySecretId = s.keySecretId;
       }
       resolved.push(entry);
     }

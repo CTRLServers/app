@@ -126,7 +126,7 @@ const Windows = {
     const topbar_resources = Utils.el('topbarResources');
     if (topbar_resources) topbar_resources.style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
-    Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
+    Servers.applylistdisplay(true);
     Utils.el('pinnedServers').style.display = 'none';
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('topbarActions').style.display = '';
@@ -214,6 +214,7 @@ const App = {
   _dragging: false,
 
   async init() {
+    await SecretStorage.init();
     Theme.init();
     Modal.init();
     AppSettings.load();
@@ -222,6 +223,7 @@ const App = {
     if (!passcodeOk) return;
 
     Servers.init();
+    this.initservershelf();
     if (typeof AcceptServers !== 'undefined') AcceptServers.init();
     ServerFiles.init();
     ServerKeychain.load();
@@ -260,6 +262,25 @@ const App = {
 
     this.startpolling();
     CTRLCloud.autosynconlaunch();
+  },
+
+  initservershelf() {
+    const shelf = Utils.el('serversShelf');
+    if (!shelf) return;
+    const visible = (id) => {
+      const el = Utils.el(id);
+      return Boolean(el) && el.style.display !== 'none';
+    };
+    const sync = () => {
+      const next = (visible('serversGrid') || visible('pinnedServers') || visible('serversTable')) ? '' : 'none';
+      if (shelf.style.display !== next) shelf.style.display = next;
+    };
+    new MutationObserver(sync).observe(shelf, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style']
+    });
+    sync();
   },
 
   wirevpsexecutors() {
@@ -466,7 +487,7 @@ const App = {
     Utils.el('pageTitle').textContent = this.getpagetitle(page);
     Utils.el('sidebar').classList.remove('open');
     Utils.el('topbarResources').style.display = 'none';
-    Utils.el('serversGrid').style.display = showdashboard && Servers.list.length > 0 ? 'grid' : 'none';
+    Servers.applylistdisplay(showdashboard);
     Utils.el('dashboardFilterBar').style.display = showdashboard ? '' : 'none';
     Utils.el('emptyState').style.display = showdashboard && Servers.list.length === 0 ? 'flex' : 'none';
     Utils.el('pinnedServers').style.display = 'none';
@@ -480,10 +501,11 @@ const App = {
     Utils.el('tabappsettings').style.display = page === 'appsettings' ? '' : 'none';
     const acceptTab = Utils.el('tabAcceptServers');
     if (acceptTab) acceptTab.style.display = page === 'accept-servers' ? '' : 'none';
-    const dashboardEls = ['serversGrid', 'emptyState', 'pinnedServers', 'dashboardFilterBar'];
+    const dashboardEls = ['serversGrid', 'serversTable', 'emptyState', 'pinnedServers', 'dashboardFilterBar'];
     const onAccept = page === 'accept-servers';
     if (onAccept) {
       Utils.el('serversGrid').style.display = 'none';
+      const srvTable = Utils.el('serversTable'); if (srvTable) srvTable.style.display = 'none';
       Utils.el('emptyState').style.display = 'none';
       const pinned = Utils.el('pinnedServers'); if (pinned) pinned.style.display = 'none';
       Utils.el('dashboardFilterBar').style.display = 'none';
@@ -501,7 +523,7 @@ const App = {
           container = document.createElement('div');
           container.id = 'tabPluginPage-' + pageId;
           container.style.padding = '20px';
-          Utils.el('serversGrid').parentElement.insertBefore(container, Utils.el('serverDetail'));
+          Utils.el('content').insertBefore(container, Utils.el('serverDetail'));
         }
         container.style.display = '';
         if (typeof pageConfig.render === 'function') {
@@ -574,7 +596,7 @@ const App = {
     const dashboard_resources = Utils.el('topbarResources');
     if (dashboard_resources) dashboard_resources.style.display = 'none';
     Utils.el('emptyState').style.display = Servers.list.length === 0 ? 'flex' : 'none';
-    Utils.el('serversGrid').style.display = Servers.list.length > 0 ? 'grid' : 'none';
+    Servers.applylistdisplay(true);
     Utils.el('pinnedServers').style.display = 'none';
     Utils.el('dashboardKeychain').style.display = 'none';
     Utils.el('topbarActions').style.display = '';
@@ -597,6 +619,7 @@ const App = {
     DiscordRPC.clearservers();
     this.currentPage = 'dashboard';
     if (Servers.list.length > 0) {
+      Servers.rendercards();
       Servers.fetchallfromapi().then(() => Servers.pollresources());
     }
   },
@@ -651,7 +674,8 @@ const App = {
     Utils.el('sidebarWorkspaces').style.display = 'none';
     Utils.el('workspacesSeparator').style.display = 'none';
     Utils.el('emptyState').style.display = 'none';
-    Utils.el('serversGrid').style.display = 'none';
+    Servers.applylistdisplay(false);
+    Utils.el('pinnedServers').style.display = 'none';
     Utils.el('dashboardFilterBar').style.display = 'none';
     Utils.el('serverDetail').style.display = '';
     Utils.el('pageTitle').textContent = server.name;

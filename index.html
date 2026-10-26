@@ -91,7 +91,7 @@
           </svg>
           <span>Multi Terminal</span>
         </a>
-        <a href="#" class="nav-item" data-page="plugins">
+        <a href="#" class="nav-item" data-page="plugins" style="display:none;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
@@ -462,6 +462,14 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" class="dashboard-search-input" id="dashboardSearchInput" placeholder="Search servers..." />
           </div>
+          <div class="view-toggle" id="viewToggle" role="group" aria-label="Server list view">
+            <button type="button" class="view-toggle-btn active" data-view="card" title="Card view">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </button>
+            <button type="button" class="view-toggle-btn" data-view="table" title="Table view">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+          </div>
           <button class="btn btn-primary" id="addServerBtn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -516,11 +524,14 @@
             <button type="button" class="btn btn-secondary btn-sm" data-mass-action="clear">Cancel</button>
           </div>
         </div>
-        <div id="pinnedServers" style="display:none;">
-          <div class="pinned-label">Pinned</div>
-          <div class="servers-grid" id="pinnedGrid"></div>
+        <div id="serversShelf" class="servers-shelf" style="display:none;">
+          <div id="pinnedServers" style="display:none;">
+            <div class="pinned-label">Pinned</div>
+            <div class="servers-grid" id="pinnedGrid"></div>
+          </div>
+          <div class="servers-grid" id="serversGrid" style="display:none;"></div>
+          <div class="servers-table-wrap" id="serversTable" style="display:none;"></div>
         </div>
-        <div class="servers-grid" id="serversGrid" style="display:none;"></div>
         <div id="dashboardKeychain" style="display:none;"></div>
         <div id="tabCloud" style="display:none;"></div>
         <div id="tabSftp" style="display:none;"></div>
@@ -973,6 +984,21 @@
     </div>
   </div>
 
+  <div class="modal-overlay host-trust-overlay" id="hostTrustOverlay">
+    <div class="modal" id="hostTrustModal">
+      <div class="modal-header">
+        <h2 id="hostTrustTitle">Unknown host key</h2>
+        <button class="modal-close" id="hostTrustClose" title="Disconnect">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="hostTrustBody"></div>
+    </div>
+  </div>
+
   <div class="lockscreen-overlay" id="lockScreenOverlay" style="display:none">
     <div class="lockscreen-card">
       <div class="lockscreen-icon">
@@ -1047,6 +1073,7 @@
   <script src="js/codemirror/mode/kotlin/kotlin.min.js"></script>
   <script src="js/codemirror/mode/elixir/elixir.min.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/secrets.js"></script>
   <script src="js/api.js"></script>
   <script src="js/pufferpanel.js"></script>
   <script src="js/adminpanel.js"></script>
@@ -1060,6 +1087,7 @@
   <script src="js/adminmounts.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/modal.js"></script>
+  <script src="js/hosttrust.js"></script>
   <script src="js/servers.js"></script>
   <script src="js/console.js"></script>
   <script src="js/files.js"></script>

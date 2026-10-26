@@ -212,15 +212,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onserverstatus: (callback) => {
     return ipcRenderer.on('server-status', (event, data) => callback(data));
   },
-  cryptoencrypt: (plaintext) => {
-    return ipcRenderer.invoke('crypto-encrypt', plaintext);
-  },
-  cryptodecrypt: (data) => {
-    return ipcRenderer.invoke('crypto-decrypt', data);
-  },
+  securestoremigrate: (legacy) => ipcRenderer.invoke('secure-store-migrate', legacy),
+  securestoresaveservers: (servers) => ipcRenderer.invoke('secure-store-save-servers', servers),
+  securestoresavekeychain: (keys) => ipcRenderer.invoke('secure-store-save-keychain', keys),
+  securestoresavesftp: (connections) => ipcRenderer.invoke('secure-store-save-sftp', connections),
+  securestoresavetoken: (name, value) => ipcRenderer.invoke('secure-store-save-token', name, value),
+  securestoresavemcpluginkey: (id, value, origin) => ipcRenderer.invoke('secure-store-save-mcplugin-key', id, value, origin),
+  securestoreclear: () => ipcRenderer.invoke('secure-store-clear'),
+  securetokenrequest: (name, url, options) => ipcRenderer.invoke('secure-token-request', name, url, options),
+  securemcpluginrequest: (id, url, options) => ipcRenderer.invoke('secure-mcplugin-request', id, url, options),
+  pufferauthenticate: (secretId, panelUrl, clientId) => ipcRenderer.invoke('puffer-authenticate', secretId, panelUrl, clientId),
   panelrequest: (url, options) => {
     return ipcRenderer.invoke('panel-request', url, options);
   },
+  serverrequest: (secretId, url, options) => ipcRenderer.invoke('server-request', secretId, url, options),
   plugindir: () => {
     return ipcRenderer.invoke('plugin-dir');
   },
@@ -242,6 +247,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scpcopy: (config, remotePath, localPath) => {
     return ipcRenderer.invoke('scp-copy-file', config, remotePath, localPath);
   },
+  hostkeyslist: () => ipcRenderer.invoke('host-keys-list'),
+  hostkeysimport: (filePath) => ipcRenderer.invoke('host-keys-import', filePath),
+  hostkeysremove: (id) => ipcRenderer.invoke('host-keys-remove', id),
+  hostkeysclear: () => ipcRenderer.invoke('host-keys-clear'),
+  onhosttrustrequest: (callback) => {
+    const handler = (event, id, payload) => callback(id, payload);
+    ipcRenderer.on('host-trust-request', handler);
+    return () => ipcRenderer.removeListener('host-trust-request', handler);
+  },
+  hosttrustresponse: (id, accepted) => ipcRenderer.invoke('host-trust-response', id, accepted),
   oncloudaction: (callback) => {
     ipcRenderer.on('cloud-action', (event, data) => callback(data));
   },

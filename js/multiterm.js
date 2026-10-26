@@ -144,9 +144,7 @@ const MultiTerm = {
   },
 
   async _runvps(server, cmd) {
-    const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
-    if (server.authType === 'key') { const pk = await Servers.resolvevpsprivatekey(server); if (pk) { cfg.authType = 'privateKey'; cfg.privateKey = pk; } }
-    if (!cfg.authType) { cfg.authType = 'password'; cfg.password = server.password || ''; }
+    const cfg = await Servers._vpsconfig(server);
     const result = await window.electronAPI?.sshexec?.(cfg, cmd);
     const stdout = result?.stdout || '';
     const stderr = result?.stderr || '';

@@ -16,7 +16,11 @@ const SFTP = {
   },
 
   savesaved() {
-    localStorage.setItem('ctrlservers_sftp', JSON.stringify(this.savedConnections));
+    this.savedConnections.forEach(connection => { if (!connection.secretId) connection.secretId = `sftp_${crypto.randomUUID()}`; });
+    return SecretStorage.savesftp(this.savedConnections).then(publicConnections => {
+      this.savedConnections = publicConnections;
+      return publicConnections;
+    });
   },
 
   async connect(cfg) {
@@ -27,6 +31,8 @@ const SFTP = {
         port: cfg.port || 22,
         username: cfg.username,
         authType: cfg.authType || 'password',
+        secretId: cfg.secretId,
+        keySecretId: cfg.keySecretId,
         password: cfg.password || '',
         privateKey: cfg.privateKey || ''
       });
@@ -432,17 +438,18 @@ const SFTP = {
         errEl.textContent = 'Please select a key';
         return;
       }
-      const pk = ServerKeychain.getprivatekey(parseInt(keyIdx));
-      if (!pk) {
+      const key = ServerKeychain.keys[parseInt(keyIdx)];
+      if (!key?.secretId) {
         const errEl = Utils.el('sftpAuthError');
         errEl.style.display = '';
         errEl.textContent = 'No private key found';
         return;
       }
-      privateKey = pk;
+      privateKey = '';
     }
 
-    const cfg = { host, port: parseInt(port), username, authType, password, privateKey };
+    const cfg = { host, port: parseInt(port), username, authType, password, privateKey,
+      ...(authType === 'key' ? { keySecretId: ServerKeychain.keys[parseInt(keyIdx)]?.secretId } : {}) };
 
     if (Utils.el('sftpSaveCheck').checked) {
       this.saveconnection({ ...cfg });
@@ -458,36 +465,14 @@ const SFTP = {
   async quickconnect(index) {
     const server = Servers.list[index];
     if (!server) return;
-    let pk = '';
-    if (server.authType === 'key') {
-      pk = await Servers.resolvevpsprivatekey(server);
-    }
     const cfg = {
       host: server.host,
       port: server.port || 22,
       username: server.username || 'root',
       authType: server.authType === 'key' ? 'key' : 'password',
-      password: server.password || '',
-      privateKey: pk
+      secretId: server.secretId,
+      keySecretId: server.keySecretId
     };
-    if (cfg.authType === 'password' && !cfg.password) {
-      const errEl = document.getElementById('sftpAuthError');
-      if (errEl) {
-        errEl.style.display = '';
-        errEl.textContent = 'No password saved for this server. Use the form below to enter credentials.';
-      }
-      this.fillform(cfg);
-      return;
-    }
-    if (cfg.authType === 'key' && !cfg.privateKey) {
-      const errEl = document.getElementById('sftpAuthError');
-      if (errEl) {
-        errEl.style.display = '';
-        errEl.textContent = 'No key saved for this server. Use the form below to select a key.';
-      }
-      this.fillform(cfg);
-      return;
-    }
     await this.connect(cfg);
   },
 
@@ -505,7 +490,7 @@ const SFTP = {
     if (hostEl) hostEl.value = cfg.host || '';
     if (portEl) portEl.value = cfg.port || 22;
     if (userEl) userEl.value = cfg.username || '';
-    if (passEl) passEl.value = cfg.password || '';
+    if (passEl) passEl.value = '';
     if (cfg.authType === 'key') {
       this.toggleauthtype('key');
     } else {

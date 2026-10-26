@@ -113,7 +113,7 @@ const AcceptServers = {
       let apiKey = incoming.apiKey;
       if (apiKey && !apiKey.startsWith('enc:')) {
         try {
-          apiKey = `enc:${await window.electronAPI.cryptoencrypt(apiKey)}`;
+          apiKey = apiKey;
         } catch {
           Modal.alert('Import Failed', 'CTRLServers could not encrypt the API key. The server was not imported.');
           return;

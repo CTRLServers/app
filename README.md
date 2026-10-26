@@ -1,25 +1,5 @@
-# CTRLServers App
-
-Hello! Welcome to the repository. This is the code from CTRLServers App, here is what it includes:
-
-- Managing Pterodactyl, VPS and VDS servers in one place
-- Full control panel -- console, files, users, backups, schedules, databases
-- VPS tools -- terminal, processes, logs, disk, network, SSL, cron, auto-start inventory, docker, and security management
-- Multi-terminal -- run commands on multiple servers at once
-- SFTP tab with built-in code editor
-- Modrinth plugin and mod browser
-- Server monitor with notifications
-- Keychain for SSH keys
-- Discord Rich Presence
-- Dark, Light and OLED themes
-- CLI terminal with commands
-- Passcode lock
-
-Developed on Node.js, Electron. Used HTML + CSS + JS. May switch to framework soon.
-
-## What you can do with this project?
-
-You can use parts of the code in your projects, BUT provide that this part of the code was made by CTRLServers. You can do forks of this project. You can download this code and edit it how you like. May include bad code, sorry for that.
+# CTRLServers - what is this?
+CTRLServers is a free and open-source desktop app for Windows, Linux and MacOS. It helps manage all your Pterodactyl, Calagopus, HydroDactyl, PufferPanel, Pelican, Reviactyl and VPS/VDS servers in one app. Just like a browser, but it consumes a less RAM than an actual Browser.
 
 ## How to run this?
 
@@ -32,8 +12,4 @@ npm start
 
 Use `npm run build:os`, for example `npm run build:win`.
 
----
-
-Developed by CTRLServers. Start managing all your Pterodactyl, VPS and VDS servers in one app!
-
-https://app.ctrlservers.xyz/
+https://ctrlservers.xyz/

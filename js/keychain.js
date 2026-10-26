@@ -14,7 +14,11 @@ const ServerKeychain = {
   },
 
   save() {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.keys));
+    this.keys.forEach(key => { if (!key.secretId) key.secretId = `key_${crypto.randomUUID()}`; });
+    return SecretStorage.savekeychain(this.keys).then(publicKeys => {
+      this.keys = publicKeys;
+      return publicKeys;
+    });
   },
 
   opencreatemodal(editIdx) {
@@ -31,7 +35,7 @@ const ServerKeychain = {
       </div>
       <div class="form-group">
         <label class="form-label">Private Key</label>
-        <textarea class="form-input keychain-textarea" id="keyPrivate" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----...">${existing ? Utils.escape(existing.privateKey) : ''}</textarea>
+        <textarea class="form-input keychain-textarea" id="keyPrivate" placeholder="${isEdit ? 'Leave blank to keep the securely stored private key' : '-----BEGIN OPENSSH PRIVATE KEY-----...'}"></textarea>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
@@ -48,7 +52,8 @@ const ServerKeychain = {
         const keyData = {
           name,
           publicKey,
-          privateKey,
+          ...(privateKey ? { privateKey } : {}),
+          ...(existing?.secretId ? { secretId: existing.secretId } : {}),
           createdAt: existing ? existing.createdAt : Date.now(),
           updatedAt: Date.now()
         };
@@ -65,9 +70,7 @@ const ServerKeychain = {
   },
 
   getprivatekey(idx) {
-    const key = this.keys[idx];
-    if (!key) return '';
-    return key.privateKey || '';
+    return '';
   },
 
   getpublickey(idx) {
@@ -79,7 +82,7 @@ const ServerKeychain = {
   copyfield(idx, field) {
     const key = this.keys[idx];
     if (!key) return;
-    navigator.clipboard.writeText(key[field] || '').catch(() => {});
+    if (field !== 'privateKey') navigator.clipboard.writeText(key[field] || '').catch(() => {});
   },
 
   remove(idx) {
@@ -144,7 +147,7 @@ const ServerKeychain = {
     for (let i = 0; i < this.keys.length; i++) {
       const key = this.keys[i];
       const fingerprint = key.publicKey ? key.publicKey.substring(0, 60) + (key.publicKey.length > 60 ? '...' : '') : 'No public key';
-      const maskedPrivate = key.privateKey ? '\u2022'.repeat(20) : 'No private key';
+      const maskedPrivate = key.secretId ? '\u2022'.repeat(20) : 'No private key';
       html += `
           <div class="keychain-card">
             <div class="keychain-card-header">

@@ -1,10 +1,39 @@
 const nativepanelfetch = window.fetch.bind(window);
 
 window.fetch = async (url, options = {}) => {
+  const address = typeof url === 'string' ? url : url?.url;
+  const headers = new Headers(options?.headers || {});
+  const authorization = headers.get('Authorization') || '';
+  const responsefromproxy = async (result) => {
+    const binary = atob(result.body || '');
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+    return new Response(bytes.length ? bytes : null, { status: result.status, statusText: result.statustext || '', headers: result.headers || {} });
+  };
+  if (address && authorization.startsWith('Bearer ctrlservers-secret:')) {
+    const secretId = authorization.slice('Bearer ctrlservers-secret:'.length);
+    headers.delete('Authorization');
+    return responsefromproxy(await window.electronAPI.serverrequest(secretId, address, {
+      method: options.method || 'GET', headers: Object.fromEntries(headers.entries()), body: options.body == null ? null : String(options.body)
+    }));
+  }
+  if (address && authorization.startsWith('Bearer ctrlservers-token:')) {
+    const name = authorization.slice('Bearer ctrlservers-token:'.length);
+    headers.delete('Authorization');
+    return responsefromproxy(await window.electronAPI.securetokenrequest(name, address, {
+      method: options.method || 'GET', headers: Object.fromEntries(headers.entries()), body: options.body == null ? null : String(options.body)
+    }));
+  }
+  if (address && authorization.startsWith('ApiKey ctrlservers-mcplugin:')) {
+    const id = authorization.slice('ApiKey ctrlservers-mcplugin:'.length);
+    headers.delete('Authorization');
+    return responsefromproxy(await window.electronAPI.securemcpluginrequest(id, address, {
+      method: options.method || 'GET', headers: Object.fromEntries(headers.entries()), body: options.body == null ? null : String(options.body)
+    }));
+  }
   try {
     return await nativepanelfetch(url, options);
   } catch (error) {
-    const address = typeof url === 'string' ? url : url?.url;
     const body = options?.body;
     if (!address || !/^https?:\/\//i.test(address) || body instanceof FormData || body instanceof Blob || body instanceof ArrayBuffer || !window.electronAPI?.panelrequest) throw error;
     const result = await window.electronAPI.panelrequest(address, {
@@ -12,14 +41,7 @@ window.fetch = async (url, options = {}) => {
       headers: Object.fromEntries(new Headers(options.headers || {}).entries()),
       body: body == null ? null : String(body)
     });
-    const binary = atob(result.body || '');
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-    return new Response(bytes.length ? bytes : null, {
-      status: result.status,
-      statusText: result.statustext || '',
-      headers: result.headers || {}
-    });
+    return responsefromproxy(result);
   }
 };
 

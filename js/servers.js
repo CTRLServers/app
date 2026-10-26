@@ -39,6 +39,21 @@ const Servers = {
     document.querySelector('.workspaces-add')?.addEventListener('click', () => this.showcreatefolder());
     const searchinp = Utils.el('dashboardSearchInput');
     if (searchinp) searchinp.addEventListener('input', () => this.onsearch(searchinp.value));
+    const viewtoggle = Utils.el('viewToggle');
+    if (viewtoggle) {
+      viewtoggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-view]');
+        if (btn) this.setviewmode(btn.dataset.view);
+      });
+    }
+    const tablewrap = Utils.el('serversTable');
+    if (tablewrap) {
+      tablewrap.addEventListener('change', (e) => {
+        if (e.target.classList.contains('server-select-all')) this.toggleselectall(e.target.checked);
+      });
+    }
+    this._viewmode = this._loadviewmode();
+    this._applyviewtoggle();
     document.querySelector('[data-action="export-servers"]')?.addEventListener('click', () => this.exportlist());
     document.querySelector('[data-action="import-servers"]')?.addEventListener('click', () => this.importlist());
     this._ensurectxmenu();
@@ -47,6 +62,44 @@ const Servers = {
 
   _serverkey(server) {
     return String(server.uuid || server.id);
+  },
+
+  _loadviewmode() {
+    try {
+      return localStorage.getItem('ctrlservers-viewmode') === 'table' ? 'table' : 'card';
+    } catch (e) {
+      return 'card';
+    }
+  },
+
+  setviewmode(mode) {
+    const next = mode === 'table' ? 'table' : 'card';
+    if (this._viewmode === next) return;
+    this._viewmode = next;
+    try { localStorage.setItem('ctrlservers-viewmode', next); } catch (e) {}
+    this._applyviewtoggle();
+    this.rendercards();
+  },
+
+  _applyviewtoggle() {
+    const wrap = Utils.el('viewToggle');
+    if (!wrap) return;
+    wrap.querySelectorAll('[data-view]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === this._viewmode);
+    });
+  },
+
+  applylistdisplay(show) {
+    const grid = Utils.el('serversGrid');
+    const table = Utils.el('serversTable');
+    const visible = show && this.list.length > 0;
+    if (this._viewmode === 'table') {
+      grid.style.display = 'none';
+      if (table) table.style.display = visible ? '' : 'none';
+    } else {
+      grid.style.display = visible ? 'grid' : 'none';
+      if (table) table.style.display = 'none';
+    }
   },
 
   _barpct(pct) {
@@ -58,31 +111,36 @@ const Servers = {
   },
 
   _onclick(e) {
-    const sel = e.target.closest('.server-card-select');
+    const sel = e.target.closest('.server-card-select') || e.target.closest('.server-row .file-checkbox');
     if (sel) {
-      const card = sel.closest('.server-card');
-      if (card) {
+      const host = sel.closest('.server-card') || sel.closest('.server-row');
+      if (host) {
         e.preventDefault();
         e.stopPropagation();
-        this.toggleselect(parseInt(card.dataset.index, 10));
+        this.toggleselect(parseInt(host.dataset.index, 10));
       }
       return;
     }
     const power = e.target.closest('[data-power]');
     if (power) {
       e.stopPropagation();
-      const card = power.closest('.server-card');
-      if (card) this.quickpower(parseInt(card.dataset.index, 10), power.dataset.power);
+      const host = power.closest('.server-card') || power.closest('.server-row');
+      if (host) this.quickpower(parseInt(host.dataset.index, 10), power.dataset.power);
       return;
     }
     if (e.target.closest('.card-action-btn')) return;
     const card = e.target.closest('.server-card');
-    if (card && !e.defaultPrevented) App.openserver(parseInt(card.dataset.index, 10));
+    if (card && !e.defaultPrevented) {
+      App.openserver(parseInt(card.dataset.index, 10));
+      return;
+    }
+    const row = e.target.closest('.server-row');
+    if (row && !e.defaultPrevented) App.openserver(parseInt(row.dataset.index, 10));
   },
 
   _oncontextmenu(e) {
-    const card = e.target.closest('.server-card');
-    if (!card || !card.closest('#serversGrid, #pinnedGrid')) return;
+    const card = e.target.closest('.server-card') || e.target.closest('.server-row');
+    if (!card || !card.closest('#serversGrid, #pinnedGrid, #serversTable')) return;
     e.preventDefault();
     this.opencontextmenu(e, parseInt(card.dataset.index, 10));
   },
@@ -184,12 +242,12 @@ const Servers = {
   },
 
   async resolvevpsprivatekey(server) {
-    if (server.authType !== 'key') return server.password || '';
-    if (server.privateKey) return server.privateKey;
-    if (server.keyIndex !== undefined && server.keyIndex >= 0 && server.keyIndex < ServerKeychain.keys.length) {
-      return ServerKeychain.keys[server.keyIndex].privateKey || '';
-    }
     return '';
+  },
+
+  _vphascredentials(server) {
+    if (!server) return false;
+    return Boolean(server.password || server.privateKey || server.hasPassword || server.hasPrivateKey || server.keySecretId);
   },
 
   _vpscommandneedsroot(command) {
@@ -210,18 +268,7 @@ const Servers = {
   },
 
   async _vpsconfig(server) {
-    const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
-    if (server.authType === 'key') {
-      const privateKey = await this.resolvevpsprivatekey(server);
-      if (privateKey) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = privateKey;
-      }
-    }
-    if (!cfg.authType) {
-      cfg.authType = 'password';
-      cfg.password = server.password || '';
-    }
+    const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root', secretId: server.secretId, keySecretId: server.keySecretId, authType: server.authType };
     return cfg;
   },
 
@@ -312,23 +359,20 @@ const Servers = {
   },
 
   async resolveapikey(server) {
-    if (!server || !server.apiKey) return '';
-    if (!server.apiKey.startsWith('enc:')) return server.apiKey;
-    const cachekey = server.uuid || server.id;
-    const cached = this._apikeycache[cachekey];
-    if (cached && cached.value === server.apiKey) return cached.key;
-    try {
-      const dec = await window.electronAPI.cryptodecrypt(server.apiKey.slice(4));
-      this._apikeycache[cachekey] = { value: server.apiKey, key: dec };
-      return dec;
-    } catch (e) {
-      return '';
-    }
+    if (!server || !server.secretId) return '';
+    return `ctrlservers-secret:${server.secretId}`;
   },
 
   save() {
-    localStorage.setItem('ctrl_servers', JSON.stringify(this.list));
+    this.list.forEach(server => { if (!server.secretId) server.secretId = `server_${crypto.randomUUID()}`; });
     localStorage.setItem('ctrl_folders', JSON.stringify(this.folders));
+    return SecretStorage.saveservers(this.list).then(publicServers => {
+      this.list = publicServers;
+      return publicServers;
+    }).catch(error => {
+      console.error('Unable to save server credentials securely:', error);
+      throw error;
+    });
   },
 
   geticon(server) {
@@ -354,26 +398,9 @@ const Servers = {
 
   async detectos(server) {
     if (server.type !== 'VPS/VDS' || server.os) return;
+    if (!this._vphascredentials(server)) return;
     try {
-      const cfg = {
-        host: server.host,
-        port: parseInt(server.port) || 22,
-        username: server.username || 'root',
-      };
-      if (server.authType === 'key') {
-        const pk = await this.resolvevpsprivatekey(server);
-        if (pk) {
-          cfg.authType = 'privateKey';
-          cfg.privateKey = pk;
-        } else {
-          cfg.authType = 'password';
-          cfg.password = server.password || '';
-        }
-      } else {
-        cfg.authType = 'password';
-        cfg.password = server.password || '';
-      }
-      if (cfg.authType === 'password' && !cfg.password) return;
+      const cfg = await this._vpsconfig(server);
       const result = await this._execvpscommand(server, cfg, "cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"'");
       if (result && result.stdout && result.stdout.trim()) {
         server.os = result.stdout.trim();
@@ -391,6 +418,7 @@ const Servers = {
       empty.style.display = showdashboard ? 'flex' : 'none';
       grid.style.display = 'none';
       Utils.el('pinnedServers').style.display = 'none';
+      Utils.el('serversTable').style.display = 'none';
     } else {
       empty.style.display = 'none';
       grid.style.display = showdashboard ? 'grid' : 'none';
@@ -559,8 +587,30 @@ const Servers = {
     const grid = Utils.el('serversGrid');
     const pinnedSection = Utils.el('pinnedServers');
     const pinnedGrid = Utils.el('pinnedGrid');
+    const tableWrap = Utils.el('serversTable');
     const showdashboard = typeof App === 'undefined' || (App.currentPage === 'dashboard' && !App.currentServer);
     const filtered = this._filterlist();
+
+    if (this._viewmode === 'table') {
+      pinnedSection.style.display = 'none';
+      grid.style.display = 'none';
+      if (showdashboard) {
+        tableWrap.innerHTML = this._rendertable(filtered);
+        tableWrap.style.display = '';
+      } else {
+        tableWrap.innerHTML = '';
+        tableWrap.style.display = 'none';
+      }
+      this._syncselectall();
+      this.updatemassbar();
+      clearTimeout(this._vpsfetchtimer);
+      this._vpsfetchtimer = setTimeout(() => this.fetchvpsstats(), 1500);
+      return;
+    }
+
+    tableWrap.style.display = 'none';
+    tableWrap.innerHTML = '';
+    grid.style.display = showdashboard && this.list.length > 0 ? 'grid' : 'none';
     const pinned = filtered.filter(s => s.pinned);
     const unpinned = filtered.filter(s => !s.pinned);
 
@@ -847,6 +897,8 @@ const Servers = {
   },
 
   updatecard(uuid) {
+    const row = document.querySelector(`.server-row[data-uuid="${uuid}"]`);
+    if (row) this._updaterow(row, uuid);
     const card = document.querySelector(`.server-card[data-uuid="${uuid}"]`);
     if (!card) return;
     const res = this.resources[uuid] || {};
@@ -889,7 +941,7 @@ const Servers = {
     }
 
     const vpsCard = card.querySelector('.vps-stats');
-    const st = this.vpsstats[server.id];
+    const st = server ? this.vpsstats[server.id] : null;
     if (vpsCard && st) {
       vpsCard.querySelector('.vps-stat-ram .vps-stat-val').textContent = Utils.formatbytes(st.memUsed) + ' / ' + Utils.formatbytes(st.memTotal);
       vpsCard.querySelector('.vps-stat-ram .vps-stat-bar').style.setProperty('--bar-pct', this._barpct(st.memTotal > 0 ? (st.memUsed / st.memTotal) * 100 : 0));
@@ -936,21 +988,9 @@ const Servers = {
     let changed = false;
     for (const server of vps) {
       try {
-        const cfg = { host: server.host, port: server.port || 22, username: server.username || 'root' };
-        if (server.authType === 'key') {
-          const pk = await this.resolvevpsprivatekey(server);
-          if (pk) {
-            cfg.authType = 'privateKey';
-            cfg.privateKey = pk;
-          } else {
-            cfg.authType = 'password';
-            cfg.password = server.password || '';
-          }
-        } else {
-          cfg.authType = 'password';
-          cfg.password = server.password || '';
-        }
-        if (cfg.authType === 'password' && !cfg.password) continue;
+        if (!this._vphascredentials(server)) continue;
+        const cfg = await this._vpsconfig(server);
+        cfg.background = true;
         const cmd = "free -b | awk '/Mem:/{print $2,$3} /Swap:/{print $2,$3}' && df -B1 / | awk 'NR==2{print $2,$3}' && cat /proc/loadavg && nproc";
         const result = await this._execvpscommand(server, cfg, cmd);
         if (result && result.stdout) {
@@ -1188,6 +1228,170 @@ const Servers = {
     }).join('');
   },
 
+  _rowdata(server) {
+    const res = this.resources[server.uuid] || {};
+    const admin = server.type === 'Pterodactyl Admin';
+    const puffer = server.type === 'PufferPanel';
+    const panel = server.type === 'Pterodactyl' || server.type === 'Calagopus' || puffer;
+    const vps = server.type === 'VPS/VDS';
+    const st = vps ? this.vpsstats[server.id] : null;
+    const state = res.state || server.status || 'offline';
+    const data = { cpu: '-', ram: '-', disk: '-', uptime: '-', status: state, state, actions: false };
+
+    if (admin) {
+      data.cpu = '-';
+      data.ram = '-';
+      data.disk = '-';
+      data.uptime = '-';
+      data.status = null;
+      return data;
+    }
+
+    if (panel) {
+      const memUsed = res.memory_bytes || 0;
+      const diskUsed = res.disk_bytes || 0;
+      data.cpu = (Number(res.cpu) || 0).toFixed(1) + '%';
+      data.ram = puffer
+        ? Utils.formatbytes(memUsed)
+        : `${Utils.formatbytes(memUsed)} / ${Utils.formatmb(server.limits?.memory)}`;
+      data.disk = puffer ? '-' : `${Utils.formatbytes(diskUsed)} / ${Utils.formatmb(server.limits?.disk)}`;
+      data.uptime = res.uptime ? Utils.formatuptime(res.uptime) : '-';
+      data.actions = (((server.type === 'Pterodactyl' || server.type === 'Calagopus') && server.apiKey && server.panelUrl) || puffer)
+        && ['running', 'stopped', 'offline'].includes(state);
+      return data;
+    }
+
+    if (vps) {
+      data.status = server.status || 'offline';
+      data.state = data.status;
+      if (st) {
+        data.ram = Utils.formatbytes(st.memUsed) + ' / ' + Utils.formatbytes(st.memTotal);
+        data.disk = Utils.formatbytes(st.diskUsed) + ' / ' + Utils.formatbytes(st.diskTotal);
+      }
+    }
+
+    return data;
+  },
+
+  _rowaddress(server) {
+    if (server.host) {
+      const port = server.port || '';
+      return server.host + (port ? ':' + port : '');
+    }
+    if (server.panelUrl) {
+      try { return new URL(server.panelUrl).host; } catch (e) {}
+    }
+    return '-';
+  },
+
+  _actionshtml(server, d) {
+    if (!d.actions) return '<span class="srv-dash">-</span>';
+    return `<div class="srv-actions">
+      <button type="button" class="card-action-btn" data-power="start" data-action="start" title="Start" ${d.state === 'running' ? 'disabled' : ''}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>
+      <button type="button" class="card-action-btn" data-power="restart" title="Restart">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <button type="button" class="card-action-btn" data-power="stop" data-action="stop" title="Stop" ${d.state === 'stopped' || d.state === 'offline' ? 'disabled' : ''}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      </button>
+    </div>`;
+  },
+
+  _dashcell(value) {
+    return value === '-' || value === null || value === undefined
+      ? '<span class="srv-dash">-</span>'
+      : Utils.escape(String(value));
+  },
+
+  _renderrow(server, index) {
+    const key = this._serverkey(server);
+    const isselected = this._selected.has(key);
+    const d = this._rowdata(server);
+    return `
+      <tr class="server-row${isselected ? ' selected' : ''}" data-key="${key}" data-uuid="${server.uuid || server.id || ''}" data-index="${index}">
+        <td class="srv-cell srv-cell-check">
+          <label class="file-checkbox">
+            <input type="checkbox" ${isselected ? 'checked' : ''} />
+            <span class="file-checkbox-mark"></span>
+          </label>
+        </td>
+        <td class="srv-cell srv-cell-name">
+          <div class="srv-name-wrap">${Servers.geticon(server)}<span class="srv-name">${Utils.escape(server.name)}</span></div>
+        </td>
+        <td class="srv-cell srv-cell-address">${this._dashcell(this._rowaddress(server))}</td>
+        <td class="srv-cell srv-cell-status">
+          ${d.status ? `<div class="srv-status"><span class="status-dot ${d.status}"></span><span class="status-text">${Utils.statuslabel(d.status)}</span></div>` : '<span class="srv-dash">-</span>'}
+        </td>
+        <td class="srv-cell srv-cell-cpu srv-cell-num">${this._dashcell(d.cpu)}</td>
+        <td class="srv-cell srv-cell-ram srv-cell-num">${this._dashcell(d.ram)}</td>
+        <td class="srv-cell srv-cell-disk srv-cell-num">${this._dashcell(d.disk)}</td>
+        <td class="srv-cell srv-cell-uptime srv-cell-num">${this._dashcell(d.uptime)}</td>
+        <td class="srv-cell srv-cell-actions">${this._actionshtml(server, d)}</td>
+      </tr>`;
+  },
+
+  _rendertable(filtered) {
+    const allselected = filtered.length > 0 && filtered.every(s => this._selected.has(this._serverkey(s)));
+    const rows = filtered.map(server => this._renderrow(server, this.list.indexOf(server))).join('');
+    const empty = filtered.length === 0 && this.list.length > 0;
+    return `
+      <table class="servers-table">
+        <thead>
+          <tr>
+            <th class="srv-col-check">
+              <label class="file-checkbox">
+                <input type="checkbox" class="server-select-all" ${allselected ? 'checked' : ''} />
+                <span class="file-checkbox-mark"></span>
+              </label>
+            </th>
+            <th>Name</th>
+            <th>IP / Address</th>
+            <th>Status</th>
+            <th class="srv-col-num">CPU</th>
+            <th class="srv-col-num">RAM</th>
+            <th class="srv-col-num">Disk</th>
+            <th class="srv-col-num">Uptime</th>
+            <th class="srv-col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || (empty ? '<tr><td class="srv-empty" colspan="9">No servers match your search.</td></tr>' : '')}
+        </tbody>
+      </table>`;
+  },
+
+  _updaterow(row, uuid) {
+    const server = this.list.find(s => s.uuid === uuid || String(s.id) === String(uuid));
+    if (!server) return;
+    const d = this._rowdata(server);
+    const set = (sel, html) => {
+      const cell = row.querySelector(sel);
+      if (cell) cell.innerHTML = html;
+    };
+    set('.srv-cell-status', d.status
+      ? `<div class="srv-status"><span class="status-dot ${d.status}"></span><span class="status-text">${Utils.statuslabel(d.status)}</span></div>`
+      : '<span class="srv-dash">-</span>');
+    set('.srv-cell-cpu', this._dashcell(d.cpu));
+    set('.srv-cell-ram', this._dashcell(d.ram));
+    set('.srv-cell-disk', this._dashcell(d.disk));
+    set('.srv-cell-uptime', this._dashcell(d.uptime));
+
+    const actioncell = row.querySelector('.srv-cell-actions');
+    if (actioncell && !actioncell.querySelector('[data-power]') && d.actions) {
+      actioncell.innerHTML = this._actionshtml(server, d);
+    } else if (actioncell && actioncell.querySelector('[data-power]') && !d.actions) {
+      actioncell.innerHTML = this._actionshtml(server, d);
+    } else {
+      const startbtn = row.querySelector('[data-action="start"]');
+      const stopbtn = row.querySelector('[data-action="stop"]');
+      if (startbtn) startbtn.disabled = d.state === 'running';
+      if (stopbtn) stopbtn.disabled = d.state === 'stopped' || d.state === 'offline';
+    }
+  },
+
+
   deletetag(tag) {
     this.list.forEach(s => {
       if (s.tags) s.tags = s.tags.filter(t => t !== tag);
@@ -1237,9 +1441,9 @@ const Servers = {
     if (this._selected.has(key)) this._selected.delete(key);
     else this._selected.add(key);
     const on = this._selected.has(key);
-    document.querySelectorAll(`.server-card[data-key="${key}"]`).forEach(c => {
+    document.querySelectorAll(`.server-card[data-key="${key}"], .server-row[data-key="${key}"]`).forEach(c => {
       c.classList.toggle('selected', on);
-      const cb = c.querySelector('.server-card-select input[type="checkbox"]');
+      const cb = c.querySelector('input[type="checkbox"]');
       if (cb) cb.checked = on;
     });
     this._syncselectall();
@@ -1266,8 +1470,7 @@ const Servers = {
   _syncselectall() {
     const filtered = this._filterlist();
     const allselected = filtered.length > 0 && filtered.every(s => this._selected.has(this._serverkey(s)));
-    const cb = document.querySelector('.server-select-all');
-    if (cb) cb.checked = allselected;
+    document.querySelectorAll('.server-select-all').forEach(cb => { cb.checked = allselected; });
   },
 
   updatemassbar() {
@@ -1519,10 +1722,6 @@ const Servers = {
       throw new Error('This panel is already added');
     }
     const information = await Api.adminrequest(normalizedurl, apikey, '/admin/gettitle');
-    let encryptedkey = apikey;
-    try {
-      encryptedkey = 'enc:' + await window.electronAPI.cryptoencrypt(apikey);
-    } catch (error) {}
     let host = normalizedurl.replace(/^https?:\/\//, '');
     try {
       host = new URL(normalizedurl).host;
@@ -1533,7 +1732,7 @@ const Servers = {
       name: information.title || host,
       description: 'Pterodactyl panel administration',
       panelUrl: normalizedurl,
-      apiKey: encryptedkey,
+      apiKey: apikey,
       host,
       status: 'online'
     });
@@ -1592,8 +1791,7 @@ const Servers = {
     const { type = 'Pterodactyl', panelUrl, apiKey, servers } = this._addData;
     if (!this._addselected.size) return;
     if (type === 'PufferPanel') {
-      let encrypted_secret = this._addData.client_secret;
-      try { encrypted_secret = 'enc:' + await window.electronAPI.cryptoencrypt(encrypted_secret); } catch (error) {}
+      const encrypted_secret = this._addData.client_secret;
       for (const index of this._addselected) {
         const remote = servers[index]?.puffer_server;
         if (!remote) continue;
@@ -1621,10 +1819,7 @@ const Servers = {
       Modal.close();
       return;
     }
-    let encryptedApiKey = apiKey;
-    try {
-      encryptedApiKey = 'enc:' + await window.electronAPI.cryptoencrypt(apiKey);
-    } catch (e) {}
+    const encryptedApiKey = apiKey;
     for (const i of this._addselected) {
       const s = servers[i];
       if (!s) continue;
@@ -1746,6 +1941,7 @@ const Servers = {
       port,
       username,
       authType,
+      ...(authType === 'key' ? { keySecretId: ServerKeychain.keys[parseInt(Utils.el('vpsKeySelect').value)]?.secretId } : {}),
       status: 'offline'
     };
 
@@ -1792,57 +1988,21 @@ const Servers = {
       port: parseInt(server.port) || 22,
       username: server.username || 'root',
       authType: server.authType === 'key' ? 'privateKey' : 'password',
-      password: server.password || '',
+      secretId: server.secretId,
+      keySecretId: server.keySecretId,
       privateKey: '',
       publicKey: ''
     };
-  },
-
-  async _resolvekeyforsystem(server) {
-    if (server.authType !== 'key') return null;
-    let pk = '';
-    if (server.privateKey) pk = server.privateKey;
-    else if (server.keyIndex !== undefined && server.keyIndex >= 0 && server.keyIndex < ServerKeychain.keys.length) {
-      pk = ServerKeychain.keys[server.keyIndex].privateKey || '';
-    }
-    return pk || null;
   },
 
   openssh(index) {
     const server = this.list[index];
     if (!server || server.type !== 'VPS/VDS') return;
 
-    if (server.authType === 'key') {
-      this._resolvekeyforsystem(server).then(pk => {
-        if (!pk) {
-          this._showsshpasswordmodal(server);
-          return;
-        }
-        const publicKey = (server.keyIndex !== undefined && server.keyIndex >= 0 && ServerKeychain.keys[server.keyIndex])
-          ? (ServerKeychain.keys[server.keyIndex].publicKey || '') : '';
-        const config = this._buildsshconfig(server);
-        config.privateKey = pk;
-        config.publicKey = publicKey;
-        window.electronAPI.sshopencmd(config).then(result => {
-          if (result && result.keyFile) {
-            this._showsshkeymodal(result.keyFile, result.pubFile);
-          }
-        }).catch(err => {
-          Modal.alert('SSH Error', 'Failed to open SSH session: ' + (err.message || err));
-        });
-      });
-    } else {
-      const password = server.password || '';
-      if (!password) {
-        this._showsshpasswordmodal(server);
-        return;
-      }
-      const config = this._buildsshconfig(server);
-      config.password = password;
-      window.electronAPI.sshopencmd(config).catch(err => {
-        Modal.alert('SSH Error', 'Failed to open SSH session: ' + (err.message || err));
-      });
-    }
+    const config = this._buildsshconfig(server);
+    window.electronAPI.sshopencmd(config).then(result => {
+      if (result?.keyFile) this._showsshkeymodal(result.keyFile, result.pubFile);
+    }).catch(err => Modal.alert('SSH Error', 'Failed to open SSH session: ' + (err.message || err)));
   },
 
   _showsshkeymodal(keyFile, pubFile) {
@@ -1990,19 +2150,7 @@ const Servers = {
 
           const config = this._buildsshconfig(server);
 
-          if (server.authType === 'key') {
-            const pk = await this._resolvekeyforsystem(server);
-            if (!pk) {
-              dlBtn.disabled = false;
-              dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
-              this._showscppasswordmodal(server, remotePath, localPath);
-              return;
-            }
-            config.privateKey = pk;
-            if (server.keyIndex !== undefined && server.keyIndex >= 0 && ServerKeychain.keys[server.keyIndex]) {
-              config.publicKey = ServerKeychain.keys[server.keyIndex].publicKey || '';
-            }
-          } else if (!config.password) {
+          if (!this._vphascredentials(server)) {
             dlBtn.disabled = false;
             dlBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
             this._showscppasswordmodal(server, remotePath, localPath);
@@ -2029,11 +2177,11 @@ const Servers = {
 
   _showscppasswordmodal(server, remotePath, localPath) {
     Modal.open('SCP Password Required', `
-      <p class="modal-text-sm">A new CMD will open right now. This is your SCP window but in CMD, it will request for password.</p>
+      <p class="modal-text-sm">No saved credentials were found for this server. Enter the password to continue the SCP copy.</p>
       <div class="form-group" style="margin-top:16px;">
         <label class="form-label">Password</label>
         <div class="password-reveal-wrap">
-          <input class="form-input" type="password" id="scpPasswordModal" value="${Utils.escape(server.password || '')}" readonly />
+          <input class="form-input" type="password" id="scpPasswordModal" value="" />
           <button type="button" class="password-reveal-btn" onclick="const inp=this.previousElementSibling;inp.type=inp.type==='password'?'text':'password'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -2042,6 +2190,7 @@ const Servers = {
           </button>
         </div>
       </div>
+      <div id="scpModalError" style="color:#ef4444;font-size:13px;margin-top:8px;display:none;"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
         <button type="button" class="btn btn-primary" id="scpOpenCmdBtn">Open CMD</button>
@@ -2051,12 +2200,21 @@ const Servers = {
       const btn = Utils.el('scpOpenCmdBtn');
       if (btn) {
         btn.addEventListener('click', () => {
+          const password = (Utils.el('scpPasswordModal')?.value || '').trim();
+          const errEl = Utils.el('scpModalError');
+          if (!password) {
+            if (errEl) { errEl.textContent = 'Please enter the password.'; errEl.style.display = ''; }
+            return;
+          }
+          if (errEl) errEl.style.display = 'none';
           const config = {
             host: server.host,
             port: parseInt(server.port) || 22,
             username: server.username || 'root',
             authType: 'password',
-            password: server.password || ''
+            secretId: server.secretId,
+            keySecretId: server.keySecretId,
+            password
           };
           window.electronAPI.scpcopy(config, remotePath, localPath).then(() => {
             Modal.close();
@@ -2125,12 +2283,10 @@ const Servers = {
   async getexportdata() {
     const servers = await Promise.all(this.list.map(async (server) => {
       const copy = { ...server };
-      if ((copy.type === 'Pterodactyl' || copy.type === 'Pterodactyl Admin' || copy.type === 'Calagopus') && typeof copy.apiKey === 'string' && copy.apiKey.startsWith('enc:')) {
-        const apiKey = await this.resolveapikey(server);
-        if (!apiKey) throw new Error('Unable to decrypt API key');
-        copy.apiKey = apiKey;
-      }
-      if (copy.type === 'PufferPanel' && typeof copy.client_secret === 'string' && copy.client_secret.startsWith('enc:')) copy.client_secret = await pufferpanel.resolve_secret(server);
+      delete copy.apiKey;
+      delete copy.client_secret;
+      delete copy.password;
+      delete copy.privateKey;
       return copy;
     }));
     return {
@@ -2248,14 +2404,6 @@ const Servers = {
             for (const s of data.servers) {
               if (!this.list.find(x => x.uuid && x.uuid === s.uuid || x.id && x.id === s.id)) {
                 const importedServer = { ...s };
-                if ((importedServer.type === 'Pterodactyl' || importedServer.type === 'Pterodactyl Admin' || importedServer.type === 'Calagopus') && importedServer.apiKey && !importedServer.apiKey.startsWith('enc:')) {
-                  try {
-                    importedServer.apiKey = 'enc:' + await window.electronAPI.cryptoencrypt(importedServer.apiKey);
-                  } catch (e) {}
-                }
-                if (importedServer.type === 'PufferPanel' && importedServer.client_secret && !importedServer.client_secret.startsWith('enc:')) {
-                  try { importedServer.client_secret = 'enc:' + await window.electronAPI.cryptoencrypt(importedServer.client_secret); } catch (error) {}
-                }
                 this.list.push(importedServer);
                 imported.push(importedServer);
                 added++;

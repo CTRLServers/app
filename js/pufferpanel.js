@@ -23,9 +23,7 @@ const pufferpanel = {
   },
 
   async resolve_secret(server) {
-    const value = server.client_secret || '';
-    if (!value.startsWith('enc:')) return value;
-    return window.electronAPI.cryptodecrypt(value.slice(4));
+    return server.secretId || '';
   },
 
   async authenticate(panel_url, client_id, client_secret) {
@@ -58,7 +56,14 @@ const pufferpanel = {
   },
 
   async token(server) {
-    return this.authenticate(server.panel_url, server.client_id, await this.resolve_secret(server));
+    const secretId = await this.resolve_secret(server);
+    if (!secretId) throw new Error('PufferPanel credentials are unavailable.');
+    const key = `${this.normalize_url(server.panel_url)}|${server.client_id}`;
+    const cached = this.token_cache[key];
+    if (cached && cached.expires_at > Date.now() + 30000) return cached.access_token;
+    const data = await window.electronAPI.pufferauthenticate(secretId, server.panel_url, server.client_id);
+    this.token_cache[key] = { access_token: data.access_token, expires_at: Date.now() + Math.max(60, Number(data.expires_in || 3600)) * 1000 };
+    return data.access_token;
   },
 
   async response_data(response) {

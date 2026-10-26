@@ -18,7 +18,7 @@ const SelfHost = {
   loading: false,
 
   init() {
-    this.token = localStorage.getItem('selfhost_token');
+    this.token = SecretStorage.tokenref('selfhost');
     this.user = JSON.parse(localStorage.getItem('selfhost_user') || 'null');
     if (!this._deepLinkBound) {
       this._deepLinkBound = true;
@@ -87,8 +87,8 @@ const SelfHost = {
     } catch (e) {}
   },
 
-  saveauth() {
-    if (this.token) localStorage.setItem('selfhost_token', this.token);
+  async saveauth() {
+    if (this.token && !this.token.startsWith('ctrlservers-token:')) this.token = await SecretStorage.savetoken('selfhost', this.token);
     if (this.user) localStorage.setItem('selfhost_user', JSON.stringify(this.user));
   },
 
@@ -103,7 +103,7 @@ const SelfHost = {
     this.logs = [];
     this.scriptData = null;
     this.stoplogpoll();
-    localStorage.removeItem('selfhost_token');
+    SecretStorage.savetoken('selfhost', '');
     localStorage.removeItem('selfhost_user');
   },
 
@@ -139,17 +139,13 @@ const SelfHost = {
     return div.innerHTML;
   },
 
-  async resolveapikey(ds) {
-    let apiKey = ds.apiKey || '';
-    if (apiKey.startsWith('enc:') && window.electronAPI?.cryptodecrypt) {
-      apiKey = await window.electronAPI.cryptodecrypt(apiKey.slice(4));
-    }
-    return apiKey;
-  },
+  async resolveapikey(ds) { return ''; },
 
   async buildserverpayload(ds, idx) {
     const apiKey = await this.resolveapikey(ds);
     const payload = {
+      secretId: ds.secretId,
+      keySecretId: ds.keySecretId,
       dashboard_idx: idx,
       server_name: ds.name || ds.host || 'Server',
       server_type: ds.type || 'VPS/VDS',
@@ -163,15 +159,6 @@ const SelfHost = {
       ssh_auth_type: ds.authType === 'key' ? 'key' : 'password',
       ssh_private_key: '',
     };
-
-    if (ds.type === 'VPS/VDS') {
-      if (ds.authType === 'key' && typeof Servers !== 'undefined' && Servers.resolvevpsprivatekey) {
-        payload.ssh_private_key = await Servers.resolvevpsprivatekey(ds) || '';
-        if (!payload.ssh_private_key) payload.ssh_password = ds.password || '';
-      } else {
-        payload.ssh_password = ds.password || '';
-      }
-    }
 
     return payload;
   },

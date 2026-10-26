@@ -369,49 +369,15 @@ const CTRLPlugin = {
   },
 
   async sshExec(server, command) {
-    const cfg = {
-      host: server.host,
-      port: parseInt(server.port) || 22,
-      username: server.username || 'root',
-    };
-    if (server.authType === 'key') {
-      const pk = await Servers.resolvevpsprivatekey(server);
-      if (pk) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = pk;
-      } else {
-        cfg.authType = 'password';
-        cfg.password = server.password || '';
-      }
-    } else {
-      cfg.authType = 'password';
-      cfg.password = server.password || '';
-    }
-    if (!cfg.password && cfg.authType === 'password') {
+    const cfg = await Servers._vpsconfig(server);
+    if (!Servers._vphascredentials(server)) {
       throw new Error('No password saved for this server');
     }
     return await Servers._execvpscommand(server, cfg, command);
   },
 
   async sftpList(server, remotePath) {
-    const cfg = {
-      host: server.host,
-      port: parseInt(server.port) || 22,
-      username: server.username || 'root',
-    };
-    if (server.authType === 'key') {
-      const pk = await Servers.resolvevpsprivatekey(server);
-      if (pk) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = pk;
-      } else {
-        cfg.authType = 'password';
-        cfg.password = server.password || '';
-      }
-    } else {
-      cfg.authType = 'password';
-      cfg.password = server.password || '';
-    }
+    const cfg = await Servers._vpsconfig(server);
     const id = await window.electronAPI.sftpconnect(cfg);
     try {
       const list = await window.electronAPI.sftplist(id, remotePath || '/');
@@ -422,24 +388,7 @@ const CTRLPlugin = {
   },
 
   async sftpRead(server, remotePath) {
-    const cfg = {
-      host: server.host,
-      port: parseInt(server.port) || 22,
-      username: server.username || 'root',
-    };
-    if (server.authType === 'key') {
-      const pk = await Servers.resolvevpsprivatekey(server);
-      if (pk) {
-        cfg.authType = 'privateKey';
-        cfg.privateKey = pk;
-      } else {
-        cfg.authType = 'password';
-        cfg.password = server.password || '';
-      }
-    } else {
-      cfg.authType = 'password';
-      cfg.password = server.password || '';
-    }
+    const cfg = await Servers._vpsconfig(server);
     const id = await window.electronAPI.sftpconnect(cfg);
     try {
       return await window.electronAPI.sftpread(id, remotePath);

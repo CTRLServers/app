@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Notification, Tray, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification, Tray, Menu, dialog, safeStorage } = require('electron');
 const path = require('path');
 const WebSocket = require('ws');
 const { Client } = require('ssh2');
@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const { PERMISSION_DEFINITIONS, defaultpermissions, permissionfortool } = require('./mcp/permissions.cjs');
 
-const APP_VERSION = '1.1.8';
+const APP_VERSION = '1.1.9';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
@@ -182,49 +182,647 @@ const sftpConnections = new Map();
 let sftpIdCounter = 0;
 
 const crypto = require('crypto');
-const ALGO = 'aes-256-gcm';
-const KEY_FILE = path.join(app.getPath('userData'), '.ctrlservers_masterkey');
-let machineKey = null;
+const LEGACY_ALGO = 'aes-256-gcm';
+const LEGACY_KEY_FILE = path.join(app.getPath('userData'), '.ctrlservers_masterkey');
+const SECRET_STORE_FILE = path.join(app.getPath('userData'), 'ctrlservers-secrets.v1.bin');
+let secretStore = null;
 
-function loadormachinekey() {
-  if (machineKey) return machineKey;
-  try {
-    if (fs.existsSync(KEY_FILE)) {
-      const raw = fs.readFileSync(KEY_FILE, 'utf8').trim();
-      machineKey = Buffer.from(raw, 'hex');
-      if (machineKey.length !== 32) throw new Error('Invalid key length');
-      return machineKey;
-    }
-  } catch (e) {}
-  machineKey = crypto.randomBytes(32);
-  try {
-    const dir = path.dirname(KEY_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(KEY_FILE, machineKey.toString('hex'), { mode: 0o600 });
-  } catch (e) {}
-  return machineKey;
+function requireSafeStorage() {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('The operating system secure credential store is unavailable. Secrets were not saved.');
+  }
 }
 
-ipcMain.handle('crypto-encrypt', async (event, plaintext) => {
-  const key = loadormachinekey();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(ALGO, key, iv);
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted.toString('hex');
+function loadSecretStore() {
+  if (secretStore) return secretStore;
+  requireSafeStorage();
+  try {
+    const encrypted = fs.readFileSync(SECRET_STORE_FILE);
+    secretStore = JSON.parse(safeStorage.decryptString(encrypted));
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') throw new Error('Unable to open the secure credential store.');
+    secretStore = { version: 1, servers: {}, keychain: {}, sftp: {}, tokens: {}, mcplugin: {}, endpoints: {}, origins: {}, mcpluginOrigins: {}, hosts: {} };
+  }
+  secretStore.endpoints ||= {};
+  secretStore.origins ||= {};
+  secretStore.mcpluginOrigins ||= {};
+  secretStore.hosts ||= {};
+  return secretStore;
+}
+
+function saveSecretStore() {
+  const store = loadSecretStore();
+  const target = SECRET_STORE_FILE + '.tmp';
+  fs.mkdirSync(path.dirname(SECRET_STORE_FILE), { recursive: true });
+  fs.writeFileSync(target, safeStorage.encryptString(JSON.stringify(store)), { mode: 0o600 });
+  fs.renameSync(target, SECRET_STORE_FILE);
+  try { fs.chmodSync(SECRET_STORE_FILE, 0o600); } catch (e) {}
+}
+
+function newSecretId(prefix) {
+  return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function legacyDecrypt(value) {
+  if (typeof value !== 'string' || !value.startsWith('enc:') || !fs.existsSync(LEGACY_KEY_FILE)) return value || '';
+  const [ivHex, tagHex, dataHex] = value.slice(4).split(':');
+  if (!ivHex || !tagHex || !dataHex) return '';
+  const key = Buffer.from(fs.readFileSync(LEGACY_KEY_FILE, 'utf8').trim(), 'hex');
+  if (key.length !== 32) return '';
+  const decipher = crypto.createDecipheriv(LEGACY_ALGO, key, Buffer.from(ivHex, 'hex'));
+  decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+  return Buffer.concat([decipher.update(Buffer.from(dataHex, 'hex')), decipher.final()]).toString('utf8');
+}
+
+function serverSecretId(server) {
+  if (!server || typeof server !== 'object') return '';
+  return typeof server.secretId === 'string' && server.secretId ? server.secretId : newSecretId('server');
+}
+
+function sanitizeServer(server, store) {
+  if (!server || typeof server !== 'object') return null;
+  const copy = { ...server, secretId: serverSecretId(server) };
+  const secret = { ...(store.servers[copy.secretId] || {}) };
+  const secretFields = ['apiKey', 'client_secret', 'password', 'privateKey', 'passphrase'];
+  for (const field of secretFields) {
+    if (typeof copy[field] === 'string' && copy[field] && copy[field] !== 'safeStorage') {
+      secret[field] = legacyDecrypt(copy[field]);
+    }
+    delete copy[field];
+  }
+  if (secret.apiKey) copy.apiKey = 'safeStorage';
+  if (secret.client_secret) copy.client_secret = 'safeStorage';
+  if (secret.password) copy.hasPassword = true;
+  if (secret.privateKey) copy.hasPrivateKey = true;
+  if (Object.keys(secret).length) store.servers[copy.secretId] = secret;
+  if (Object.keys(secret).length && copy.host) store.endpoints[copy.secretId] = { host: copy.host, port: String(copy.port || 22), username: copy.username || 'root' };
+  if ((secret.apiKey || secret.client_secret) && typeof (copy.panelUrl || copy.panel_url) === 'string') {
+    try { store.origins[copy.secretId] = new URL(copy.panelUrl || copy.panel_url).origin; } catch (e) {}
+  }
+  return copy;
+}
+
+function sanitizeKey(key, store) {
+  if (!key || typeof key !== 'object') return null;
+  const copy = { ...key, secretId: typeof key.secretId === 'string' && key.secretId ? key.secretId : newSecretId('key') };
+  const secret = { ...(store.keychain[copy.secretId] || {}) };
+  for (const field of ['privateKey', 'passphrase']) {
+    if (typeof copy[field] === 'string' && copy[field]) secret[field] = copy[field];
+    delete copy[field];
+  }
+  if (Object.keys(secret).length) store.keychain[copy.secretId] = secret;
+  if (secret.privateKey) copy.hasPrivateKey = true;
+  return copy;
+}
+
+function sanitizeSftp(connection, store) {
+  if (!connection || typeof connection !== 'object') return null;
+  const copy = { ...connection, secretId: typeof connection.secretId === 'string' && connection.secretId ? connection.secretId : newSecretId('sftp') };
+  const secret = { ...(store.sftp[copy.secretId] || {}) };
+  for (const field of ['password', 'privateKey', 'passphrase']) {
+    if (typeof copy[field] === 'string' && copy[field]) secret[field] = copy[field];
+    delete copy[field];
+  }
+  if (Object.keys(secret).length) store.sftp[copy.secretId] = secret;
+  if (secret.password || secret.privateKey) copy.hasCredentials = true;
+  return copy;
+}
+
+function mergeStoredSshSecret(config) {
+  const copy = { ...(config || {}) };
+  const store = loadSecretStore();
+  const matchedServerId = !copy.secretId && Object.entries(store.endpoints || {}).find(([, endpoint]) =>
+    endpoint.host === copy.host && endpoint.port === String(copy.port || 22) && endpoint.username === (copy.username || 'root'))?.[0];
+  if (!copy.secretId && matchedServerId) copy.secretId = matchedServerId;
+  const secret = (copy.secretId || matchedServerId) && (store.servers[copy.secretId || matchedServerId] || store.sftp[copy.secretId || matchedServerId]);
+  const keySecret = copy.keySecretId && store.keychain[copy.keySecretId];
+  if (keySecret?.privateKey) {
+    copy.authType = 'privateKey';
+    copy.privateKey = keySecret.privateKey;
+    if (keySecret.passphrase) copy.passphrase = keySecret.passphrase;
+  }
+  if (secret) {
+    if (!keySecret && secret.privateKey) {
+      copy.authType = 'privateKey';
+      copy.privateKey = secret.privateKey;
+      if (secret.passphrase) copy.passphrase = secret.passphrase;
+    } else if (secret.password) {
+      copy.authType = 'password';
+      copy.password = secret.password;
+    }
+  }
+  return copy;
+}
+
+function injectStoredSudoPassword(command, config) {
+  const secret = config?.secretId && loadSecretStore().servers[config.secretId];
+  if (!secret?.password || typeof command !== 'string') return command;
+  const quoted = secret.password.replace(/'/g, "'\\''");
+  return command.replace(/^printf '%s\\n' '' \| /, `printf '%s\\n' '${quoted}' | `);
+}
+
+const KNOWN_HOSTS_FILE = path.join(app.getPath('userData'), 'known_hosts');
+const HOST_TRUST_PENDING = new Set();
+const HOST_TRUST_LOCKS = new Map();
+
+function sshhostid(host, port) {
+  return String(host || '').toLowerCase() + ':' + (parseInt(port, 10) || 22);
+}
+
+function sshhostlabel(host, port) {
+  const p = parseInt(port, 10) || 22;
+  return p === 22 ? String(host) : '[' + host + ']:' + p;
+}
+
+function hostpromptwindow(win) {
+  if (win && !win.isDestroyed()) return win;
+  if (typeof mainWindow !== 'undefined' && mainWindow && !mainWindow.isDestroyed()) return mainWindow;
+  return null;
+}
+
+const HOST_TRUST_TIMEOUT = 120000;
+const HOST_TRUST_RESPONSES = new Map();
+const HOST_TRUST_DENIED = new Set();
+let hostTrustRequestSeq = 0;
+
+function askhosttrust(win, prompt) {
+  const target = hostpromptwindow(win);
+  if (!target || target.isDestroyed()) return Promise.resolve(false);
+  const id = ++hostTrustRequestSeq;
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      HOST_TRUST_RESPONSES.delete(id);
+      resolve(Boolean(value));
+    };
+    const timer = setTimeout(() => finish(false), HOST_TRUST_TIMEOUT);
+    HOST_TRUST_RESPONSES.set(id, finish);
+    try {
+      target.webContents.send('host-trust-request', id, prompt);
+    } catch (e) {
+      finish(false);
+    }
+  });
+}
+
+ipcMain.handle('host-trust-response', (event, id, accepted) => {
+  const finish = HOST_TRUST_RESPONSES.get(typeof id === 'number' ? id : -1);
+  if (!finish) return false;
+  finish(accepted === true);
+  return true;
 });
 
-ipcMain.handle('crypto-decrypt', async (event, data) => {
-  const key = loadormachinekey();
-  const parts = data.split(':');
-  if (parts.length !== 3) throw new Error('Invalid encrypted data');
-  const iv = Buffer.from(parts[0], 'hex');
-  const tag = Buffer.from(parts[1], 'hex');
-  const encrypted = Buffer.from(parts[2], 'hex');
-  const decipher = crypto.createDecipheriv(ALGO, key, iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-  return decrypted.toString('utf8');
+function parsehostkeyblob(key) {
+  if (!Buffer.isBuffer(key) || key.length < 8) return null;
+  let offset = 0;
+  const readstring = () => {
+    if (offset + 4 > key.length) return null;
+    const len = key.readUInt32BE(offset);
+    offset += 4;
+    if (len <= 0 || offset + len > key.length) return null;
+    const value = key.slice(offset, offset + len).toString('utf8');
+    offset += len;
+    return value;
+  };
+  const keyType = readstring();
+  if (!keyType || !/^(ssh-|ecdsa-|sk-)/.test(keyType)) return null;
+  if (offset >= key.length) return null;
+  return {
+    keyType,
+    keyBase64: key.toString('base64'),
+    fingerprint: 'SHA256:' + crypto.createHash('sha256').update(key).digest('base64').replace(/=+$/, ''),
+    fingerprintSha1: 'SHA1:' + crypto.createHash('sha1').update(key).digest('hex')
+  };
+}
+
+function gethoststore() {
+  const store = loadSecretStore();
+  store.hosts ||= {};
+  return store;
+}
+
+function syncknownhostsfile() {
+  try {
+    const store = gethoststore();
+    const lines = [];
+    for (const entry of Object.values(store.hosts || {})) {
+      if (!entry || !entry.host || !entry.keyType || !entry.keyBase64) continue;
+      const p = parseInt(entry.port, 10) || 22;
+      const name = p === 22 ? String(entry.host) : '[' + entry.host + ']:' + p;
+      lines.push((entry.revoked ? '@revoked ' : '') + name + ' ' + entry.keyType + ' ' + entry.keyBase64);
+    }
+    fs.writeFileSync(KNOWN_HOSTS_FILE, lines.length ? lines.join('\n') + '\n' : '', { mode: 0o600 });
+  } catch (e) {}
+}
+
+function savehostentry(host, port, info, source, revoked) {
+  const store = gethoststore();
+  const id = sshhostid(host, port);
+  store.hosts[id] = {
+    host: String(host),
+    port: parseInt(port, 10) || 22,
+    keyType: info.keyType,
+    keyBase64: info.keyBase64,
+    fingerprint: info.fingerprint,
+    fingerprintSha1: info.fingerprintSha1,
+    addedAt: Date.now(),
+    lastSeen: Date.now(),
+    revoked: Boolean(revoked),
+    source: source || 'prompt'
+  };
+  saveSecretStore();
+  syncknownhostsfile();
+  return store.hosts[id];
+}
+
+function parseknownhostname(name) {
+  const match = /^\[(.+)\]:(\d+)$/.exec(name);
+  if (match) return { host: match[1], port: parseInt(match[2], 10) || 22 };
+  if (!name || name.startsWith('|')) return null;
+  return { host: name, port: 22 };
+}
+
+function importknownhosts(text) {
+  const store = gethoststore();
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    let rest = line;
+    let revoked = false;
+    if (rest.startsWith('@revoked ')) {
+      revoked = true;
+      rest = rest.slice('@revoked '.length).trim();
+    } else if (rest.startsWith('@')) {
+      skipped++;
+      continue;
+    }
+    const parts = rest.split(/\s+/);
+    if (parts.length < 3) { skipped++; continue; }
+    const [names, declaredType, declaredKey] = parts;
+    if (!/^(ssh-|ecdsa-|sk-)/.test(declaredType)) { skipped++; continue; }
+    if (names.startsWith('|')) { skipped++; continue; }
+    let rawKey = null;
+    try { rawKey = Buffer.from(String(declaredKey).replace(/=+$/, ''), 'base64'); } catch (e) { rawKey = null; }
+    const info = rawKey ? parsehostkeyblob(rawKey) : null;
+    if (!info || info.keyType !== declaredType) { skipped++; continue; }
+    for (const name of names.split(',')) {
+      const parsed = parseknownhostname(name);
+      if (!parsed) { skipped++; continue; }
+      const id = sshhostid(parsed.host, parsed.port);
+      const existing = store.hosts[id];
+      if (existing && existing.fingerprint === info.fingerprint && existing.revoked === revoked) continue;
+      if (existing) updated++; else added++;
+      store.hosts[id] = {
+        host: parsed.host,
+        port: parsed.port,
+        keyType: info.keyType,
+        keyBase64: info.keyBase64,
+        fingerprint: info.fingerprint,
+        fingerprintSha1: info.fingerprintSha1,
+        addedAt: Date.now(),
+        lastSeen: existing ? (existing.lastSeen || 0) : 0,
+        revoked,
+        source: 'known_hosts'
+      };
+    }
+  }
+  saveSecretStore();
+  syncknownhostsfile();
+  return { added, updated, skipped };
+}
+
+function resolvehosttrust(win, host, port, info, background) {
+  const id = sshhostid(host, port);
+  const locked = HOST_TRUST_LOCKS.get(id);
+  if (locked) return locked;
+  HOST_TRUST_PENDING.add(id);
+  const task = (async () => {
+    const store = gethoststore();
+    const existing = store.hosts[id];
+    const label = sshhostlabel(host, port);
+    const isBackground = background === true;
+    const payload = {
+      host: String(host),
+      port: parseInt(port, 10) || 22,
+      label,
+      keyType: info.keyType,
+      fingerprint: info.fingerprint,
+      fingerprintSha1: info.fingerprintSha1,
+      storedFingerprint: existing ? existing.fingerprint : null,
+      background: isBackground
+    };
+
+    if (isBackground && HOST_TRUST_DENIED.has(id)) return false;
+
+    if (existing && existing.revoked) {
+      await askhosttrust(win, Object.assign({ kind: 'revoked' }, payload));
+      if (isBackground) HOST_TRUST_DENIED.add(id);
+      return false;
+    }
+
+    if (existing && existing.fingerprint === info.fingerprint) {
+      existing.lastSeen = Date.now();
+      saveSecretStore();
+      return true;
+    }
+
+    if (existing) {
+      const accepted = await askhosttrust(win, Object.assign({ kind: 'changed' }, payload));
+      if (!accepted) {
+        HOST_TRUST_DENIED.add(id);
+        return false;
+      }
+      HOST_TRUST_DENIED.delete(id);
+      savehostentry(host, port, info, 'changed', false);
+      return true;
+    }
+
+    const accepted = await askhosttrust(win, Object.assign({ kind: 'new' }, payload));
+    if (!accepted) {
+      HOST_TRUST_DENIED.add(id);
+      return false;
+    }
+    HOST_TRUST_DENIED.delete(id);
+    savehostentry(host, port, info, 'prompt', false);
+    return true;
+  })().finally(() => {
+    HOST_TRUST_PENDING.delete(id);
+    HOST_TRUST_LOCKS.delete(id);
+  });
+  HOST_TRUST_LOCKS.set(id, task);
+  return task;
+}
+
+function makehostverifier(win, config) {
+  const host = config.host;
+  const port = parseInt(config.port, 10) || 22;
+  const background = config.background === true;
+  return (key, verify) => {
+    let info = null;
+    try { info = parsehostkeyblob(key); } catch (e) { info = null; }
+    if (!info) {
+      try { verify(false); } catch (e) {}
+      return undefined;
+    }
+    resolvehosttrust(win, host, port, info, background)
+      .then(ok => { try { verify(ok); } catch (e) {} })
+      .catch(() => { try { verify(false); } catch (e) {} });
+    return undefined;
+  };
+}
+
+function fetchhostkey(host, port) {
+  return new Promise(resolve => {
+    let info = null;
+    let settled = false;
+    let timer = null;
+    const conn = new Client();
+    const finish = value => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      try { conn.end(); } catch (e) {}
+      resolve(value);
+    };
+    conn.on('handshake', () => finish(info));
+    conn.on('error', () => finish(info));
+    conn.on('ready', () => finish(info));
+    timer = setTimeout(() => finish(null), 30000);
+    try {
+      conn.connect({
+        host,
+        port: parseInt(port, 10) || 22,
+        username: 'ctrlservers-hostkey-probe',
+        readyTimeout: 25000,
+        hostVerifier: key => {
+          try { info = parsehostkeyblob(key); } catch (e) { info = null; }
+          return true;
+        }
+      });
+    } catch (e) {
+      finish(null);
+    }
+  });
+}
+
+async function ensurehosttrustforsystem(win, config) {
+  const host = config.host;
+  const port = parseInt(config.port, 10) || 22;
+  const info = await fetchhostkey(host, port);
+  if (!info) throw new Error('Unable to determine the SSH host key for ' + sshhostlabel(host, port) + '.');
+  const trusted = await resolvehosttrust(win, host, port, info, false);
+  if (!trusted) throw new Error('Host key verification failed for ' + sshhostlabel(host, port) + '.');
+  syncknownhostsfile();
+  return KNOWN_HOSTS_FILE;
+}
+
+ipcMain.handle('host-keys-list', async () => {
+  const store = gethoststore();
+  return Object.entries(store.hosts || {}).map(([id, entry]) => ({
+    id,
+    host: entry.host || '',
+    port: entry.port || 22,
+    keyType: entry.keyType || '',
+    fingerprint: entry.fingerprint || '',
+    addedAt: entry.addedAt || 0,
+    lastSeen: entry.lastSeen || 0,
+    source: entry.source || '',
+    revoked: Boolean(entry.revoked)
+  })).sort((a, b) => (a.host + ':' + a.port).localeCompare(b.host + ':' + b.port));
+});
+
+ipcMain.handle('host-keys-import', async (event, filePath) => {
+  let target = filePath;
+  if (!target) {
+    const win = hostpromptwindow(BrowserWindow.fromWebContents(event.sender));
+    const options = {
+      title: 'Import known_hosts',
+      properties: ['openFile'],
+      filters: [{ name: 'All Files', extensions: ['*'] }]
+    };
+    const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+    if (result.canceled || !result.filePaths || !result.filePaths.length) return null;
+    target = result.filePaths[0];
+  }
+  const text = fs.readFileSync(target, 'utf8');
+  return importknownhosts(text);
+});
+
+ipcMain.handle('host-keys-remove', async (event, id) => {
+  const store = gethoststore();
+  if (!store.hosts[id]) return false;
+  delete store.hosts[id];
+  saveSecretStore();
+  syncknownhostsfile();
+  return true;
+});
+
+ipcMain.handle('host-keys-clear', async () => {
+  const store = gethoststore();
+  store.hosts = {};
+  saveSecretStore();
+  syncknownhostsfile();
+  return true;
+});
+
+ipcMain.handle('secure-store-migrate', async (event, legacy = {}) => {
+  const store = loadSecretStore();
+  const keychain = Array.isArray(legacy.keychain) ? legacy.keychain.map(key => sanitizeKey(key, store)).filter(Boolean) : [];
+  const servers = Array.isArray(legacy.servers) ? legacy.servers.map(server => {
+    const copy = { ...server };
+    if (Number.isInteger(copy.keyIndex) && keychain[copy.keyIndex]?.secretId) copy.keySecretId = keychain[copy.keyIndex].secretId;
+    return sanitizeServer(copy, store);
+  }).filter(Boolean) : [];
+  const sftp = Array.isArray(legacy.sftp) ? legacy.sftp.map(connection => sanitizeSftp(connection, store)).filter(Boolean) : [];
+  for (const [name, value] of Object.entries(legacy.tokens || {})) {
+    if (typeof value === 'string' && value) store.tokens[name] = value;
+  }
+  for (const [name, value] of Object.entries(legacy.mcplugin || {})) {
+    if (typeof value === 'string' && value) store.mcplugin[name] = value;
+  }
+  saveSecretStore();
+  try { if (fs.existsSync(LEGACY_KEY_FILE)) fs.unlinkSync(LEGACY_KEY_FILE); } catch (e) {}
+  return { servers, keychain, sftp, tokenStatus: Object.fromEntries(['cloud', 'selfhost', 'mcplugin'].map(name => [name, Boolean(store.tokens[name])] )) };
+});
+
+ipcMain.handle('secure-store-clear', async () => {
+  secretStore = { version: 1, servers: {}, keychain: {}, sftp: {}, tokens: {}, mcplugin: {}, endpoints: {}, origins: {}, mcpluginOrigins: {}, hosts: {} };
+  saveSecretStore();
+  syncknownhostsfile();
+  return true;
+});
+
+ipcMain.handle('secure-store-save-servers', async (event, servers) => {
+  const store = loadSecretStore();
+  const result = Array.isArray(servers) ? servers.map(server => sanitizeServer(server, store)).filter(Boolean) : [];
+  saveSecretStore();
+  return result;
+});
+
+ipcMain.handle('secure-store-save-keychain', async (event, keys) => {
+  const store = loadSecretStore();
+  const result = Array.isArray(keys) ? keys.map(key => sanitizeKey(key, store)).filter(Boolean) : [];
+  saveSecretStore();
+  return result;
+});
+
+ipcMain.handle('secure-store-save-sftp', async (event, connections) => {
+  const store = loadSecretStore();
+  const result = Array.isArray(connections) ? connections.map(connection => sanitizeSftp(connection, store)).filter(Boolean) : [];
+  saveSecretStore();
+  return result;
+});
+
+ipcMain.handle('secure-store-save-token', async (event, name, value) => {
+  if (!['cloud', 'selfhost', 'mcplugin'].includes(name)) throw new Error('Invalid secure token name.');
+  const store = loadSecretStore();
+  if (typeof value === 'string' && value) store.tokens[name] = value;
+  else delete store.tokens[name];
+  saveSecretStore();
+  return Boolean(store.tokens[name]);
+});
+
+ipcMain.handle('secure-store-save-mcplugin-key', async (event, id, value, origin) => {
+  if (typeof id !== 'string' || !id || typeof value !== 'string') throw new Error('Invalid plugin API key.');
+  const store = loadSecretStore();
+  if (value) store.mcplugin[id] = value;
+  else delete store.mcplugin[id];
+  if (value && typeof origin === 'string') {
+    try { store.mcpluginOrigins[id] = new URL(origin).origin; } catch (e) {}
+  } else if (!value) delete store.mcpluginOrigins[id];
+  saveSecretStore();
+  return Boolean(store.mcplugin[id]);
+});
+
+async function proxySecretRequest(secret, url, options = {}, scheme = 'Bearer') {
+  const parsed = new URL(String(url || ''));
+  if (!secret || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')) throw new Error('Invalid secure request.');
+  const headers = { ...(options.headers || {}) };
+  delete headers.Authorization;
+  delete headers.authorization;
+  headers.Authorization = `${scheme} ${secret}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(parsed.href, { method: options.method || 'GET', headers, body: options.body == null ? undefined : String(options.body), redirect: 'follow', signal: controller.signal });
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > 50 * 1024 * 1024) throw new Error('Response is too large');
+    return { status: response.status, statustext: response.statusText, headers: Object.fromEntries(response.headers.entries()), body: buffer.toString('base64') };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function attachStoredSecrets(scope, options) {
+  if (typeof options.body !== 'string') return options;
+  let payload;
+  try { payload = JSON.parse(options.body); } catch (e) { return options; }
+  const store = loadSecretStore();
+  const attachServer = (server) => {
+    if (!server || typeof server !== 'object' || !server.secretId) return server;
+    const secret = store.servers[server.secretId] || {};
+    const key = store.keychain[server.keySecretId] || {};
+    if (secret.apiKey) server.apiKey = secret.apiKey;
+    if (secret.client_secret) server.client_secret = secret.client_secret;
+    if (secret.password) server.password = secret.password;
+    if (secret.privateKey || key.privateKey) server.privateKey = secret.privateKey || key.privateKey;
+    if (secret.passphrase || key.passphrase) server.passphrase = secret.passphrase || key.passphrase;
+    return server;
+  };
+  if (scope === 'cloud') {
+    (payload.servers || []).forEach(attachServer);
+    (payload.keychain || []).forEach(key => {
+      const secret = store.keychain[key?.secretId] || {};
+      if (secret.privateKey) key.privateKey = secret.privateKey;
+      if (secret.passphrase) key.passphrase = secret.passphrase;
+    });
+  }
+  if (scope === 'selfhost') {
+    const entries = Array.isArray(payload.servers) ? payload.servers : [payload];
+    entries.forEach(entry => {
+      const secret = store.servers[entry?.secretId] || {};
+      const key = store.keychain[entry?.keySecretId] || {};
+      if (secret.apiKey) entry.api_key = secret.apiKey;
+      if (secret.password) entry.ssh_password = secret.password;
+      if (secret.privateKey || key.privateKey) entry.ssh_private_key = secret.privateKey || key.privateKey;
+      delete entry.secretId;
+      delete entry.keySecretId;
+    });
+  }
+  return { ...options, body: JSON.stringify(payload) };
+}
+
+ipcMain.handle('secure-token-request', async (event, name, url, options = {}) => {
+  if (!['cloud', 'selfhost', 'mcplugin'].includes(name)) throw new Error('Invalid secure token name.');
+  const hosts = { cloud: 'cloud.ctrlsrv.net', selfhost: 'nsrv.ctrlservers.xyz', mcplugin: 'backend2.ctrlservers.xyz' };
+  if (new URL(String(url)).host !== hosts[name]) throw new Error('The secure token may only be used with its service.');
+  return proxySecretRequest(loadSecretStore().tokens[name], url, attachStoredSecrets(name, options));
+});
+
+ipcMain.handle('secure-mcplugin-request', async (event, id, url, options = {}) => {
+  if (new URL(String(url)).origin !== loadSecretStore().mcpluginOrigins[id]) throw new Error('The plugin API key may only be used with its saved server.');
+  return proxySecretRequest(loadSecretStore().mcplugin[id], url, options, 'ApiKey');
+});
+
+ipcMain.handle('puffer-authenticate', async (event, secretId, panelUrl, clientId) => {
+  const secret = loadSecretStore().servers[secretId];
+  const parsed = new URL(String(panelUrl || ''));
+  if (!secret?.client_secret || !clientId || !['http:', 'https:'].includes(parsed.protocol)) throw new Error('PufferPanel credentials are unavailable.');
+  if (parsed.origin !== loadSecretStore().origins[secretId]) throw new Error('The PufferPanel secret may only be used with its saved panel.');
+  const response = await fetch(`${parsed.toString().replace(/\/+$/, '')}/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+    body: new URLSearchParams({ client_id: clientId, client_secret: secret.client_secret, grant_type: 'client_credentials' }).toString(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || 'Authentication failed.');
+  return data;
 });
 
 ipcMain.handle('panel-request', async (event, url, options = {}) => {
@@ -248,6 +846,34 @@ ipcMain.handle('panel-request', async (event, url, options = {}) => {
       headers: Object.fromEntries(response.headers.entries()),
       body: buffer.toString('base64')
     };
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
+ipcMain.handle('server-request', async (event, secretId, url, options = {}) => {
+  const parsed = new URL(String(url || ''));
+  if (!secretId || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')) throw new Error('Invalid server request.');
+  if (parsed.origin !== loadSecretStore().origins[secretId]) throw new Error('The panel key may only be used with its saved panel.');
+  const secret = loadSecretStore().servers[secretId];
+  if (!secret || !secret.apiKey) throw new Error('Server credentials are unavailable.');
+  const headers = { ...(options.headers || {}) };
+  delete headers.Authorization;
+  delete headers.authorization;
+  headers.Authorization = `Bearer ${secret.apiKey}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(parsed.href, {
+      method: options.method || 'GET',
+      headers,
+      body: options.bodybase64 ? Buffer.from(options.bodybase64, 'base64') : options.body == null ? undefined : String(options.body),
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > 50 * 1024 * 1024) throw new Error('Panel response is too large');
+    return { status: response.status, statustext: response.statusText, headers: Object.fromEntries(response.headers.entries()), body: buffer.toString('base64') };
   } finally {
     clearTimeout(timer);
   }
@@ -747,14 +1373,27 @@ ipcMain.on('get-chrome-version', (event) => { event.returnValue = process.versio
 ipcMain.on('get-node-version', (event) => { event.returnValue = process.versions.node || 'N/A'; });
 
 ipcMain.handle('ssh-connect', async (event, config) => {
+  config = mergeStoredSshSecret(config);
   const id = ++sshIdCounter;
   const win = BrowserWindow.fromWebContents(event.sender);
 
   return new Promise((resolve, reject) => {
     const conn = new Client();
     let settled = false;
-    const timer = setTimeout(() => {
+    const trustId = sshhostid(config.host, config.port);
+    let waitedForTrust = false;
+    let timer = setTimeout(function tick() {
       if (settled) return;
+      if (HOST_TRUST_PENDING.has(trustId)) {
+        waitedForTrust = true;
+        timer = setTimeout(tick, 2000);
+        return;
+      }
+      if (waitedForTrust) {
+        waitedForTrust = false;
+        timer = setTimeout(tick, 15000);
+        return;
+      }
       settled = true;
       try { conn.end(); } catch (e) {}
       reject('Connection timed out');
@@ -829,9 +1468,10 @@ ipcMain.handle('ssh-connect', async (event, config) => {
       host: config.host,
       port: parseInt(config.port) || 22,
       username: config.username,
-      readyTimeout: 10000,
+      readyTimeout: 300000,
       keepaliveInterval: 15000,
-      keepaliveCountMax: 3
+      keepaliveCountMax: 3,
+      hostVerifier: makehostverifier(win, config)
     };
 
     if (config.authType === 'password') {
@@ -944,6 +1584,9 @@ ipcMain.handle('ssh-disconnect', async (event, id) => {
 });
 
 ipcMain.handle('ssh-exec', async (event, config, command) => {
+  config = mergeStoredSshSecret(config);
+  command = injectStoredSudoPassword(command, config);
+  const win = BrowserWindow.fromWebContents(event.sender);
   return new Promise((resolve, reject) => {
     const conn = new Client();
     let settled = false;
@@ -955,7 +1598,20 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
       if (error) reject(error);
       else resolve(result);
     };
-    const timer = setTimeout(() => {
+    const trustId = sshhostid(config.host, config.port);
+    let waitedForTrust = false;
+    let timer = setTimeout(function tick() {
+      if (settled) return;
+      if (HOST_TRUST_PENDING.has(trustId)) {
+        waitedForTrust = true;
+        timer = setTimeout(tick, 2000);
+        return;
+      }
+      if (waitedForTrust) {
+        waitedForTrust = false;
+        timer = setTimeout(tick, 60000);
+        return;
+      }
       const error = new Error('VPS/VDS request timed out after 60 seconds.');
       error.code = 'SSH_EXEC_TIMEOUT';
       finish(error);
@@ -993,7 +1649,8 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
       host: config.host,
       port: parseInt(config.port) || 22,
       username: config.username,
-      readyTimeout: 10000
+      readyTimeout: 300000,
+      hostVerifier: makehostverifier(win, config)
     };
 
     if (config.authType === 'password') {
@@ -1011,12 +1668,14 @@ ipcMain.handle('ssh-exec', async (event, config, command) => {
   });
 });
 
-function buildsftpconfig(config) {
+function buildsftpconfig(config, win) {
+  config = mergeStoredSshSecret(config);
   const connectConfig = {
     host: config.host,
     port: parseInt(config.port) || 22,
     username: config.username,
-    readyTimeout: 10000
+    readyTimeout: 300000,
+    hostVerifier: makehostverifier(win, config)
   };
     if (config.authType === 'password') {
       connectConfig.password = config.password;
@@ -1029,17 +1688,48 @@ function buildsftpconfig(config) {
 
 ipcMain.handle('sftp-connect', async (event, config) => {
   const id = ++sftpIdCounter;
+  const win = BrowserWindow.fromWebContents(event.sender);
   return new Promise((resolve, reject) => {
     const conn = new Client();
+    let settled = false;
+    const trustId = sshhostid(config.host, config.port);
+    let waitedForTrust = false;
+    let timer = setTimeout(function tick() {
+      if (settled) return;
+      if (HOST_TRUST_PENDING.has(trustId)) {
+        waitedForTrust = true;
+        timer = setTimeout(tick, 2000);
+        return;
+      }
+      if (waitedForTrust) {
+        waitedForTrust = false;
+        timer = setTimeout(tick, 20000);
+        return;
+      }
+      settled = true;
+      try { conn.end(); } catch (e) {}
+      reject('Connection timed out');
+    }, 20000);
+    const done = (err, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) {
+        try { conn.end(); } catch (e) {}
+        reject(err);
+      } else {
+        resolve(value);
+      }
+    };
     conn.on('ready', () => {
       conn.sftp((err, sftp) => {
-        if (err) { conn.end(); reject(err.message || 'SFTP setup failed'); return; }
+        if (err) { done(err.message || 'SFTP setup failed'); return; }
         sftpConnections.set(id, { conn, sftp });
-        resolve(id);
+        done(null, id);
       });
     });
-    conn.on('error', (err) => { reject(err.message || 'SSH connection failed'); });
-    conn.connect(buildsftpconfig(config));
+    conn.on('error', (err) => { done(err.message || 'SSH connection failed'); });
+    conn.connect(buildsftpconfig(config, win));
   });
 });
 
@@ -1372,7 +2062,8 @@ async function checkserverstatus(server) {
   if (server.type === 'VPS/VDS') {
     return checkvpsstatus(server);
   }
-  if (!server.panelUrl || !server.apiKey || !server.uuid) return 'unknown';
+  const apiKey = server.secretId ? loadSecretStore().servers[server.secretId]?.apiKey : server.apiKey;
+  if (!server.panelUrl || !apiKey || !server.uuid) return 'unknown';
   try {
     const url = server.panelUrl.replace(/\/$/, '') + '/api/client/servers/' + server.uuid + '/resources';
     const controller = new AbortController();
@@ -1380,7 +2071,7 @@ async function checkserverstatus(server) {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'Authorization': 'Bearer ' + server.apiKey,
+        'Authorization': 'Bearer ' + apiKey,
         'Accept': 'application/vnd.pterodactyl.v1+json',
       }
     });
@@ -1448,12 +2139,13 @@ function runmonitorcheck() {
 
 async function checkserveralerts(server) {
   let stats = null;
-  if (server.type === 'Pterodactyl' && server.panelUrl && server.apiKey && server.uuid) {
+  const apiKey = server.secretId ? loadSecretStore().servers[server.secretId]?.apiKey : server.apiKey;
+  if (server.type === 'Pterodactyl' && server.panelUrl && apiKey && server.uuid) {
     try {
       const url = server.panelUrl.replace(/\/$/, '') + '/api/client/servers/' + server.uuid + '/resources';
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 8000);
-      const resp = await fetch(url, { signal: controller.signal, headers: { 'Authorization': 'Bearer ' + server.apiKey, 'Accept': 'application/vnd.pterodactyl.v1+json' } });
+      const resp = await fetch(url, { signal: controller.signal, headers: { 'Authorization': 'Bearer ' + apiKey, 'Accept': 'application/vnd.pterodactyl.v1+json' } });
       clearTimeout(timer);
       if (resp.ok) {
         const data = await resp.json();
@@ -1470,9 +2162,7 @@ async function checkserveralerts(server) {
     } catch (e) {}
   } else if (server.type === 'VPS/VDS' && server.host) {
     try {
-      const cfg = { host: server.host, port: parseInt(server.port) || 22, username: server.username || 'root' };
-      if (server.authType === 'key' && server.privateKey) { cfg.authType = 'privateKey'; cfg.privateKey = server.privateKey; }
-      else { cfg.authType = 'password'; cfg.password = server.password || ''; }
+      const cfg = mergeStoredSshSecret({ host: server.host, port: parseInt(server.port) || 22, username: server.username || 'root', secretId: server.secretId, keySecretId: server.keySecretId, authType: server.authType });
       const result = await new Promise((resolve, reject) => {
         const conn = new Client();
         conn.on('ready', () => {
@@ -1484,7 +2174,7 @@ async function checkserveralerts(server) {
           });
         });
         conn.on('error', (err) => { reject(err.message || 'SSH connection failed'); });
-        const connectConfig = { host: cfg.host, port: cfg.port, username: cfg.username, readyTimeout: 10000 };
+        const connectConfig = { host: cfg.host, port: cfg.port, username: cfg.username, readyTimeout: 60000, background: true, hostVerifier: makehostverifier(null, { host: cfg.host, port: cfg.port, background: true }) };
         if (cfg.authType === 'password') connectConfig.password = cfg.password;
         else if (cfg.authType === 'privateKey') connectConfig.privateKey = cfg.privateKey;
         conn.connect(connectConfig);
@@ -1629,7 +2319,9 @@ function randomfilename(len) {
 }
 
 ipcMain.handle('ssh-open-cmd', async (event, config) => {
+  config = mergeStoredSshSecret(config);
   const { execSync, spawn } = require('child_process');
+  const knownHostsFile = await ensurehosttrustforsystem(BrowserWindow.fromWebContents(event.sender), config);
   const tmpDir = os.tmpdir();
   let keyFile = null;
   let pubFile = null;
@@ -1654,6 +2346,7 @@ ipcMain.handle('ssh-open-cmd', async (event, config) => {
     let args = [];
     if (keyFile) args.push('-i', keyFile);
     if (port !== 22) args.push('-p', String(port));
+    args.push('-o', `UserKnownHostsFile=${knownHostsFile}`, '-o', 'StrictHostKeyChecking=yes');
     args.push(`${user}@${host}`);
 
     const cmdArgs = ['/k', 'ssh', ...args];
@@ -1679,7 +2372,9 @@ ipcMain.handle('ssh-cleanup-tempkey', async (event, keyPath) => {
 });
 
 ipcMain.handle('scp-copy-file', async (event, config, remotePath, localPath) => {
+  config = mergeStoredSshSecret(config);
   const { execSync } = require('child_process');
+  const knownHostsFile = await ensurehosttrustforsystem(BrowserWindow.fromWebContents(event.sender), config);
   const tmpDir = os.tmpdir();
   let keyFile = null;
   let pubFile = null;
@@ -1704,6 +2399,7 @@ ipcMain.handle('scp-copy-file', async (event, config, remotePath, localPath) => 
     const remote = `${user}@${host}:${remotePath}`;
     let args = ['-r', '-P', String(port)];
     if (keyFile) args.push('-i', keyFile);
+    args.push('-o', `UserKnownHostsFile=${knownHostsFile}`, '-o', 'StrictHostKeyChecking=yes');
     args.push(remote, localPath);
 
     const result = execSync(`scp ${args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`, {

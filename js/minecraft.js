@@ -55,7 +55,7 @@ const MCPlugin = {
   _deepLinkBound: false,
 
   init() {
-    this.token = localStorage.getItem('mcplugin_token');
+    this.token = SecretStorage.tokenref('mcplugin');
     this.user = JSON.parse(localStorage.getItem('mcplugin_user') || 'null');
     if (!this._deepLinkBound) {
       this._deepLinkBound = true;
@@ -84,8 +84,8 @@ const MCPlugin = {
     return data;
   },
 
-  saveauth() {
-    localStorage.setItem('mcplugin_token', this.token || '');
+  async saveauth() {
+    if (this.token && !this.token.startsWith('ctrlservers-token:')) this.token = await SecretStorage.savetoken('mcplugin', this.token);
     localStorage.setItem('mcplugin_user', JSON.stringify(this.user));
   },
 
@@ -95,7 +95,7 @@ const MCPlugin = {
     this.servers = [];
     this.created = null;
     this.disconnectws();
-    localStorage.removeItem('mcplugin_token');
+    SecretStorage.savetoken('mcplugin', '');
     localStorage.removeItem('mcplugin_user');
   },
 
@@ -443,11 +443,12 @@ const MCPlugin = {
   },
 
   getwebapikey(serverId) {
-    try { return localStorage.getItem('mcplugin_apikey_' + serverId) || ''; } catch { return ''; }
+    return serverId ? `ctrlservers-mcplugin:${serverId}` : '';
   },
 
   savewebapikey(serverId, key) {
-    localStorage.setItem('mcplugin_apikey_' + serverId, key);
+    const baseUrl = this.created?.web_url || (this.created ? `http://${this.created.ip}:${this.created.port || 25566}` : '');
+    return window.electronAPI.securestoresavemcpluginkey(serverId, key, baseUrl);
   },
 
   async webconnect(apiKey) {

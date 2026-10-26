@@ -391,8 +391,7 @@ const MCP = {
       const wanted = new Set((args.remoteids || []).map(String));
       const selected = wanted.size ? remote.filter(item => wanted.has(String(item.attributes.uuid)) || wanted.has(String(item.attributes.identifier))) : remote;
       if (!selected.length) throw new Error('No matching Pterodactyl servers were found.');
-      let encrypted = args.apikey;
-      try { encrypted = 'enc:' + await window.electronAPI.cryptoencrypt(args.apikey); } catch (e) {}
+      const encrypted = args.apikey;
       for (const item of selected) {
         const attributes = item.attributes;
         if (Servers.list.some(server => server.uuid === attributes.uuid && server.panelUrl === panelurl)) continue;
