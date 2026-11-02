@@ -46,7 +46,7 @@ const SFTP = {
         const errEl = document.getElementById('sftpAuthError');
         if (errEl) {
           errEl.style.display = '';
-          errEl.textContent = 'Connection failed: ' + (e.message || String(e));
+          errEl.textContent = t('sftp.connectfail', { error: e.message || String(e) });
         }
       }, 20);
     }
@@ -67,6 +67,7 @@ const SFTP = {
     this.selected.clear();
     this.files = [];
     this._listError = null;
+    this._listErrorCode = null;
     try {
       const list = await window.electronAPI.sftplist(this.id, this.currentPath);
       this.files = list
@@ -86,13 +87,15 @@ const SFTP = {
     } catch (e) {
       const msg = e.message || String(e);
       if (msg.includes('not connected') || msg.includes('ECONNRESET') || msg.includes('EPIPE')) {
-        this._listError = 'Connection lost';
+        this._listError = t('sftp.connlost');
+        this._listErrorCode = 'lost';
         this.id = null;
         setTimeout(() => this.showauth(), 1500);
       } else {
-        this._listError = msg.includes('Permission denied') ? 'Permission denied' :
-                          msg.includes('No such file') ? 'Directory not found' :
-                          'Cannot access: ' + msg;
+        this._listErrorCode = 'error';
+        this._listError = msg.includes('Permission denied') ? t('sftp.permissiondenied') :
+                          msg.includes('No such file') ? t('sftp.dirnotfound') :
+                          t('sftp.cannotaccess', { error: msg });
       }
       console.error('SFTP list error:', e);
     }
@@ -111,23 +114,23 @@ const SFTP = {
   },
 
   async createfile() {
-    const name = await this.promptmodal('Create File', 'File name:');
+    const name = await this.promptmodal(t('sftp.createfile.title'), t('sftp.createfile.label'));
     if (!name) return;
     const sep = this.currentPath.endsWith('/') ? '' : '/';
     try {
       await window.electronAPI.sftpwrite(this.id, this.currentPath + sep + name, '');
       await this.listfiles(this.currentPath);
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { alert(t('sftp.error', { error: e.message })); }
   },
 
   async createfolder() {
-    const name = await this.promptmodal('Create Folder', 'Folder name:');
+    const name = await this.promptmodal(t('sftp.createfolder.title'), t('sftp.createfolder.label'));
     if (!name) return;
     const sep = this.currentPath.endsWith('/') ? '' : '/';
     try {
       await window.electronAPI.sftpmkdir(this.id, this.currentPath + sep + name);
       await this.listfiles(this.currentPath);
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { alert(t('sftp.error', { error: e.message })); }
   },
 
   async uploadfile() {
@@ -140,7 +143,7 @@ const SFTP = {
         const sep = this.currentPath.endsWith('/') ? '' : '/';
         try {
           await window.electronAPI.sftpupload(this.id, this.currentPath + sep + file.name, buf);
-        } catch (e) { alert('Upload failed: ' + e.message); }
+        } catch (e) { alert(t('sftp.uploadfailed', { error: e.message })); }
       }
       await this.listfiles(this.currentPath);
     };
@@ -157,7 +160,7 @@ const SFTP = {
       try {
         await window.electronAPI.sftprmdir(this.id, fullPath);
         await this.listfiles(this.currentPath);
-      } catch (e2) { alert('Error: ' + e2.message); }
+      } catch (e2) { alert(t('sftp.error', { error: e2.message })); }
     }
   },
 
@@ -175,13 +178,13 @@ const SFTP = {
   },
 
   async renamefile(oldName) {
-    const newName = await this.promptmodal('Rename', 'New name:', oldName);
+    const newName = await this.promptmodal(t('sftp.rename.title'), t('sftp.rename.label'), oldName);
     if (!newName || newName === oldName) return;
     const sep = this.currentPath.endsWith('/') ? '' : '/';
     try {
       await window.electronAPI.sftprename(this.id, this.currentPath + sep + oldName, this.currentPath + sep + newName);
       await this.listfiles(this.currentPath);
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { alert(t('sftp.error', { error: e.message })); }
   },
 
   async downloadfile(name) {
@@ -194,7 +197,7 @@ const SFTP = {
       a.download = name;
       a.click();
       URL.revokeObjectURL(a.href);
-    } catch (e) { alert('Download failed: ' + e.message); }
+    } catch (e) { alert(t('sftp.downloadfailed', { error: e.message })); }
   },
 
   promptmodal(title, label, defaultVal) {
@@ -204,8 +207,8 @@ const SFTP = {
           <label style="font-size:13px;color:var(--text-secondary);">${label}</label>
           <input type="text" id="sftpPromptInput" class="form-input" value="${Utils.escape(defaultVal || '')}" style="width:100%;" />
           <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="Modal.close();window._sftpPromptResolve(null);">Cancel</button>
-            <button class="btn btn-primary" onclick="Modal.close();window._sftpPromptResolve(document.getElementById('sftpPromptInput').value);">OK</button>
+            <button class="btn btn-secondary" onclick="Modal.close();window._sftpPromptResolve(null);">${t('sftp.cancel')}</button>
+            <button class="btn btn-primary" onclick="Modal.close();window._sftpPromptResolve(document.getElementById('sftpPromptInput').value);">${t('sftp.ok')}</button>
           </div>
         </div>
       `);
@@ -271,8 +274,8 @@ const SFTP = {
   formatdate(ts) {
     if (!ts) return '';
     const d = new Date(ts * 1000);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
-      d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
+      d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   },
 
   render() {
@@ -288,12 +291,12 @@ const SFTP = {
           <div class="sftp-auth-card">
             <div class="sftp-auth-header">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-              <h2>Connect via SFTP</h2>
+              <h2>${t('sftp.connecttitle')}</h2>
             </div>
 
             ${servers.length ? `
             <div class="sftp-quick-section">
-              <label class="form-label">Quick connect from saved servers</label>
+              <label class="form-label">${t('sftp.quick.label')}</label>
               <div class="sftp-servers-grid">
                 ${servers.map((s, i) => `
                   <button class="sftp-server-btn" onclick="SFTP.quickconnect(${Servers.list.indexOf(s)})">
@@ -304,68 +307,68 @@ const SFTP = {
                 `).join('')}
               </div>
             </div>
-            <div class="sftp-divider"><span>or enter manually</span></div>
+            <div class="sftp-divider"><span>${t('sftp.ormanual')}</span></div>
             ` : ''}
 
             <div class="sftp-form">
               <div class="form-row">
                 <div class="form-group" style="flex:2;">
-                  <label class="form-label">Host / IP</label>
+                  <label class="form-label">${t('sftp.host')}</label>
                   <input type="text" class="form-input" id="sftpHost" placeholder="192.168.1.100" />
                 </div>
                 <div class="form-group" style="flex:1;">
-                  <label class="form-label">Port</label>
+                  <label class="form-label">${t('sftp.port')}</label>
                   <input type="number" class="form-input" id="sftpPort" value="22" />
                 </div>
               </div>
               <div class="form-group">
-                <label class="form-label">Username</label>
+                <label class="form-label">${t('sftp.username')}</label>
                 <input type="text" class="form-input" id="sftpUser" placeholder="root" />
               </div>
               <div class="form-group">
-                <label class="form-label">Authentication</label>
+                <label class="form-label">${t('sftp.authentication')}</label>
                 <div class="auth-toggle" id="sftpAuthToggle">
-                  <button class="auth-toggle-btn active" onclick="SFTP.toggleauthtype('password')">Password</button>
-                  <button class="auth-toggle-btn" onclick="SFTP.toggleauthtype('key')">Key</button>
+                  <button class="auth-toggle-btn active" data-authtype="password" onclick="SFTP.toggleauthtype('password')">${t('sftp.password')}</button>
+                  <button class="auth-toggle-btn" data-authtype="key" onclick="SFTP.toggleauthtype('key')">${t('sftp.key')}</button>
                 </div>
               </div>
               <div id="sftpPasswordField">
                 <div class="form-group">
-                  <label class="form-label">Password</label>
+                  <label class="form-label">${t('sftp.password')}</label>
                   <input type="password" class="form-input" id="sftpPass" />
                 </div>
               </div>
               <div id="sftpKeyField" style="display:none;">
                 <div class="form-group">
-                  <label class="form-label">Private Key</label>
+                  <label class="form-label">${t('sftp.privatekey')}</label>
                   <select class="form-input" id="sftpKeySelect">
-                    <option value="">Select a key...</option>
+                    <option value="">${t('sftp.selectkey')}</option>
                     ${keys.map((k, i) => `<option value="${i}">${Utils.escape(k.name)}</option>`).join('')}
                   </select>
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label" style="display:flex;align-items:center;gap:6px;">
-                  <input type="checkbox" id="sftpSaveCheck" /> Save this connection
+                  <input type="checkbox" id="sftpSaveCheck" /> ${t('sftp.saveconn')}
                 </label>
               </div>
               <div id="sftpAuthError" class="form-error" style="display:none;"></div>
-              <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="SFTP.handleconnect()">Connect</button>
+              <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="SFTP.handleconnect()">${t('sftp.connect')}</button>
             </div>
 
             ${this.savedConnections.length ? `
             <div class="sftp-saved-section">
               <div class="sftp-saved-header">
-                <h3>Saved Connections</h3>
+                <h3>${t('sftp.saved.heading')}</h3>
               </div>
               <div class="sftp-saved-list">
                 ${this.savedConnections.map((c, i) => `
                   <div class="sftp-saved-item">
                     <div class="sftp-saved-info" onclick="SFTP.connectsaved(${i})">
                       <div class="sftp-saved-name">${Utils.escape(c.username)}@${Utils.escape(c.host)}:${c.port}</div>
-                      <div class="sftp-saved-detail">${c.authType === 'key' ? 'Key auth' : 'Password'}</div>
+                      <div class="sftp-saved-detail">${c.authType === 'key' ? t('sftp.saved.keyauth') : t('sftp.password')}</div>
                     </div>
-                    <button class="btn btn-sm btn-red-outline" onclick="SFTP.deletesavedconnection(${i})">Remove</button>
+                    <button class="btn btn-sm btn-red-outline" onclick="SFTP.deletesavedconnection(${i})">${t('sftp.remove')}</button>
                   </div>
                 `).join('')}
               </div>
@@ -380,20 +383,20 @@ const SFTP = {
             <div class="sftp-toolbar-actions">
               <button class="btn btn-sm btn-secondary" onclick="SFTP.createfile()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                New File
+                ${t('sftp.newfile')}
               </button>
               <button class="btn btn-sm btn-secondary" onclick="SFTP.createfolder()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-                New Folder
+                ${t('sftp.newfolder')}
               </button>
               <button class="btn btn-sm btn-primary" onclick="SFTP.uploadfile()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Upload
+                ${t('sftp.upload')}
               </button>
               ${this.selected.size > 0 ? `
-                <button class="btn btn-sm btn-red" onclick="SFTP.deleteselected()">Delete (${this.selected.size})</button>
+                <button class="btn btn-sm btn-red" onclick="SFTP.deleteselected()">${t('sftp.deletecount', { n: this.selected.size })}</button>
               ` : ''}
-              <button class="btn btn-sm btn-red-outline" onclick="SFTP.disconnect()">Disconnect</button>
+              <button class="btn btn-sm btn-red-outline" onclick="SFTP.disconnect()">${t('sftp.disconnect')}</button>
             </div>
           </div>
           <div class="sftp-file-list" id="sftpFileList"></div>
@@ -404,7 +407,7 @@ const SFTP = {
   toggleauthtype(type) {
     const btns = document.querySelectorAll('#sftpAuthToggle .auth-toggle-btn');
     btns.forEach(b => {
-      b.classList.toggle('active', (type === 'key' && b.textContent.trim() === 'Key') || (type === 'password' && b.textContent.trim() === 'Password'));
+      b.classList.toggle('active', b.dataset.authtype === type);
     });
     const passField = document.getElementById('sftpPasswordField');
     const keyField = document.getElementById('sftpKeyField');
@@ -421,7 +424,7 @@ const SFTP = {
     if (!host || !username) {
       const errEl = Utils.el('sftpAuthError');
       errEl.style.display = '';
-      errEl.textContent = 'Host and username are required';
+      errEl.textContent = t('sftp.err.hostrequired');
       return;
     }
 
@@ -435,14 +438,14 @@ const SFTP = {
       if (keyIdx === '') {
         const errEl = Utils.el('sftpAuthError');
         errEl.style.display = '';
-        errEl.textContent = 'Please select a key';
+        errEl.textContent = t('sftp.err.selectkey');
         return;
       }
       const key = ServerKeychain.keys[parseInt(keyIdx)];
       if (!key?.secretId) {
         const errEl = Utils.el('sftpAuthError');
         errEl.style.display = '';
-        errEl.textContent = 'No private key found';
+        errEl.textContent = t('sftp.err.nokey');
         return;
       }
       privateKey = '';
@@ -515,9 +518,9 @@ const SFTP = {
 
     let listHtml = `<div class="sftp-file-header">
       <input type="checkbox" class="sftp-checkbox" ${this.selected.size === this.files.length && this.files.length ? 'checked' : ''} onchange="SFTP.toggleselectall()" />
-      <span class="sftp-file-name-h">Name</span>
-      <span class="sftp-file-size-h">Size</span>
-      <span class="sftp-file-date-h">Modified</span>
+      <span class="sftp-file-name-h">${t('sftp.h.name')}</span>
+      <span class="sftp-file-size-h">${t('sftp.h.size')}</span>
+      <span class="sftp-file-date-h">${t('sftp.h.modified')}</span>
       <span class="sftp-file-actions-h"></span>
     </div>`;
 
@@ -545,23 +548,23 @@ const SFTP = {
         <span class="sftp-file-size">${f.isDir ? '-' : this.formatsize(f.size)}</span>
         <span class="sftp-file-date">${this.formatdate(f.mtime)}</span>
         <div class="sftp-file-actions">
-          ${!f.isDir ? `<button class="btn-icon" onclick="SFTP.downloadfile('${Utils.escape(f.name)}')" title="Download"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
-          <button class="btn-icon" onclick="SFTP.renamefile('${Utils.escape(f.name)}')" title="Rename"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-          <button class="btn-icon sftp-delete-btn" onclick="SFTP.deletefile('${Utils.escape(f.name)}')" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          ${!f.isDir ? `<button class="btn-icon" onclick="SFTP.downloadfile('${Utils.escape(f.name)}')" title="${t('sftp.download')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
+          <button class="btn-icon" onclick="SFTP.renamefile('${Utils.escape(f.name)}')" title="${t('sftp.rename')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+          <button class="btn-icon sftp-delete-btn" onclick="SFTP.deletefile('${Utils.escape(f.name)}')" title="${t('sftp.delete')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
         </div>
       </div>`;
     }
 
     if (!this.files.length && this._listError) {
-      const isConnLost = this._listError === 'Connection lost';
+      const isConnLost = this._listErrorCode === 'lost';
       listHtml += `<div class="sftp-list-error">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
         <div class="sftp-list-error-text">${Utils.escape(this._listError)}</div>
-        <div class="sftp-list-error-hint">${isConnLost ? 'Reconnecting...' : 'This directory may be restricted. Try navigating to another path.'}</div>
-        ${!isConnLost ? `<button class="btn btn-sm btn-secondary" onclick="SFTP.listfiles(SFTP.currentPath)" style="margin-top:8px;">Retry</button>` : ''}
+        <div class="sftp-list-error-hint">${isConnLost ? t('sftp.reconnecting') : t('sftp.restricted')}</div>
+        ${!isConnLost ? `<button class="btn btn-sm btn-secondary" onclick="SFTP.listfiles(SFTP.currentPath)" style="margin-top:8px;">${t('sftp.retry')}</button>` : ''}
       </div>`;
     } else if (!this.files.length) {
-      listHtml += '<div class="fw-empty" style="padding:48px;">This directory is empty</div>';
+      listHtml += `<div class="fw-empty" style="padding:48px;">${t('sftp.empty')}</div>`;
     }
 
     fileList.innerHTML = listHtml;

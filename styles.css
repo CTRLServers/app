@@ -44,6 +44,17 @@
   opacity: 0.85;
 }
 
+.update-banner-btn-secondary {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.update-banner-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  opacity: 1;
+}
+
 .update-banner-close {
   display: flex;
   align-items: center;

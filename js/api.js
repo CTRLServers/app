@@ -223,14 +223,14 @@ const Api = {
     });
     if (!urlRes.ok) throw new Error(this.calagopuserror(await urlRes.text(), urlRes.status));
     const data = await urlRes.json();
-    if (!data.url) throw new Error('No upload URL returned');
+    if (!data.url) throw new Error(t('api.no_upload_url'));
     const form = new FormData();
     files.forEach(item => form.append('files', item.file, item.relPath.replace(/\\/g, '/')));
     const separator = data.url.includes('?') ? '&' : '?';
     const res = await fetch(`${data.url}${separator}directory=${encodeURIComponent(directory || '/')}`, {
       method: 'POST', body: form
     });
-    if (!res.ok) throw new Error(`Upload failed: ${this.calagopuserror(await res.text(), res.status)}`);
+    if (!res.ok) throw new Error(t('api.upload_failed', { error: this.calagopuserror(await res.text(), res.status) }));
     return true;
   },
 
@@ -302,9 +302,9 @@ const Api = {
     if (!downloadres.ok) throw new Error(`HTTP ${downloadres.status}`);
     const downloaddata = await downloadres.json();
     const signedurl = downloaddata.attributes?.url || downloaddata.data?.attributes?.url;
-    if (!signedurl) throw new Error('Pterodactyl did not return a file download URL');
+    if (!signedurl) throw new Error(t('api.no_download_url'));
     const fileres = await fetch(signedurl);
-    if (!fileres.ok) throw new Error(`File download failed: HTTP ${fileres.status}`);
+    if (!fileres.ok) throw new Error(t('api.download_failed', { status: fileres.status }));
     return new TextDecoder('utf-8').decode(await fileres.arrayBuffer());
   },
 
@@ -339,10 +339,10 @@ const Api = {
     const urlRes = await this.pterodactylrequest(panelUrl, apiKey, uuid, `/files/upload?directory=${encodeURIComponent(dir)}`, {
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/vnd.pterodactyl.v1+json' }
     });
-    if (!urlRes.ok) throw new Error('Failed to get upload URL');
+    if (!urlRes.ok) throw new Error(t('api.upload_url_failed'));
     const urlData = await urlRes.json();
     const signedUrl = urlData.attributes && urlData.attributes.url;
-    if (!signedUrl) throw new Error('No signed URL');
+    if (!signedUrl) throw new Error(t('api.no_signed_url'));
     const formData = new FormData();
     for (const f of files) {
       formData.append('files', f.file, f.relPath.split('/').pop());

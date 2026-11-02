@@ -40,7 +40,7 @@ const CTRLCloud = {
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(this.API + path, opts);
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) throw new Error(data.error || t('cloud.request_failed'));
     return data;
   },
 
@@ -93,9 +93,9 @@ const CTRLCloud = {
             </svg>
           </div>
           <h2 class="cloud-auth-title">CTRLCloud</h2>
-          <p class="cloud-auth-sub">Register or login to continue.</p>
+          <p class="cloud-auth-sub">${t('cloud.auth.sub')}</p>
           <div class="cloud-auth-form">
-            <button class="btn btn-primary cloud-auth-btn" onclick="CTRLCloud.openauth()">Go to Web</button>
+            <button class="btn btn-primary cloud-auth-btn" onclick="CTRLCloud.openauth()">${t('cloud.auth.go_web')}</button>
           </div>
           <div class="cloud-auth-error" id="cloudAuthError"></div>
         </div>
@@ -113,7 +113,7 @@ const CTRLCloud = {
   },
 
   logout() {
-    Modal.confirm('Sign Out', 'Are you sure you want to sign out of CTRLCloud?', () => {
+    Modal.confirm(t('cloud.signout.title'), t('cloud.signout.message'), () => {
       this.clearauth();
       this.syncdata = null;
       this.render();
@@ -133,7 +133,7 @@ const CTRLCloud = {
             </div>
           </div>
           <div class="cloud-header-actions">
-            <button class="btn btn-secondary btn-sm" onclick="CTRLCloud.logout()">Sign Out</button>
+            <button class="btn btn-secondary btn-sm" onclick="CTRLCloud.logout()">${t('cloud.signout.title')}</button>
           </div>
         </div>
 
@@ -144,7 +144,7 @@ const CTRLCloud = {
             </div>
             <div class="cloud-stat-info">
               <span class="cloud-stat-val" id="cloudServerCount">-</span>
-              <span class="cloud-stat-label">Servers Synced</span>
+              <span class="cloud-stat-label">${t('cloud.stats.servers')}</span>
             </div>
           </div>
           <div class="cloud-stat-card">
@@ -153,7 +153,7 @@ const CTRLCloud = {
             </div>
             <div class="cloud-stat-info">
               <span class="cloud-stat-val" id="cloudKeyCount">-</span>
-              <span class="cloud-stat-label">Keys Synced</span>
+              <span class="cloud-stat-label">${t('cloud.stats.keys')}</span>
             </div>
           </div>
           <div class="cloud-stat-card">
@@ -162,7 +162,7 @@ const CTRLCloud = {
             </div>
             <div class="cloud-stat-info">
               <span class="cloud-stat-val" id="cloudLastSync">-</span>
-              <span class="cloud-stat-label">Last Sync</span>
+              <span class="cloud-stat-label">${t('cloud.stats.last_sync')}</span>
             </div>
           </div>
         </div>
@@ -170,18 +170,18 @@ const CTRLCloud = {
         <div class="cloud-actions">
           <button class="btn btn-primary" id="cloudSyncBtn" onclick="CTRLCloud.syncupload()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg>
-            Sync to Cloud
+            ${t('cloud.sync_to_cloud')}
           </button>
           <button class="btn btn-secondary" id="cloudDownloadBtn" onclick="CTRLCloud.syncdownload()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 10 23 16 17 16"/><path d="M3.51 9A9 9 0 0 1 14.85 3.15L20 9M1 14l5.15 5.85A9 9 0 0 0 20.49 15"/></svg>
-            Download from Cloud
+            ${t('cloud.download_from_cloud')}
           </button>
-          <button class="btn btn-red-outline btn-sm" onclick="CTRLCloud.deleteall()">Delete All</button>
+          <button class="btn btn-red-outline btn-sm" onclick="CTRLCloud.deleteall()">${t('cloud.delete_all')}</button>
         </div>
 
         <div class="cloud-section">
           <div class="cloud-section-header">
-            <h3>Synced Servers</h3>
+            <h3>${t('cloud.servers_title')}</h3>
           </div>
           <div class="cloud-server-list" id="cloudServerList">
             <div class="cloud-loading"><svg class="spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L1 10"/></svg></div>
@@ -190,28 +190,28 @@ const CTRLCloud = {
 
         <div class="cloud-section">
           <div class="cloud-section-header">
-            <h3>Auto Sync</h3>
-            <p class="cloud-section-desc">Automatically sync servers based on events</p>
+            <h3>${t('cloud.autosync.title')}</h3>
+            <p class="cloud-section-desc">${t('cloud.autosync.desc')}</p>
           </div>
           <div class="cloud-autosync-options" id="cloudAutosyncOptions">
             <label class="cloud-toggle-row">
               <span class="cloud-toggle-label">
-                <span class="cloud-toggle-title">Sync on App Launch</span>
-                <span class="cloud-toggle-desc">Sync when the application starts</span>
+                <span class="cloud-toggle-title">${t('cloud.autosync.launch_title')}</span>
+                <span class="cloud-toggle-desc">${t('cloud.autosync.launch_desc')}</span>
               </span>
               <input type="checkbox" class="cloud-toggle" id="cloudAutoLaunch" onchange="CTRLCloud.updateautosync()" />
             </label>
             <label class="cloud-toggle-row">
               <span class="cloud-toggle-label">
-                <span class="cloud-toggle-title">Sync on Server Add</span>
-                <span class="cloud-toggle-desc">Upload when a new server is added</span>
+                <span class="cloud-toggle-title">${t('cloud.autosync.add_title')}</span>
+                <span class="cloud-toggle-desc">${t('cloud.autosync.add_desc')}</span>
               </span>
               <input type="checkbox" class="cloud-toggle" id="cloudAutoAdd" onchange="CTRLCloud.updateautosync()" />
             </label>
             <label class="cloud-toggle-row">
               <span class="cloud-toggle-label">
-                <span class="cloud-toggle-title">Sync on Server Delete</span>
-                <span class="cloud-toggle-desc">Upload when a server is removed</span>
+                <span class="cloud-toggle-title">${t('cloud.autosync.delete_title')}</span>
+                <span class="cloud-toggle-desc">${t('cloud.autosync.delete_desc')}</span>
               </span>
               <input type="checkbox" class="cloud-toggle" id="cloudAutoDelete" onchange="CTRLCloud.updateautosync()" />
             </label>
@@ -240,7 +240,7 @@ const CTRLCloud = {
     const ls = Utils.el('cloudLastSync');
     if (sc) sc.textContent = (data.servers || []).length;
     if (kc) kc.textContent = (data.keychain || []).length;
-    if (ls) ls.textContent = data.updatedAt ? this.timeago(data.updatedAt) : 'Never';
+    if (ls) ls.textContent = data.updatedAt ? this.timeago(data.updatedAt) : t('cloud.never');
   },
 
   rendsyncservers(data) {
@@ -251,7 +251,7 @@ const CTRLCloud = {
       el.innerHTML = `
         <div class="cloud-empty">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-          <p>No servers in cloud yet. Click "Sync to Cloud" to upload your servers.</p>
+          <p>${t('cloud.empty', { action: t('cloud.sync_to_cloud') })}</p>
         </div>`;
       return;
     }
@@ -266,7 +266,7 @@ const CTRLCloud = {
           <span class="cloud-server-name">${Utils.escape(s.name)}</span>
           <span class="cloud-server-type">${Utils.escape(s.type)}</span>
         </div>
-        <button class="btn-icon btn-danger-sm" onclick="CTRLCloud.deleteserver('${Utils.escape(String(s.id))}')" title="Remove from cloud">
+        <button class="btn-icon btn-danger-sm" onclick="CTRLCloud.deleteserver('${Utils.escape(String(s.id))}')" title="${t('cloud.remove_title')}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </div>
       </div>`).join('');
@@ -282,9 +282,9 @@ const CTRLCloud = {
         folders: Servers.folders
       });
       await this.loadsyncdata();
-      Modal.alert('Sync Complete', 'Your servers have been uploaded to the cloud.');
+      Modal.alert(t('cloud.upload.done_title'), t('cloud.upload.done_message'));
     } catch (e) {
-      Modal.alert('Sync Failed', e.message);
+      Modal.alert(t('cloud.upload.failed_title'), e.message);
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -294,10 +294,10 @@ const CTRLCloud = {
     try {
       const data = await this.api('GET', '/api/sync/list');
       if (!data.servers || !data.servers.length) {
-        Modal.alert('No Data', 'There are no servers stored in the cloud.');
+        Modal.alert(t('cloud.download.no_data_title'), t('cloud.download.no_data_message'));
         return;
       }
-      Modal.confirm('Download from Cloud', `This will replace your current ${Servers.list.length} server(s) with ${data.servers.length} from the cloud. Continue?`, async () => {
+      Modal.confirm(t('cloud.download_from_cloud'), t('cloud.download.confirm', { current: Servers.list.length, incoming: data.servers.length }), async () => {
         Servers.list = data.servers;
         ServerKeychain.keys = data.keychain || [];
         Servers.folders = data.folders || [];
@@ -309,32 +309,32 @@ const CTRLCloud = {
         this.syncdata = data;
         this.rendsyncstats(data);
         this.rendsyncservers(data);
-        Modal.alert('Download Complete', `Downloaded ${data.servers.length} server(s) from cloud.`);
+        Modal.alert(t('cloud.download.done_title'), t('cloud.download.done_message.' + this.pluralform(data.servers.length), { count: data.servers.length }));
       });
     } catch (e) {
-      Modal.alert('Download Failed', e.message);
+      Modal.alert(t('cloud.download.failed_title'), e.message);
     }
   },
 
   async deleteserver(id) {
-    Modal.confirm('Remove Server', 'Remove this server from cloud? It will not be deleted locally.', async () => {
+    Modal.confirm(t('cloud.remove.title'), t('cloud.remove.message'), async () => {
       try {
         await this.api('DELETE', '/api/sync/servers/' + id);
         await this.loadsyncdata();
       } catch (e) {
-        Modal.alert('Error', e.message);
+        Modal.alert(t('cloud.error'), e.message);
       }
     });
   },
 
   deleteall() {
-    Modal.confirm('Delete All Data', 'This will permanently delete all your synced servers, keys, and folders from the cloud. This cannot be undone.', async () => {
+    Modal.confirm(t('cloud.delete_all_title'), t('cloud.delete_all_message'), async () => {
       try {
         await this.api('DELETE', '/api/sync/all');
         this.syncdata = null;
         this.render();
       } catch (e) {
-        Modal.alert('Error', e.message);
+        Modal.alert(t('cloud.error'), e.message);
       }
     });
   },
@@ -399,14 +399,22 @@ const CTRLCloud = {
     }
   },
 
+  pluralform(n) {
+    if (I18n.getlang() !== 'ru') return n === 1 ? 'one' : 'many';
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'one';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'few';
+    return 'many';
+  },
+
   timeago(iso) {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return mins + 'm ago';
+    if (mins < 1) return t('cloud.time.just_now');
+    if (mins < 60) return t('cloud.time.minutes', { n: mins });
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return hrs + 'h ago';
+    if (hrs < 24) return t('cloud.time.hours', { n: hrs });
     const days = Math.floor(hrs / 24);
-    return days + 'd ago';
+    return t('cloud.time.days', { n: days });
   }
 };

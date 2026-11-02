@@ -9,6 +9,14 @@ const AcceptServers = {
     });
   },
 
+  pluralform(n) {
+    if (I18n.getlang() !== 'ru') return n === 1 ? 'one' : 'many';
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'one';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'few';
+    return 'many';
+  },
+
   panelkey(panelUrl) {
     return String(panelUrl || '').replace(/\/+$/, '').toLowerCase();
   },
@@ -22,7 +30,7 @@ const AcceptServers = {
   receive(servers) {
     for (const incoming of servers) {
       const server = {
-        name: String(incoming.name || 'Unnamed').slice(0, 200),
+        name: String(incoming.name || t('cacc.unnamed')).slice(0, 200),
         panelUrl: String(incoming.panelUrl || '').replace(/\/+$/, '').slice(0, 500),
         identifier: String(incoming.identifier || incoming.uuid || '').trim(),
         uuid: String(incoming.uuid || incoming.identifier || '').trim(),
@@ -60,13 +68,13 @@ const AcceptServers = {
     if (!root) return;
 
     if (!this.pending.length) {
-      root.innerHTML = '<div class="empty-state" style="display:flex"><h2>No pending servers</h2><p>Send servers to <span style="font-family:monospace">http://127.0.0.1:12747/accept-servers</span> via POST, or go back to the dashboard.</p><button class="btn btn-secondary" id="acceptBackBtn">Back to Dashboard</button></div>';
+      root.innerHTML = `<div class="empty-state" style="display:flex"><h2>${t('cacc.empty.title')}</h2><p>${t('cacc.empty.desc', { url: '<span style="font-family:monospace">http://127.0.0.1:12747/accept-servers</span>' })}</p><button class="btn btn-secondary" id="acceptBackBtn">${t('cacc.back')}</button></div>`;
       root.querySelector('#acceptBackBtn')?.addEventListener('click', () => App.navigateto('dashboard'));
       return;
     }
 
     root.innerHTML = `
-      <p class="modal-text">${this.pending.length} server(s) received for review. Uncheck any server to exclude it.</p>
+      <p class="modal-text">${t(`cacc.received.${this.pluralform(this.pending.length)}`, { n: this.pending.length })}</p>
       <div class="server-select-list">
         ${this.pending.map((server, index) => {
           const duplicate = this.isDuplicate(server);
@@ -74,18 +82,18 @@ const AcceptServers = {
           return `<div class="server-select-item${selected ? ' selected' : ''}${duplicate ? ' is-duplicate' : ''}" data-accept-idx="${index}">
             <div class="server-checkbox"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg></div>
             <div class="server-select-info">
-              <div class="server-select-name">${Utils.escape(server.name)}${duplicate ? ' (already added - will be updated)' : ''}</div>
+              <div class="server-select-name">${Utils.escape(server.name)}${duplicate ? ' ' + t('cacc.duplicate') : ''}</div>
               <div class="server-select-detail">${Utils.escape(server.panelUrl)} &middot; ${Utils.escape(server.identifier || server.uuid)}${server.node ? ' &middot; ' + Utils.escape(server.node) : ''}</div>
               ${server.description ? `<div class="server-select-detail">${Utils.escape(server.description)}</div>` : ''}
-              ${server.username ? `<div class="server-select-detail">User: ${Utils.escape(server.username)}</div>` : ''}
-              <div class="server-select-detail">Type: Pterodactyl</div>
+              ${server.username ? `<div class="server-select-detail">${t('cacc.user', { name: Utils.escape(server.username) })}</div>` : ''}
+              <div class="server-select-detail">${t('cacc.type')}</div>
             </div>
           </div>`;
         }).join('')}
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" id="acceptCancelBtn">Cancel</button>
-        <button type="button" class="btn btn-primary" id="acceptImportBtn">Import Selected</button>
+        <button type="button" class="btn btn-secondary" id="acceptCancelBtn">${t('csub.cancel')}</button>
+        <button type="button" class="btn btn-primary" id="acceptImportBtn">${t('cacc.import')}</button>
       </div>`;
 
     root.querySelectorAll('[data-accept-idx]').forEach(item => {
@@ -115,7 +123,7 @@ const AcceptServers = {
         try {
           apiKey = apiKey;
         } catch {
-          Modal.alert('Import Failed', 'CTRLServers could not encrypt the API key. The server was not imported.');
+          Modal.alert(t('cacc.failed.title'), t('cacc.failed.desc'));
           return;
         }
       }
@@ -180,6 +188,7 @@ const AcceptServers = {
     this.pending = [];
     this.excluded.clear();
     App.navigateto('dashboard');
-    Modal.alert('Import Complete', `Imported ${added} new server(s)${updated ? `, updated ${updated} existing` : ''}.`);
+    const result = t(`cacc.result.${this.pluralform(added)}`, { added }) + (updated ? t('cacc.result.updated', { updated }) : '') + '.';
+    Modal.alert(t('cacc.complete.title'), result);
   },
 };

@@ -17,21 +17,22 @@
   <div class="titlebar" id="titlebar">
     <div class="titlebar-drag"></div>
     <div class="titlebar-controls">
-      <button class="titlebar-btn" id="titlebarMinimize" title="Minimize">
+      <button class="titlebar-btn" id="titlebarMinimize" title="Minimize" data-i18n-title="titlebar.minimize">
         <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1" fill="currentColor" rx="0.5"/></svg>
       </button>
-      <button class="titlebar-btn" id="titlebarMaximize" title="Maximize">
+      <button class="titlebar-btn" id="titlebarMaximize" title="Maximize" data-i18n-title="titlebar.maximize">
         <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg>
       </button>
-      <button class="titlebar-btn titlebar-btn-close" id="titlebarClose" title="Close">
+      <button class="titlebar-btn titlebar-btn-close" id="titlebarClose" title="Close" data-i18n-title="titlebar.close">
         <svg width="12" height="12" viewBox="0 0 12 12"><line x1="2" y1="2" x2="10" y2="10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="10" y1="2" x2="2" y2="10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       </button>
     </div>
   </div>
   <div class="update-banner" id="updateBanner" style="display:none;">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    <span class="update-banner-text">This version of program is outdated. Update now to get better experience!</span>
-    <button class="update-banner-btn" onclick="window.electronAPI.openexternal('https://github.com/CTRLServers/app/releases')">Update</button>
+    <span class="update-banner-text" data-i18n="update.banner.text">This version of program is outdated. Update now to get better experience!</span>
+    <button class="update-banner-btn" data-i18n="update.banner.action" onclick="window.electronAPI.openexternal('https://github.com/CTRLServers/app/releases')">Update</button>
+    <button class="update-banner-btn update-banner-btn-secondary" data-i18n="update.banner.autoupdate" onclick="App.openautoupdate()">Auto-update</button>
     <button class="update-banner-close" onclick="document.getElementById('updateBanner').style.display='none'">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
@@ -43,7 +44,7 @@
           <img src="assets/logo.png" alt="CTRLServers" width="28" height="28" style="border-radius:8px;object-fit:cover" />
           <span class="logo-text">CTRLServers</span>
         </div>
-        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar">
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar" data-i18n-title="sidebar.collapse">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
       </div>
@@ -112,8 +113,8 @@
 
       <div class="sidebar-workspaces" id="sidebarWorkspaces">
         <div class="workspaces-header">
-          <span class="workspaces-title">Workspaces</span>
-          <button type="button" class="workspaces-add" title="New workspace">
+          <span class="workspaces-title" data-i18n="workspaces.title">Workspaces</span>
+          <button type="button" class="workspaces-add" title="New workspace" data-i18n-title="workspaces.add">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
@@ -412,24 +413,24 @@
       </nav>
 
       <div class="sidebar-footer" id="sidebarFooter">
-        <button class="theme-toggle" id="cliToggle" title="Terminal (Ctrl+`)">
+        <button class="theme-toggle" id="cliToggle" title="Terminal (Ctrl+`)" data-i18n-title="cli.toggle">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
           </svg>
         </button>
-        <button class="theme-toggle" id="lockAppBtn" title="Lock App" onclick="LockScreen.lock()" style="display:none">
+        <button class="theme-toggle" id="lockAppBtn" title="Lock App" onclick="LockScreen.lock()" style="display:none" data-i18n-title="lock.title">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
         </button>
-        <button class="theme-toggle" id="appSettingsBtn" title="App Settings">
+        <button class="theme-toggle" id="appSettingsBtn" title="App Settings" data-i18n-title="app.settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
-        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme" data-i18n-title="theme.toggle">
           <span id="themeToggleIcon"></span>
         </button>
       </div>
@@ -445,32 +446,32 @@
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        <h1 class="page-title" id="pageTitle" data-i18n="page.dashboard">Dashboard</h1>
         <div class="vps-info-card" id="vpsInfoCard" style="display:none;">
           <div class="vps-info-icon" id="vpsInfoIcon"></div>
           <div class="vps-info-name" id="vpsInfoName"></div>
           <div class="vps-info-sep"></div>
-          <button type="button" class="vps-info-btn" id="vpsInfoSSH" title="Open in SSH (CMD)">
+          <button type="button" class="vps-info-btn" id="vpsInfoSSH" title="Open in SSH (CMD)" data-i18n-title="dashboard.vps.ssh">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
           </button>
-          <button type="button" class="vps-info-btn" id="vpsInfoSCP" title="Copy file using SCP">
+          <button type="button" class="vps-info-btn" id="vpsInfoSCP" title="Copy file using SCP" data-i18n-title="dashboard.vps.scp">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
         </div>
         <div class="topbar-actions" id="topbarActions">
           <div class="dashboard-search-wrap">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="dashboard-search-input" id="dashboardSearchInput" placeholder="Search servers..." />
+            <input type="text" class="dashboard-search-input" id="dashboardSearchInput" placeholder="Search servers..." data-i18n-placeholder="dashboard.search" />
           </div>
           <div class="view-toggle" id="viewToggle" role="group" aria-label="Server list view">
-            <button type="button" class="view-toggle-btn active" data-view="card" title="Card view">
+            <button type="button" class="view-toggle-btn active" data-view="card" title="Card view" data-i18n-title="dashboard.cardview">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             </button>
-            <button type="button" class="view-toggle-btn" data-view="table" title="Table view">
+            <button type="button" class="view-toggle-btn" data-view="table" title="Table view" data-i18n-title="dashboard.tableview">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
           </div>
-          <button class="btn btn-primary" id="addServerBtn">
+          <button class="btn btn-primary" id="addServerBtn" data-i18n="dashboard.addserver">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -478,10 +479,10 @@
             Add Server
           </button>
           <div class="topbar-divider"></div>
-          <button type="button" class="topbar-icon-btn" data-action="export-servers" title="Export servers">
+          <button type="button" class="topbar-icon-btn" data-action="export-servers" title="Export servers" data-i18n-title="dashboard.export">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
-          <button type="button" class="topbar-icon-btn" data-action="import-servers" title="Import servers">
+          <button type="button" class="topbar-icon-btn" data-action="import-servers" title="Import servers" data-i18n-title="dashboard.import">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
         </div>
@@ -497,9 +498,9 @@
               <line x1="6" y1="18" x2="6.01" y2="18" />
             </svg>
           </div>
-          <h2>You don't have any servers yet</h2>
-          <p>Add your first server to get started</p>
-          <button class="btn btn-primary" id="emptyAddBtn">
+          <h2 data-i18n="dashboard.empty.title">You don't have any servers yet</h2>
+          <p data-i18n="dashboard.empty.subtitle">Add your first server to get started</p>
+          <button class="btn btn-primary" id="emptyAddBtn" data-i18n="dashboard.addserver">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -514,19 +515,19 @@
               <input type="checkbox" class="server-select-all" />
               <span class="file-checkbox-mark"></span>
             </label>
-            <span class="mass-actions-count">0 selected</span>
+            <span class="mass-actions-count" data-i18n="dashboard.selected">0 selected</span>
           </div>
           <div class="mass-actions-buttons">
-            <button type="button" class="btn btn-danger btn-sm" data-mass-action="delete">
+            <button type="button" class="btn btn-danger btn-sm" data-mass-action="delete" data-i18n="dashboard.delete">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               Delete
             </button>
-            <button type="button" class="btn btn-secondary btn-sm" data-mass-action="clear">Cancel</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-mass-action="clear" data-i18n="dashboard.cancel">Cancel</button>
           </div>
         </div>
         <div id="serversShelf" class="servers-shelf" style="display:none;">
           <div id="pinnedServers" style="display:none;">
-            <div class="pinned-label">Pinned</div>
+            <div class="pinned-label" data-i18n="dashboard.pinned">Pinned</div>
             <div class="servers-grid" id="pinnedGrid"></div>
           </div>
           <div class="servers-grid" id="serversGrid" style="display:none;"></div>
@@ -548,10 +549,10 @@
             <span class="window-titlebar-icon" id="windowTitleIcon"></span>
             <span class="window-titlebar-text" id="windowTitleText"></span>
             <div class="window-controls">
-              <button class="window-btn" id="windowMinimizeBtn" title="Minimize">
+              <button class="window-btn" id="windowMinimizeBtn" title="Minimize" data-i18n-title="titlebar.minimize">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </button>
-              <button class="window-btn window-btn-close" id="windowCloseBtn" title="Close">
+              <button class="window-btn window-btn-close" id="windowCloseBtn" title="Close" data-i18n-title="titlebar.close">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -568,15 +569,15 @@
                     <line x1="12" y1="8" x2="12" y2="12"/>
                     <line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
-                  <h3>Oops... Seems like its empty here!</h3>
-                  <p>There can be several reasons why console is empty: for example, because the server is offline, or the websocket is not outputing the console, or there was a error, and much more reasons!</p>
+                  <h3 data-i18n="console.empty.title">Oops... Seems like its empty here!</h3>
+                  <p data-i18n="console.empty.text">There can be several reasons why console is empty: for example, because the server is offline, or the websocket is not outputing the console, or there was a error, and much more reasons!</p>
                 </div>
                 <div class="console-connecting" id="consoleConnecting">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="spin-icon">
                     <path d="M21 12a9 9 0 1 1-6.219-8.568"/>
                   </svg>
-                  <h3>Connecting...</h3>
-                  <p>We are still connecting to your console. Please wait.</p>
+                  <h3 data-i18n="console.connecting.title">Connecting...</h3>
+                  <p data-i18n="console.connecting.text">We are still connecting to your console. Please wait.</p>
                 </div>
                 <div class="console-offline" id="consoleOffline" style="display:none;">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -588,8 +589,8 @@
                     <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
                     <line x1="12" y1="20" x2="12.01" y2="20"/>
                   </svg>
-                  <h3>The server is offline!</h3>
-                  <p>Console will stay empty until you will power the server.</p>
+                  <h3 data-i18n="console.offline.title">The server is offline!</h3>
+                  <p data-i18n="console.offline.text">Console will stay empty until you will power the server.</p>
                 </div>
                 <div class="console-resgraphs" id="consoleResgraphs">
                   <div class="console-resgraph">
@@ -608,7 +609,7 @@
                   </div>
                   <div class="console-resgraph">
                     <div class="console-resgraph-header">
-                      <span class="console-resgraph-label console-resgraph-disk">Disk</span>
+                      <span class="console-resgraph-label console-resgraph-disk" data-i18n="res.disk">Disk</span>
                       <span class="console-resgraph-val" id="consoleDiskVal">-</span>
                     </div>
                     <canvas class="console-resgraph-canvas" id="consoleDiskCanvas" width="200" height="40"></canvas>
@@ -617,53 +618,53 @@
                 <div class="console-toolbar" id="consoleToolbar">
                   <div class="console-connection" id="consoleConnection" style="display:none;" data-state="disconnected">
                     <span class="console-connection-dot"></span>
-                    <span id="consoleConnectionText">Disconnected</span>
+                    <span id="consoleConnectionText" data-i18n="console.disconnected">Disconnected</span>
                   </div>
                   <div class="console-search-wrap" id="consoleSearchWrap" style="display:none;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" class="console-search-input" id="consoleSearchInput" placeholder="Search..." oninput="ServerConsole.onsearch(this.value)" />
+                    <input type="text" class="console-search-input" id="consoleSearchInput" placeholder="Search..." data-i18n-placeholder="console.search" oninput="ServerConsole.onsearch(this.value)" />
                     <span class="console-search-count" id="consoleSearchCount"></span>
-                    <button class="console-search-btn" onclick="ServerConsole.searchprev()" title="Previous">
+                    <button class="console-search-btn" onclick="ServerConsole.searchprev()" title="Previous" data-i18n-title="console.prev">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
                     </button>
-                    <button class="console-search-btn" onclick="ServerConsole.searchnext()" title="Next">
+                    <button class="console-search-btn" onclick="ServerConsole.searchnext()" title="Next" data-i18n-title="console.next">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
-                    <button class="console-search-btn" onclick="ServerConsole.closesearch()" title="Close">
+                    <button class="console-search-btn" onclick="ServerConsole.closesearch()" title="Close" data-i18n-title="titlebar.close">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </div>
                   <div class="console-toolbar-right">
                     <select class="console-filter-select" id="consoleFilterSelect" onchange="ServerConsole.setfilter(this.value)">
-                      <option value="all">All logs</option>
-                      <option value="warnings">Warnings</option>
-                      <option value="errors">Errors</option>
+                      <option value="all" data-i18n="console.filter.all">All logs</option>
+                      <option value="warnings" data-i18n="console.filter.warnings">Warnings</option>
+                      <option value="errors" data-i18n="console.filter.errors">Errors</option>
                     </select>
-                    <button class="console-tool-btn" id="consoleTimestampBtn" onclick="ServerConsole.toggletimestamps()" title="Toggle timestamps">
+                    <button class="console-tool-btn" id="consoleTimestampBtn" onclick="ServerConsole.toggletimestamps()" title="Toggle timestamps" data-i18n-title="console.timestamps">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </button>
-                    <button class="console-tool-btn" onclick="ServerConsole.changefontsize(-1)" title="Decrease font size">
+                    <button class="console-tool-btn" onclick="ServerConsole.changefontsize(-1)" title="Decrease font size" data-i18n-title="console.font.dec">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
                     <span class="console-fontsize-label" id="consoleFontsizeLabel">14px</span>
-                    <button class="console-tool-btn" onclick="ServerConsole.changefontsize(1)" title="Increase font size">
+                    <button class="console-tool-btn" onclick="ServerConsole.changefontsize(1)" title="Increase font size" data-i18n-title="console.font.inc">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
-                    <button class="console-tool-btn" onclick="ServerConsole.clearconsole()" title="Clear console">
+                    <button class="console-tool-btn" onclick="ServerConsole.clearconsole()" title="Clear console" data-i18n-title="console.clear">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     </button>
                   </div>
                 </div>
                 <div class="console-output" id="consoleOutput"></div>
                   <div class="console-input-wrap">
-                    <input type="text" class="console-input" id="consoleInput" placeholder="Type a command..." />
-                    <button class="btn btn-primary btn-sm" onclick="ServerConsole.send()">Send</button>
+                    <input type="text" class="console-input" id="consoleInput" placeholder="Type a command..." data-i18n-placeholder="console.input" />
+                    <button class="btn btn-primary btn-sm" onclick="ServerConsole.send()" data-i18n="console.send">Send</button>
                   </div>
                 </div>
                 <aside class="server-resource-panel" id="topbarResources" style="display:none;" aria-label="Server resources and controls">
                   <div class="server-resource-heading">
-                    <span>Server status</span>
-                    <span class="server-state-badge" id="resServerState" data-state="offline">Offline</span>
+                    <span data-i18n="res.status">Server status</span>
+                    <span class="server-state-badge" id="resServerState" data-state="offline" data-i18n="status.offline">Offline</span>
                   </div>
                   <div class="server-resource-list">
                     <div class="res-card res-card-address">
@@ -672,7 +673,7 @@
                       </span>
                       <div class="res-card-info">
                         <span class="res-card-val" id="resServerIp">-</span>
-                        <span class="res-card-label">Server IP</span>
+                        <span class="res-card-label" data-i18n="res.ip">Server IP</span>
                       </div>
                     </div>
                     <div class="res-card">
@@ -711,7 +712,7 @@
                       </span>
                       <div class="res-card-info">
                         <span class="res-card-val" id="resNetworkIn">0 B</span>
-                        <span class="res-card-label">Network (In)</span>
+                        <span class="res-card-label" data-i18n="res.netin">Network (In)</span>
                       </div>
                     </div>
                     <div class="res-card">
@@ -720,7 +721,7 @@
                       </span>
                       <div class="res-card-info">
                         <span class="res-card-val" id="resNetworkOut">0 B</span>
-                        <span class="res-card-label">Network (Out)</span>
+                        <span class="res-card-label" data-i18n="res.netout">Network (Out)</span>
                       </div>
                     </div>
                     <div class="res-card">
@@ -730,15 +731,15 @@
                       </svg>
                       <div class="res-card-info">
                         <span class="res-card-val" id="resUptime">-</span>
-                        <span class="res-card-label">Uptime</span>
+                        <span class="res-card-label" data-i18n="res.uptime">Uptime</span>
                       </div>
                     </div>
                   </div>
                   <div class="server-resource-actions" id="topbarServerActions" style="display:none;">
-                    <button class="btn btn-green btn-sm" id="btnStart" onclick="ServerConsole.power('start')">Start</button>
-                    <button class="btn btn-yellow btn-sm" id="btnRestart" onclick="ServerConsole.power('restart')">Restart</button>
-                    <button class="btn btn-red btn-sm" id="btnStop" onclick="ServerConsole.power('stop')">Stop</button>
-                    <button class="btn btn-red-outline btn-sm" id="btnKill" onclick="ServerConsole.confirmkill()">Kill</button>
+                    <button class="btn btn-green btn-sm" id="btnStart" onclick="ServerConsole.power('start')" data-i18n="dashboard.start">Start</button>
+                    <button class="btn btn-yellow btn-sm" id="btnRestart" onclick="ServerConsole.power('restart')" data-i18n="dashboard.restart">Restart</button>
+                    <button class="btn btn-red btn-sm" id="btnStop" onclick="ServerConsole.power('stop')" data-i18n="dashboard.stop">Stop</button>
+                    <button class="btn btn-red-outline btn-sm" id="btnKill" onclick="ServerConsole.confirmkill()" data-i18n="console.kill">Kill</button>
                   </div>
                 </aside>
               </div>
@@ -748,53 +749,53 @@
                 <div class="files-toolbar" id="filesToolbar">
                   <div class="files-breadcrumb" id="filesBreadcrumb"></div>
                   <div class="files-view-switch" aria-label="File manager view">
-                    <button class="files-view-btn active" data-view="normal" onclick="ServerFiles.setview('normal')">Normal</button>
-                    <button class="files-view-btn" data-view="ide" onclick="ServerFiles.setview('ide')">IDE</button>
+                    <button class="files-view-btn active" data-view="normal" onclick="ServerFiles.setview('normal')" data-i18n="files.normal">Normal</button>
+                    <button class="files-view-btn" data-view="ide" onclick="ServerFiles.setview('ide')" data-i18n="files.ide">IDE</button>
                   </div>
                   <div class="files-search-wrap">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" class="files-search-input" id="filesSearchInput" placeholder="Search files..." oninput="ServerFiles.onsearch(this.value)" />
+                    <input type="text" class="files-search-input" id="filesSearchInput" placeholder="Search files..." data-i18n-placeholder="files.search" oninput="ServerFiles.onsearch(this.value)" />
                   </div>
                   <div class="files-actions" id="filesActions">
                     <input type="file" id="fileUploadInput" style="display:none;" multiple />
                     <input type="file" id="folderUploadInput" style="display:none;" webkitdirectory multiple />
                     <div class="files-dropdown-wrap calagopus-files-only" id="file-operations-wrap" style="display:none;">
-                      <button class="file-operations-button" type="button" title="File operations" onclick="ServerFiles.toggledropdown('file-operations-menu', event)">
+                      <button class="file-operations-button" type="button" title="File operations" data-i18n-title="files.ops.title" onclick="ServerFiles.toggledropdown('file-operations-menu', event)">
                         <span id="file-operations-progress"></span>
                       </button>
                       <div class="files-dropdown file-operations-menu" id="file-operations-menu"></div>
                     </div>
                     <div class="files-dropdown-wrap calagopus-files-only">
-                      <button class="btn btn-secondary btn-sm" onclick="ServerFiles.toggledropdown('filesConnectMenu', event)">
+                      <button class="btn btn-secondary btn-sm" onclick="ServerFiles.toggledropdown('filesConnectMenu', event)" data-i18n="form.connect">
                         Connect
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
                       </button>
                       <div class="files-dropdown" id="filesConnectMenu">
-                        <button onclick="ServerFiles.opensftp()"><span>SFTP</span>Via SFTP</button>
-                        <button onclick="ServerFiles.openvscode()"><span>&lt;/&gt;</span>Via VS Code</button>
+                        <button onclick="ServerFiles.opensftp()" data-i18n="files.via.sftp"><span>SFTP</span>Via SFTP</button>
+                        <button onclick="ServerFiles.openvscode()" data-i18n="files.via.vscode"><span>&lt;/&gt;</span>Via VS Code</button>
                       </div>
                     </div>
                     <div class="files-dropdown-wrap" id="files-new-wrap">
-                      <button class="btn btn-primary btn-sm" onclick="ServerFiles.toggledropdown('filesNewMenu', event)">
+                      <button class="btn btn-primary btn-sm" onclick="ServerFiles.toggledropdown('filesNewMenu', event)" data-i18n="files.new">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                         New
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
                       </button>
                       <div class="files-dropdown" id="filesNewMenu">
-                        <button class="pterodactyl-files-only" onclick="ServerFiles.createfile()"><span>+</span>New file</button>
-                        <button class="pterodactyl-files-only" onclick="ServerFiles.createfolder()"><span>+</span>New folder</button>
+                        <button class="pterodactyl-files-only" onclick="ServerFiles.createfile()" data-i18n="files.newfile"><span>+</span>New file</button>
+                        <button class="pterodactyl-files-only" onclick="ServerFiles.createfolder()" data-i18n="files.newfolder"><span>+</span>New folder</button>
                         <div class="files-dropdown-separator pterodactyl-files-only"></div>
-                        <button class="pterodactyl-files-only" onclick="Utils.el('fileUploadInput').click()"><span>+</span>Upload files</button>
-                        <button class="pterodactyl-files-only" onclick="Utils.el('folderUploadInput').click()"><span>+</span>Upload folder</button>
-                        <button class="calagopus-files-only" onclick="ServerFiles.createfile()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg></span>File from Editor</button>
-                        <button class="calagopus-files-only" onclick="ServerFiles.createfolder()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h6l2 2h10v12H3z"/><path d="M12 10v6M9 13h6"/></svg></span>Directory</button>
-                        <button class="calagopus-files-only" onclick="ServerFiles.createsymlink()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span>Symlink</button>
-                        <button class="calagopus-files-only" onclick="ServerFiles.pullfile()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>File from Pull</button>
-                        <button class="calagopus-files-only" onclick="Utils.el('fileUploadInput').click()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9M7 14l5-5 5 5"/><path d="M5 3h14"/></svg></span>File from Upload</button>
-                        <button class="calagopus-files-only" onclick="Utils.el('folderUploadInput').click()"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h6l2 2h10v12H3z"/><path d="M12 17v-6M9 14l3-3 3 3"/></svg></span>Directory from Upload</button>
+                        <button class="pterodactyl-files-only" onclick="Utils.el('fileUploadInput').click()" data-i18n="files.upload.files"><span>+</span>Upload files</button>
+                        <button class="pterodactyl-files-only" onclick="Utils.el('folderUploadInput').click()" data-i18n="files.upload.folder"><span>+</span>Upload folder</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.createfile()" data-i18n="files.from.editor"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg></span>File from Editor</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.createfolder()" data-i18n="files.directory"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h6l2 2h10v12H3z"/><path d="M12 10v6M9 13h6"/></svg></span>Directory</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.createsymlink()" data-i18n="files.symlink"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span>Symlink</button>
+                        <button class="calagopus-files-only" onclick="ServerFiles.pullfile()" data-i18n="files.from.pull"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>File from Pull</button>
+                        <button class="calagopus-files-only" onclick="Utils.el('fileUploadInput')" data-i18n="files.from.upload"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9M7 14l5-5 5 5"/><path d="M5 3h14"/></svg></span>File from Upload</button>
+                        <button class="calagopus-files-only" onclick="Utils.el('folderUploadInput')" data-i18n="files.dirfromupload"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h6l2 2h10v12H3z"/><path d="M12 17v-6M9 14l3-3 3 3"/></svg></span>Directory from Upload</button>
                       </div>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.doreload()" title="Refresh">
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.doreload()" title="Refresh" data-i18n-title="files.refresh">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     </button>
                   </div>
@@ -804,34 +805,34 @@
                 <div class="files-info-cards" id="filesInfoCards">
                   <div class="files-info-card">
                     <div class="files-info-card-value" id="filesInfoRoot">/</div>
-                    <div class="files-info-card-label">Root Directory</div>
+                    <div class="files-info-card-label" data-i18n="files.rootdir">Root Directory</div>
                   </div>
                   <div class="files-info-card">
                     <div class="files-info-card-value" id="filesInfoCount">0</div>
                     <div class="files-info-card-sub" id="filesInfoCountSub">0 files · 0 folders</div>
-                    <div class="files-info-card-label">Items</div>
+                    <div class="files-info-card-label" data-i18n="files.items">Items</div>
                   </div>
                   <div class="files-info-card">
                     <div class="files-info-card-value" id="filesInfoSize">0 B</div>
-                    <div class="files-info-card-label">Total Size</div>
+                    <div class="files-info-card-label" data-i18n="files.totalsize">Total Size</div>
                   </div>
                 </div>
                 <div class="mass-actions" id="massActions" style="display:none;">
-                  <span class="mass-actions-count" id="massActionsCount">0 selected</span>
+                  <span class="mass-actions-count" id="massActionsCount" data-i18n="dashboard.selected">0 selected</span>
                   <div class="mass-actions-buttons">
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.massmove()">
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.massmove()" data-i18n="files.move">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
                       Move
                     </button>
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.massarchive()">
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.massarchive()" data-i18n="files.archive">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                       Archive
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="ServerFiles.massdelete()">
+                    <button class="btn btn-danger btn-sm" onclick="ServerFiles.massdelete()" data-i18n="files.delete">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                       Delete
                     </button>
-                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.clearselection()">Cancel</button>
+                    <button class="btn btn-secondary btn-sm" onclick="ServerFiles.clearselection()" data-i18n="dashboard.cancel">Cancel</button>
                   </div>
                 </div>
                 <div class="files-action-bar" id="filesActionBar">
@@ -840,21 +841,21 @@
                       <input type="checkbox" id="filesSelectAll" onchange="ServerFiles.toggleselectall(this.checked)" />
                       <span class="file-checkbox-mark"></span>
                     </label>
-                    <span class="files-selection-count" id="filesSelectionCount">0 selected</span>
+                    <span class="files-selection-count" id="filesSelectionCount" data-i18n="dashboard.selected">0 selected</span>
                     <div class="files-filter-tabs">
-                      <button class="files-filter-btn active" data-tab="all" onclick="ServerFiles.setfilter('all')">All</button>
-                      <button class="files-filter-btn" data-tab="files" onclick="ServerFiles.setfilter('files')">Files</button>
-                      <button class="files-filter-btn" data-tab="folders" onclick="ServerFiles.setfilter('folders')">Folders</button>
+                      <button class="files-filter-btn active" data-tab="all" onclick="ServerFiles.setfilter('all')" data-i18n="files.filter.all">All</button>
+                      <button class="files-filter-btn" data-tab="files" onclick="ServerFiles.setfilter('files')" data-i18n="files.filter.files">Files</button>
+                      <button class="files-filter-btn" data-tab="folders" onclick="ServerFiles.setfilter('folders')" data-i18n="files.filter.folders">Folders</button>
                     </div>
                   </div>
                   <div class="files-action-bar-right">
                     <div class="files-sort-group">
-                      <span class="files-sort-label">Sort by:</span>
-                      <button class="files-sort-btn active" data-sort="name" onclick="ServerFiles.setsort('name')">Name</button>
-                      <button class="files-sort-btn" data-sort="size" onclick="ServerFiles.setsort('size')">Size</button>
-                      <button class="files-sort-btn" data-sort="date" onclick="ServerFiles.setsort('date')">Modified</button>
+                      <span class="files-sort-label" data-i18n="files.sortby">Sort by:</span>
+                      <button class="files-sort-btn active" data-sort="name" onclick="ServerFiles.setsort('name')" data-i18n="files.h.name">Name</button>
+                      <button class="files-sort-btn" data-sort="size" onclick="ServerFiles.setsort('size')" data-i18n="files.h.size">Size</button>
+                      <button class="files-sort-btn" data-sort="date" onclick="ServerFiles.setsort('date')" data-i18n="files.h.modified">Modified</button>
                     </div>
-                    <button class="files-sort-dir-btn" onclick="ServerFiles.togglesortdir()" title="Toggle sort direction">
+                    <button class="files-sort-dir-btn" onclick="ServerFiles.togglesortdir()" title="Toggle sort direction" data-i18n-title="files.sortdir">
                       <svg id="filesSortDirIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
                     </button>
                   </div>
@@ -862,9 +863,9 @@
                 <div class="files-table" id="filesTable">
                   <div class="files-table-head">
                     <div class="files-th files-th-check"></div>
-                    <div class="files-th files-th-name">Name</div>
-                    <div class="files-th files-th-size">Size</div>
-                    <div class="files-th files-th-date">Modified</div>
+                    <div class="files-th files-th-name" data-i18n="files.h.name">Name</div>
+                    <div class="files-th files-th-size" data-i18n="files.h.size">Size</div>
+                    <div class="files-th files-th-date" data-i18n="files.h.modified">Modified</div>
                     <div class="files-th files-th-actions"></div>
                   </div>
                   <div class="files-list" id="filesList"></div>
@@ -873,14 +874,14 @@
                 </div>
                 <div class="editor-container" id="editorContainer" style="display:none;">
                   <div class="editor-header" id="editorHeader">
-                    <button class="btn btn-secondary btn-sm" id="editorBackBtn" onclick="ServerFiles.backfromeditor()">
+                    <button class="btn btn-secondary btn-sm" id="editorBackBtn" data-i18n="form.back" onclick="ServerFiles.backfromeditor()">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                       Back
                     </button>
                     <span class="editor-filename" id="editorFilename"></span>
                     <div class="file-editor-tabs" id="fileEditorTabs"></div>
                     <div class="editor-actions">
-                      <button class="btn btn-primary btn-sm" id="fileEditorSave" onclick="ServerFiles.savefile()">Save</button>
+                      <button class="btn btn-primary btn-sm" id="fileEditorSave" data-i18n="files.save" onclick="ServerFiles.savefile()">Save</button>
                     </div>
                   </div>
                   <div class="editor-wrapper" id="editorWrapper"></div>
@@ -960,7 +961,7 @@
       </div>
     </main>
     <div class="taskbar" id="taskbar">
-      <button class="taskbar-start" id="taskbarStart" title="Dashboard">
+      <button class="taskbar-start" id="taskbarStart" title="Dashboard" data-i18n-title="page.dashboard">
         <img src="assets/logo.png" alt="" width="22" height="22" style="border-radius:6px;object-fit:cover" />
       </button>
       <div class="taskbar-sep"></div>
@@ -1072,6 +1073,7 @@
   <script src="js/codemirror/mode/swift/swift.min.js"></script>
   <script src="js/codemirror/mode/kotlin/kotlin.min.js"></script>
   <script src="js/codemirror/mode/elixir/elixir.min.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/secrets.js"></script>
   <script src="js/api.js"></script>

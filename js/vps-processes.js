@@ -18,17 +18,17 @@ const VPSProcesses = {
 
   renderloading() {
     const c = Utils.el('tabProcesses');
-    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+    if (c) c.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
   },
 
   render() {
     const c = Utils.el('tabProcesses');
     c.innerHTML = `
       <div class="vps-section-header">
-        <h2>Process Manager</h2>
+        <h2>${t('proc.heading')}</h2>
         <div class="vps-proc-controls">
-          <input type="text" class="vps-proc-search" id="procSearch" placeholder="Filter processes..." oninput="VPSProcesses.filter(this.value)" />
-          <button class="btn btn-sm btn-secondary" onclick="VPSProcesses.fetch()">Refresh</button>
+          <input type="text" class="vps-proc-search" id="procSearch" placeholder="${t('proc.filter')}" oninput="VPSProcesses.filter(this.value)" />
+          <button class="btn btn-sm btn-secondary" onclick="VPSProcesses.fetch()">${t('proc.refresh')}</button>
         </div>
       </div>
       <div class="vps-proc-summary" id="procSummary"></div>
@@ -36,14 +36,14 @@ const VPSProcesses = {
         <table class="vps-proc-table" id="procTable">
           <thead>
             <tr>
-              <th class="sortable" data-sort="pid" onclick="VPSProcesses.sort('pid')">PID <span class="sort-arrow"></span></th>
-              <th class="sortable" data-sort="user" onclick="VPSProcesses.sort('user')">User <span class="sort-arrow"></span></th>
-              <th class="sortable" data-sort="cpu" onclick="VPSProcesses.sort('cpu')">CPU% <span class="sort-arrow"></span></th>
-              <th class="sortable" data-sort="mem" onclick="VPSProcesses.sort('mem')">RAM% <span class="sort-arrow"></span></th>
-              <th class="sortable" data-sort="vsz" onclick="VPSProcesses.sort('vsz')">VSZ <span class="sort-arrow"></span></th>
-              <th class="sortable" data-sort="rss" onclick="VPSProcesses.sort('rss')">RSS <span class="sort-arrow"></span></th>
-              <th>Command</th>
-              <th>Action</th>
+              <th class="sortable" data-sort="pid" onclick="VPSProcesses.sort('pid')">${t('proc.h.pid')} <span class="sort-arrow"></span></th>
+              <th class="sortable" data-sort="user" onclick="VPSProcesses.sort('user')">${t('proc.h.user')} <span class="sort-arrow"></span></th>
+              <th class="sortable" data-sort="cpu" onclick="VPSProcesses.sort('cpu')">${t('proc.h.cpu')} <span class="sort-arrow"></span></th>
+              <th class="sortable" data-sort="mem" onclick="VPSProcesses.sort('mem')">${t('proc.h.mem')} <span class="sort-arrow"></span></th>
+              <th class="sortable" data-sort="vsz" onclick="VPSProcesses.sort('vsz')">${t('proc.h.vsz')} <span class="sort-arrow"></span></th>
+              <th class="sortable" data-sort="rss" onclick="VPSProcesses.sort('rss')">${t('proc.h.rss')} <span class="sort-arrow"></span></th>
+              <th>${t('proc.h.command')}</th>
+              <th>${t('proc.h.action')}</th>
             </tr>
           </thead>
           <tbody id="procBody"></tbody>
@@ -84,9 +84,9 @@ const VPSProcesses = {
     const running = this._processes.filter(p => p.command.includes('[') === false).length;
     const highcpu = this._processes.filter(p => p.cpu > 50).length;
     summary.innerHTML = `
-      <div class="vps-proc-stat"><span class="vps-proc-stat-val">${total}</span><span class="vps-proc-stat-lbl">Total</span></div>
-      <div class="vps-proc-stat"><span class="vps-proc-stat-val">${running}</span><span class="vps-proc-stat-lbl">Active</span></div>
-      <div class="vps-proc-stat ${highcpu > 0 ? 'vps-proc-warn' : ''}"><span class="vps-proc-stat-val">${highcpu}</span><span class="vps-proc-stat-lbl">High CPU</span></div>`;
+      <div class="vps-proc-stat"><span class="vps-proc-stat-val">${total}</span><span class="vps-proc-stat-lbl">${t('proc.stat.total')}</span></div>
+      <div class="vps-proc-stat"><span class="vps-proc-stat-val">${running}</span><span class="vps-proc-stat-lbl">${t('proc.stat.active')}</span></div>
+      <div class="vps-proc-stat ${highcpu > 0 ? 'vps-proc-warn' : ''}"><span class="vps-proc-stat-val">${highcpu}</span><span class="vps-proc-stat-lbl">${t('proc.stat.highcpu')}</span></div>`;
 
     const filter = (Utils.el('procSearch')?.value || '').toLowerCase();
     let filtered = this._processes;
@@ -105,7 +105,7 @@ const VPSProcesses = {
         <td>${Utils.formatbytes(p.vsz * 1024)}</td>
         <td>${Utils.formatbytes(p.rss * 1024)}</td>
         <td class="proc-cmd" title="${Utils.escape(p.command)}">${Utils.escape(p.command.substring(0, 80))}</td>
-        <td><button class="btn btn-xs btn-danger" onclick="VPSProcesses.kill(${p.pid})" title="Kill process">Kill</button></td>
+        <td><button class="btn btn-xs btn-danger" onclick="VPSProcesses.kill(${p.pid})" title="${t('proc.kill.tooltip')}">${t('proc.kill')}</button></td>
       </tr>`;
     }).join('');
 
@@ -137,7 +137,7 @@ const VPSProcesses = {
   },
 
   async kill(pid) {
-    Modal.confirm('Kill Process', `Send SIGKILL to PID ${pid}?`, async () => {
+    Modal.confirm(t('proc.kill.title'), t('proc.kill.confirm', { pid }), async () => {
       await this.exec(`kill -9 ${pid}`);
       setTimeout(() => this.fetch(), 500);
     });

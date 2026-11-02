@@ -9,6 +9,14 @@ const adminlocations = {
   deletingid: null,
   panel: null,
 
+  pluralform(n) {
+    if (I18n.getlang() !== 'ru') return n === 1 ? 'one' : 'many';
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'one';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'few';
+    return 'many';
+  },
+
   async load(page = 1) {
     const container = Utils.el('tabpanellocations');
     if (!container) return;
@@ -42,7 +50,7 @@ const adminlocations = {
   },
 
   renderloading(container) {
-    container.innerHTML = '<div class="paneladmin-loading"><div class="spinner"></div><span>Loading locations...</span></div>';
+    container.innerHTML = `<div class="paneladmin-loading"><div class="spinner"></div><span>${t('aloc.loading')}</span></div>`;
   },
 
   render() {
@@ -53,20 +61,20 @@ const adminlocations = {
       <div class="paneladmin-page adminlocations-page">
         <div class="paneladmin-heading adminlocations-heading">
           <div>
-            <h2>Locations</h2>
-            <span class="paneladmin-url">${total} location${total === 1 ? '' : 's'}</span>
+            <h2>${t('nav.locations')}</h2>
+            <span class="paneladmin-url">${t(`aloc.count.${this.pluralform(total)}`, { n: total })}</span>
           </div>
           <button type="button" class="btn btn-primary" onclick="adminlocations.opencreate()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-            Create location
+            ${t('aloc.create')}
           </button>
         </div>
         <div class="adminlocations-toolbar">
           <label class="adminlocations-search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
-            <input type="search" id="adminlocations-search" value="${this.safeattr(this.search)}" placeholder="Search short code" oninput="adminlocations.searchinput(this.value)" />
+            <input type="search" id="adminlocations-search" value="${this.safeattr(this.search)}" placeholder="${t('aloc.search')}" oninput="adminlocations.searchinput(this.value)" />
           </label>
-          <button type="button" class="paneladmin-refresh" onclick="adminlocations.load(adminlocations.page)" title="Refresh">
+          <button type="button" class="paneladmin-refresh" onclick="adminlocations.load(adminlocations.page)" title="${t('aloc.refresh')}">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
           </button>
         </div>
@@ -96,16 +104,16 @@ const adminlocations = {
           </span>
           <span>
             <strong>${this.safe(location.short)}</strong>
-            <small>${this.safe(location.long || 'No description')}</small>
+            <small>${this.safe(location.long || t('aloc.nodesc'))}</small>
           </span>
         </div>
-        <div class="adminlocations-detail"><small>Nodes</small><strong>${nodes}</strong></div>
-        <div class="adminlocations-detail"><small>Created</small><strong>${this.safe(this.formatdate(location.created_at))}</strong></div>
+        <div class="adminlocations-detail"><small>${t('nav.nodes')}</small><strong>${nodes}</strong></div>
+        <div class="adminlocations-detail"><small>${t('aloc.created')}</small><strong>${this.safe(this.formatdate(location.created_at))}</strong></div>
         <div class="adminlocations-actions">
-          <button type="button" onclick="event.stopPropagation(); adminlocations.openedit(${id})" title="Edit location">
+          <button type="button" onclick="event.stopPropagation(); adminlocations.openedit(${id})" title="${t('aloc.edit')}">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
           </button>
-          <button type="button" class="danger" onclick="event.stopPropagation(); adminlocations.opendelete(${id})" title="${disabled ? 'Move or delete this location nodes first' : 'Delete location'}" ${disabled ? 'disabled' : ''}>
+          <button type="button" class="danger" onclick="event.stopPropagation(); adminlocations.opendelete(${id})" title="${disabled ? t('aloc.deleteblocked') : t('aloc.delete')}" ${disabled ? 'disabled' : ''}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6m3 0V4h8v2"/></svg>
           </button>
         </div>
@@ -123,7 +131,7 @@ const adminlocations = {
     return `
       <div class="adminlocations-empty">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        <strong>No locations found</strong>
+        <strong>${t('aloc.empty')}</strong>
       </div>`;
   },
 
@@ -133,12 +141,12 @@ const adminlocations = {
     if (pages <= 1) return '';
     return `
       <div class="adminlocations-pagination">
-        <span>Page ${current} of ${pages}</span>
+        <span>${t('aloc.page', { current, pages })}</span>
         <div>
-          <button type="button" onclick="adminlocations.load(${current - 1})" ${current <= 1 ? 'disabled' : ''} title="Previous page">
+          <button type="button" onclick="adminlocations.load(${current - 1})" ${current <= 1 ? 'disabled' : ''} title="${t('aloc.prevpage')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <button type="button" onclick="adminlocations.load(${current + 1})" ${current >= pages ? 'disabled' : ''} title="Next page">
+          <button type="button" onclick="adminlocations.load(${current + 1})" ${current >= pages ? 'disabled' : ''} title="${t('aloc.nextpage')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
@@ -153,14 +161,14 @@ const adminlocations = {
 
   opencreate() {
     this.editingid = null;
-    Modal.open('Create Location', this.renderform(null));
+    Modal.open(t('aloc.create.title'), this.renderform(null));
   },
 
   openedit(id) {
     const location = this.locations.find(entry => Number(entry.id) === Number(id));
     if (!location) return;
     this.editingid = Number(id);
-    Modal.open('Edit Location', this.renderform(location));
+    Modal.open(t('aloc.edit.title'), this.renderform(location));
   },
 
   renderform(location) {
@@ -169,17 +177,17 @@ const adminlocations = {
       <div id="adminlocations-form-error"></div>
       <div class="adminlocations-form">
         <label class="adminlocations-field">
-          <span>Short code</span>
+          <span>${t('aloc.short')}</span>
           <input type="text" id="adminlocation-short" value="${this.safeattr(location?.short)}" maxlength="60" placeholder="us-east" autocomplete="off" />
         </label>
         <label class="adminlocations-field">
-          <span>Description</span>
-          <input type="text" id="adminlocation-long" value="${this.safeattr(location?.long)}" maxlength="191" placeholder="Optional" autocomplete="off" />
+          <span>${t('cmnt.h.description')}</span>
+          <input type="text" id="adminlocation-long" value="${this.safeattr(location?.long)}" maxlength="191" placeholder="${t('aloc.optional')}" autocomplete="off" />
         </label>
       </div>
       <div class="modal-actions adminlocations-form-actions">
-        <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button type="button" class="btn btn-primary" id="adminlocations-form-save" onclick="adminlocations.savelocation()">${editing ? 'Save changes' : 'Create location'}</button>
+        <button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button>
+        <button type="button" class="btn btn-primary" id="adminlocations-form-save" onclick="adminlocations.savelocation()">${editing ? t('aloc.save') : t('aloc.create')}</button>
       </div>`;
   },
 
@@ -191,12 +199,12 @@ const adminlocations = {
     const errorbox = Utils.el('adminlocations-form-error');
     const button = Utils.el('adminlocations-form-save');
     if (!payload.short) {
-      if (errorbox) errorbox.innerHTML = '<div class="paneladmin-notice error">Enter a short code.</div>';
+      if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${t('aloc.err.short')}</div>`;
       return;
     }
     if (button) {
       button.disabled = true;
-      button.textContent = this.editingid === null ? 'Creating...' : 'Saving...';
+      button.textContent = this.editingid === null ? t('aloc.creating') : t('aloc.saving');
     }
     try {
       const { server, apikey } = await adminpanel.credentials();
@@ -212,7 +220,7 @@ const adminlocations = {
       if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${this.safe(error.message)}</div>`;
       if (button) {
         button.disabled = false;
-        button.textContent = this.editingid === null ? 'Create location' : 'Save changes';
+        button.textContent = this.editingid === null ? t('aloc.create') : t('aloc.save');
       }
     }
   },
@@ -223,12 +231,12 @@ const adminlocations = {
     const nodes = location.relationships?.nodes?.data?.length || 0;
     if (nodes > 0) return;
     this.deletingid = Number(id);
-    Modal.open('Delete Location', `
+    Modal.open(t('aloc.delete.title'), `
       <div id="adminlocations-delete-error"></div>
-      <p class="adminlocations-delete-copy">Delete <strong>${this.safe(location.short)}</strong>? This cannot be undone.</p>
+      <p class="adminlocations-delete-copy">${t('aloc.delete.confirm', { name: this.safe(location.short) })}</p>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button type="button" class="btn btn-danger" id="adminlocations-delete" onclick="adminlocations.deletelocation()">Delete location</button>
+        <button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button>
+        <button type="button" class="btn btn-danger" id="adminlocations-delete" onclick="adminlocations.deletelocation()">${t('aloc.delete')}</button>
       </div>`);
   },
 
@@ -238,7 +246,7 @@ const adminlocations = {
     const button = Utils.el('adminlocations-delete');
     if (button) {
       button.disabled = true;
-      button.textContent = 'Deleting...';
+      button.textContent = t('aloc.deleting');
     }
     try {
       const { server, apikey } = await adminpanel.credentials();
@@ -252,7 +260,7 @@ const adminlocations = {
       if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${this.safe(error.message)}</div>`;
       if (button) {
         button.disabled = false;
-        button.textContent = 'Delete location';
+        button.textContent = t('aloc.delete');
       }
     }
   },
@@ -261,16 +269,16 @@ const adminlocations = {
     container.innerHTML = `
       <div class="paneladmin-error-state">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <strong>Unable to load locations</strong>
+        <strong>${t('aloc.loadfail')}</strong>
         <span>${this.safe(error.message)}</span>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="adminlocations.load(adminlocations.page)">Retry</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="adminlocations.load(adminlocations.page)">${t('csub.retry')}</button>
       </div>`;
   },
 
   formatdate(value) {
-    if (!value) return 'Unknown';
+    if (!value) return t('aapi.unknown');
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return 'Unknown';
+    if (Number.isNaN(date.getTime())) return t('aapi.unknown');
     return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   },
 

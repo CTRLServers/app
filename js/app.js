@@ -132,7 +132,7 @@ const Windows = {
     Utils.el('topbarActions').style.display = '';
     const topbar_server_actions = Utils.el('topbarServerActions');
     if (topbar_server_actions) topbar_server_actions.style.display = 'none';
-    Utils.el('pageTitle').textContent = 'Dashboard';
+    Utils.el('pageTitle').textContent = t('page.dashboard');
     Utils.el('pageTitle').style.display = '';
     Utils.el('vpsInfoCard').style.display = 'none';
     Utils.el('content').classList.remove('server-view');
@@ -549,7 +549,7 @@ const App = {
       const pageConfig = CTRLPlugin._pages.find(p => p.id === pageId);
       return pageConfig ? pageConfig.label || pageId : 'Plugin';
     }
-    return { dashboard: 'Dashboard', keychain: 'KeyChain', cloud: 'Cloud', minecraft: 'CTRLManage', selfhost: 'Self-Host', sftp: 'SFTP', multiterm: 'Multi Terminal', plugins: 'Plugins', appsettings: 'App Settings', 'accept-servers': 'Accept Servers' }[page] || 'Dashboard';
+    return { dashboard: t('page.dashboard'), keychain: t('page.keychain'), cloud: t('page.cloud'), minecraft: t('nav.ctrlmanage'), selfhost: t('page.selfhost'), sftp: t('page.sftp'), multiterm: t('page.multiterm'), plugins: t('page.plugins'), appsettings: t('page.appsettings'), 'accept-servers': t('page.accept-servers') }[page] || t('page.plugin');
   },
 
   showserverlist() {
@@ -602,7 +602,7 @@ const App = {
     Utils.el('topbarActions').style.display = '';
     const dashboard_server_actions = Utils.el('topbarServerActions');
     if (dashboard_server_actions) dashboard_server_actions.style.display = 'none';
-    Utils.el('pageTitle').textContent = 'Dashboard';
+    Utils.el('pageTitle').textContent = t('page.dashboard');
     Utils.el('pageTitle').style.display = '';
     Utils.el('vpsInfoCard').style.display = 'none';
     Utils.el('content').classList.remove('server-view');
@@ -925,6 +925,116 @@ const App = {
         Utils.el('updateBanner').style.display = 'flex';
       }
     } catch (e) {}
+  },
+
+  openautoupdate() {
+    Modal.open(t('update.auto.title'), `
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">${t('update.auto.description')}</p>
+      <button class="btn btn-secondary" id="autoUpdateDownload" style="margin-bottom:16px;">${t('update.auto.download')}</button>
+      <input type="text" id="autoUpdatePath" class="form-input" placeholder="${Utils.escape(t('update.auto.placeholder'))}" style="width:100%;margin-bottom:12px;" autocomplete="off" spellcheck="false">
+      <p id="autoUpdateStatus" style="font-size:13px;margin-bottom:20px;min-height:18px;"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="autoUpdateCancel">${t('modal.cancel')}</button>
+        <button class="btn btn-secondary" id="autoUpdateCheck">${t('update.auto.check')}</button>
+        <button class="btn btn-primary" id="autoUpdateDone" style="display:none;">${t('update.auto.done')}</button>
+      </div>
+    `);
+
+    const input = Utils.el('autoUpdatePath');
+    const status = Utils.el('autoUpdateStatus');
+    const checkBtn = Utils.el('autoUpdateCheck');
+    const doneBtn = Utils.el('autoUpdateDone');
+    let validPath = null;
+
+    const setStatus = (text, ok) => {
+      status.textContent = text || '';
+      status.style.color = ok === true ? '#22c55e' : ok === false ? '#ef4444' : 'var(--text-secondary)';
+    };
+    const errortext = (reason, vars) => {
+      const key = {
+        'empty': 'update.auto.error.empty',
+        'not-found': 'update.auto.error.notfound',
+        'not-file': 'update.auto.error.notfile',
+        'wrong-type': 'update.auto.error.wrongtype',
+        'spawn-failed': 'update.auto.error.spawnfailed'
+      }[reason] || 'update.auto.error.spawnfailed';
+      return t(key, vars);
+    };
+
+    Utils.el('autoUpdateDownload').addEventListener('click', () => {
+      window.electronAPI.openexternal('https://github.com/CTRLServers/installer');
+    });
+    Utils.el('autoUpdateCancel').addEventListener('click', () => Modal.close());
+
+    input.addEventListener('input', () => {
+      validPath = null;
+      doneBtn.style.display = 'none';
+      checkBtn.style.display = '';
+      setStatus('');
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') checkBtn.click();
+    });
+
+    checkBtn.addEventListener('click', async () => {
+      const value = input.value.trim();
+      validPath = null;
+      doneBtn.style.display = 'none';
+      if (!value) { setStatus(errortext('empty'), false); return; }
+      if (!window.electronAPI || !window.electronAPI.checkinstaller) {
+        setStatus(errortext('spawn-failed'), false);
+        return;
+      }
+      checkBtn.disabled = true;
+      setStatus(t('update.auto.checking'));
+      try {
+        const res = await window.electronAPI.checkinstaller(value);
+        if (res && res.ok) {
+          validPath = value;
+          setStatus(t('update.auto.valid'), true);
+          checkBtn.style.display = 'none';
+          doneBtn.style.display = '';
+        } else {
+          setStatus(errortext(res && res.reason), false);
+        }
+      } catch (e) {
+        setStatus(errortext('failed', { error: e.message }), false);
+      } finally {
+        checkBtn.disabled = false;
+      }
+    });
+
+    doneBtn.addEventListener('click', async () => {
+      if (!validPath) return;
+      doneBtn.disabled = true;
+      setStatus(t('update.auto.starting'));
+      try {
+        const res = await window.electronAPI.runinstallerupdate(validPath);
+        if (res && res.ok) {
+          Utils.el('updateBanner').style.display = 'none';
+          let seconds = 10;
+          Modal.open(t('update.auto.title'), `
+            <p id="autoUpdateClosing" style="font-size:14px;color:var(--text-secondary);">${t('update.auto.closing', { seconds })}</p>
+          `);
+          const timer = setInterval(() => {
+            seconds -= 1;
+            if (seconds > 0) {
+              const closing = Utils.el('autoUpdateClosing');
+              if (closing) closing.textContent = t('update.auto.closing', { seconds });
+            } else {
+              clearInterval(timer);
+              if (window.electronAPI && window.electronAPI.quitapp) window.electronAPI.quitapp();
+            }
+          }, 1000);
+        } else {
+          doneBtn.disabled = false;
+          setStatus(errortext(res && res.reason), false);
+        }
+      } catch (e) {
+        doneBtn.disabled = false;
+        setStatus(errortext('failed', { error: e.message }), false);
+      }
+    });
   }
 };
 

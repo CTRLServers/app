@@ -33,7 +33,12 @@ ipcRenderer.on('ssh-close', (event, id, reason) => {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   appversion: () => ipcRenderer.invoke('get-app-version'),
+  getlocale: (lang) => ipcRenderer.invoke('get-locale-data', lang),
+  getcustomlocales: () => ipcRenderer.invoke('get-custom-locales'),
   checkupdate: () => ipcRenderer.invoke('check-update'),
+  checkinstaller: (installerPath) => ipcRenderer.invoke('check-installer', installerPath),
+  runinstallerupdate: (installerPath) => ipcRenderer.invoke('run-installer-update', installerPath),
+  quitapp: () => ipcRenderer.invoke('quit-app'),
   connectwebsocket: (url, token, headers, origin) => {
     return ipcRenderer.invoke('ws-connect', url, token, headers, origin);
   },

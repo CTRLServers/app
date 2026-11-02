@@ -3,6 +3,14 @@ const adminmounts = {
   mount: null,
   targetid: null,
 
+  pluralform(n) {
+    if (I18n.getlang() !== 'ru') return n === 1 ? 'one' : 'many';
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'one';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'few';
+    return 'many';
+  },
+
   async load() {
     const container = Utils.el('tabpanelmounts');
     if (!container) return;
@@ -12,7 +20,7 @@ const adminmounts = {
       await this.openmount(id);
       return;
     }
-    container.innerHTML = '<div class="paneladmin-loading"><div class="spinner"></div><span>Loading mounts...</span></div>';
+    container.innerHTML = `<div class="paneladmin-loading"><div class="spinner"></div><span>${t('amnt.loading')}</span></div>`;
     try {
       const { server, apikey } = await adminpanel.credentials();
       const data = await Api.adminrequest(server.panelUrl, apikey, '/admin/ctrlservers/mounts');
@@ -21,14 +29,14 @@ const adminmounts = {
       this.mount = null;
       this.render();
     } catch (error) {
-      container.innerHTML = `<div class="paneladmin-error-state"><strong>Unable to load mounts</strong><span>${this.safe(error.message)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.load()">Retry</button></div>`;
+      container.innerHTML = `<div class="paneladmin-error-state"><strong>${t('amnt.loadfail')}</strong><span>${this.safe(error.message)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.load()">${t('csub.retry')}</button></div>`;
     }
   },
 
   render() {
     const container = Utils.el('tabpanelmounts');
     if (!container) return;
-    container.innerHTML = `<div class="paneladmin-page adminmounts-page"><div class="paneladmin-heading adminmounts-heading"><div><h2>Mounts</h2><span class="paneladmin-url">${this.mounts.length} mount${this.mounts.length === 1 ? '' : 's'}</span></div><button type="button" class="btn btn-primary" onclick="adminmounts.opencreate()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Create new</button></div><section class="adminmounts-card"><div class="adminmounts-table-wrap">${this.mounts.length ? `<table class="adminmounts-table"><thead><tr><th>ID</th><th>Name</th><th>Source</th><th>Target</th><th>Eggs</th><th>Nodes</th><th>Servers</th></tr></thead><tbody>${this.mounts.map(mount => this.renderrow(mount)).join('')}</tbody></table>` : '<div class="adminmounts-empty">No mounts have been created.</div>'}</div></section></div>`;
+    container.innerHTML = `<div class="paneladmin-page adminmounts-page"><div class="paneladmin-heading adminmounts-heading"><div><h2>${t('cmnt.mounts')}</h2><span class="paneladmin-url">${t(`amnt.count.${this.pluralform(this.mounts.length)}`, { n: this.mounts.length })}</span></div><button type="button" class="btn btn-primary" onclick="adminmounts.opencreate()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>${t('aapi.create')}</button></div><section class="adminmounts-card"><div class="adminmounts-table-wrap">${this.mounts.length ? `<table class="adminmounts-table"><thead><tr><th>${t('amnt.h.id')}</th><th>${t('cmnt.h.name')}</th><th>${t('amnt.h.source')}</th><th>${t('cmnt.h.target')}</th><th>${t('aapi.res.eggs')}</th><th>${t('nav.nodes')}</th><th>${t('nav.servers')}</th></tr></thead><tbody>${this.mounts.map(mount => this.renderrow(mount)).join('')}</tbody></table>` : `<div class="adminmounts-empty">${t('amnt.empty')}</div>`}</div></section></div>`;
   },
 
   renderrow(mount) {
@@ -49,7 +57,7 @@ const adminmounts = {
   async openmount(id) {
     const container = Utils.el('tabpanelmounts');
     if (!container) return;
-    container.innerHTML = '<div class="paneladmin-loading"><div class="spinner"></div><span>Loading mount...</span></div>';
+    container.innerHTML = `<div class="paneladmin-loading"><div class="spinner"></div><span>${t('amnt.loadingmount')}</span></div>`;
     try {
       const { server, apikey } = await adminpanel.credentials();
       const data = await Api.adminrequest(server.panelUrl, apikey, '/admin/ctrlservers/mounts/' + Number(id));
@@ -57,7 +65,7 @@ const adminmounts = {
       this.mount = data.mount;
       this.renderdetail();
     } catch (error) {
-      container.innerHTML = `<div class="paneladmin-error-state"><strong>Unable to load mount</strong><span>${this.safe(error.message)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.openmount(${Number(id)})">Retry</button></div>`;
+      container.innerHTML = `<div class="paneladmin-error-state"><strong>${t('amnt.loadmountfail')}</strong><span>${this.safe(error.message)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.openmount(${Number(id)})">${t('csub.retry')}</button></div>`;
     }
   },
 
@@ -66,11 +74,11 @@ const adminmounts = {
     if (!container || !this.mount) return;
     const eggs = this.mount.egg_list || [];
     const nodes = this.mount.node_list || [];
-    container.innerHTML = `<div class="paneladmin-page adminmounts-page"><div class="adminnodes-detail-heading"><button type="button" class="adminnodes-back" onclick="adminmounts.load()" title="Back to mounts"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button><div><h2>${this.safe(this.mount.name)}</h2><span>${this.safe(this.mount.uuid)}</span></div></div><div id="adminmounts-detail-message"></div><div class="adminmounts-detail-layout"><section class="adminmounts-detail-card"><h3>Mount Details</h3><div class="adminmounts-form"><label class="adminmounts-field"><span>Name</span><input type="text" id="adminmount-detail-name" value="${this.safeattr(this.mount.name)}" maxlength="64" /></label><label class="adminmounts-field"><span>Unique ID</span><input type="text" value="${this.safeattr(this.mount.uuid)}" readonly /></label><label class="adminmounts-field"><span>Description</span><textarea id="adminmount-detail-description" maxlength="191" rows="4">${this.safe(this.mount.description || '')}</textarea></label><label class="adminmounts-field"><span>Source</span><input type="text" id="adminmount-detail-source" value="${this.safeattr(this.mount.source)}" /></label><label class="adminmounts-field"><span>Target</span><input type="text" id="adminmount-detail-target" value="${this.safeattr(this.mount.target)}" /></label><div class="adminmounts-field"><span>Read Only</span>${this.toggle('adminmount-detail-read-only', this.mount.read_only, 'True', 'False')}</div><div class="adminmounts-field"><span>User Mountable</span>${this.toggle('adminmount-detail-user-mountable', this.mount.user_mountable, 'True', 'False')}</div></div><div class="adminmounts-detail-actions"><button type="button" class="btn btn-danger" onclick="adminmounts.confirmdelete()">Delete</button><button type="button" class="btn btn-primary" id="adminmount-detail-save" onclick="adminmounts.save()">Save changes</button></div></section><aside class="adminmounts-relations"><section class="adminmounts-relation-card"><div class="adminmounts-relation-heading"><h3>Eggs</h3><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.openaddegg()">Add eggs</button></div>${eggs.length ? `<div class="adminmounts-relation-list">${eggs.map(egg => `<div><span><small>ID ${Number(egg.id)}</small><strong>${this.safe(egg.name)}</strong><em>${this.safe(egg.nest || '')}</em></span><button type="button" onclick="adminmounts.removeegg(${Number(egg.id)})" title="Remove egg">&times;</button></div>`).join('')}</div>` : '<div class="adminmounts-relation-empty">No eggs assigned.</div>'}</section><section class="adminmounts-relation-card"><div class="adminmounts-relation-heading"><h3>Nodes</h3><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.openaddnode()">Add nodes</button></div>${nodes.length ? `<div class="adminmounts-node-head"><span>ID</span><span>Name</span><span>FQDN</span><span></span></div><div class="adminmounts-node-list">${nodes.map(node => `<div><small>${Number(node.id)}</small><strong>${this.safe(node.name)}</strong><code>${this.safe(node.fqdn)}</code><button type="button" onclick="adminmounts.removenode(${Number(node.id)})" title="Remove node">&times;</button></div>`).join('')}</div>` : '<div class="adminmounts-relation-empty">No nodes assigned.</div>'}</section></aside></div></div>`;
+    container.innerHTML = `<div class="paneladmin-page adminmounts-page"><div class="adminnodes-detail-heading"><button type="button" class="adminnodes-back" onclick="adminmounts.load()" title="${t('amnt.back')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button><div><h2>${this.safe(this.mount.name)}</h2><span>${this.safe(this.mount.uuid)}</span></div></div><div id="adminmounts-detail-message"></div><div class="adminmounts-detail-layout"><section class="adminmounts-detail-card"><h3>${t('amnt.details')}</h3><div class="adminmounts-form"><label class="adminmounts-field"><span>${t('cmnt.h.name')}</span><input type="text" id="adminmount-detail-name" value="${this.safeattr(this.mount.name)}" maxlength="64" /></label><label class="adminmounts-field"><span>${t('amnt.uuid')}</span><input type="text" value="${this.safeattr(this.mount.uuid)}" readonly /></label><label class="adminmounts-field"><span>${t('cmnt.h.description')}</span><textarea id="adminmount-detail-description" maxlength="191" rows="4">${this.safe(this.mount.description || '')}</textarea></label><label class="adminmounts-field"><span>${t('amnt.source')}</span><input type="text" id="adminmount-detail-source" value="${this.safeattr(this.mount.source)}" /></label><label class="adminmounts-field"><span>${t('cmnt.h.target')}</span><input type="text" id="adminmount-detail-target" value="${this.safeattr(this.mount.target)}" /></label><div class="adminmounts-field"><span>${t('cmnt.h.readonly')}</span>${this.toggle('adminmount-detail-read-only', this.mount.read_only, t('amnt.true'), t('amnt.false'))}</div><div class="adminmounts-field"><span>${t('amnt.usermountable')}</span>${this.toggle('adminmount-detail-user-mountable', this.mount.user_mountable, t('amnt.true'), t('amnt.false'))}</div></div><div class="adminmounts-detail-actions"><button type="button" class="btn btn-danger" onclick="adminmounts.confirmdelete()">${t('amnt.delete')}</button><button type="button" class="btn btn-primary" id="adminmount-detail-save" onclick="adminmounts.save()">${t('amnt.save')}</button></div></section><aside class="adminmounts-relations"><section class="adminmounts-relation-card"><div class="adminmounts-relation-heading"><h3>${t('aapi.res.eggs')}</h3><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.openaddegg()">${t('amnt.add.eggs')}</button></div>${eggs.length ? `<div class="adminmounts-relation-list">${eggs.map(egg => `<div><span><small>${t('amnt.idlabel', { n: Number(egg.id) })}</small><strong>${this.safe(egg.name)}</strong><em>${this.safe(egg.nest || '')}</em></span><button type="button" onclick="adminmounts.removeegg(${Number(egg.id)})" title="${t('amnt.removeegg')}">&times;</button></div>`).join('')}</div>` : `<div class="adminmounts-relation-empty">${t('amnt.noeggs')}</div>`}</section><section class="adminmounts-relation-card"><div class="adminmounts-relation-heading"><h3>${t('nav.nodes')}</h3><button type="button" class="btn btn-secondary btn-sm" onclick="adminmounts.openaddnode()">${t('amnt.add.nodes')}</button></div>${nodes.length ? `<div class="adminmounts-node-head"><span>${t('amnt.h.id')}</span><span>${t('cmnt.h.name')}</span><span>${t('amnt.h.fqdn')}</span><span></span></div><div class="adminmounts-node-list">${nodes.map(node => `<div><small>${Number(node.id)}</small><strong>${this.safe(node.name)}</strong><code>${this.safe(node.fqdn)}</code><button type="button" onclick="adminmounts.removenode(${Number(node.id)})" title="${t('amnt.removenode')}">&times;</button></div>`).join('')}</div>` : `<div class="adminmounts-relation-empty">${t('amnt.nonodes')}</div>`}</section></aside></div></div>`;
   },
 
   opencreate() {
-    Modal.open('Create Mount', `<div id="adminmounts-form-error"></div><div class="adminmounts-form"><label class="adminmounts-field"><span>Name</span><input type="text" id="adminmount-name" maxlength="64" autocomplete="off" /><small>Unique name used to separate this mount from another.</small></label><label class="adminmounts-field"><span>Description</span><textarea id="adminmount-description" maxlength="191" rows="4"></textarea><small>A longer description for this mount, must be less than 191 characters.</small></label><label class="adminmounts-field"><span>Source</span><input type="text" id="adminmount-source" autocomplete="off" /><small>File path on the host system to mount to a container.</small></label><label class="adminmounts-field"><span>Target</span><input type="text" id="adminmount-target" autocomplete="off" /><small>Where the mount will be accessible inside a container.</small></label><div class="adminmounts-field"><span>Read Only</span>${this.toggle('adminmount-read-only', false, 'True', 'False')}<small>Is the mount read only inside the container?</small></div><div class="adminmounts-field"><span>User Mountable</span>${this.toggle('adminmount-user-mountable', false, 'True', 'False')}<small>Should users be able to mount this themselves?</small></div></div><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button type="button" class="btn btn-primary" id="adminmount-create" onclick="adminmounts.create()">Create</button></div>`, 'modal-wide');
+    Modal.open(t('amnt.create.title'), `<div id="adminmounts-form-error"></div><div class="adminmounts-form"><label class="adminmounts-field"><span>${t('cmnt.h.name')}</span><input type="text" id="adminmount-name" maxlength="64" autocomplete="off" /><small>${t('amnt.hint.name')}</small></label><label class="adminmounts-field"><span>${t('cmnt.h.description')}</span><textarea id="adminmount-description" maxlength="191" rows="4"></textarea><small>${t('amnt.hint.description')}</small></label><label class="adminmounts-field"><span>${t('amnt.source')}</span><input type="text" id="adminmount-source" autocomplete="off" /><small>${t('amnt.hint.source')}</small></label><label class="adminmounts-field"><span>${t('cmnt.h.target')}</span><input type="text" id="adminmount-target" autocomplete="off" /><small>${t('amnt.hint.target')}</small></label><div class="adminmounts-field"><span>${t('cmnt.h.readonly')}</span>${this.toggle('adminmount-read-only', false, t('amnt.true'), t('amnt.false'))}<small>${t('amnt.hint.readonly')}</small></div><div class="adminmounts-field"><span>${t('amnt.usermountable')}</span>${this.toggle('adminmount-user-mountable', false, t('amnt.true'), t('amnt.false'))}<small>${t('amnt.hint.usermountable')}</small></div></div><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button><button type="button" class="btn btn-primary" id="adminmount-create" onclick="adminmounts.create()">${t('amnt.createbtn')}</button></div>`, 'modal-wide');
   },
 
   toggle(id, checked, enabled, disabled) {
@@ -95,12 +103,12 @@ const adminmounts = {
       user_mountable: Utils.el('adminmount-user-mountable')?.checked || false
     };
     if (!payload.name || !payload.source || !payload.target) {
-      if (errorbox) errorbox.innerHTML = '<div class="paneladmin-notice error">Name, source, and target are required.</div>';
+      if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${t('amnt.err.required')}</div>`;
       return;
     }
     if (button) {
       button.disabled = true;
-      button.textContent = 'Creating...';
+      button.textContent = t('amnt.creating');
     }
     try {
       const { server, apikey } = await adminpanel.credentials();
@@ -112,7 +120,7 @@ const adminmounts = {
       if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${this.safe(error.message)}</div>`;
       if (button) {
         button.disabled = false;
-        button.textContent = 'Create';
+        button.textContent = t('amnt.createbtn');
       }
     }
   },
@@ -129,30 +137,30 @@ const adminmounts = {
       user_mountable: Utils.el('adminmount-detail-user-mountable')?.checked || false
     };
     if (!payload.name || !payload.source || !payload.target) {
-      if (message) message.innerHTML = '<div class="paneladmin-notice error">Name, source, and target are required.</div>';
+      if (message) message.innerHTML = `<div class="paneladmin-notice error">${t('amnt.err.required')}</div>`;
       return;
     }
     if (button) {
       button.disabled = true;
-      button.textContent = 'Saving...';
+      button.textContent = t('amnt.saving');
     }
     try {
       const data = await this.request('', 'PATCH', payload);
       this.mount = data.mount;
       this.renderdetail();
       const refreshed = Utils.el('adminmounts-detail-message');
-      if (refreshed) refreshed.innerHTML = '<div class="paneladmin-notice success">Mount saved.</div>';
+      if (refreshed) refreshed.innerHTML = `<div class="paneladmin-notice success">${t('amnt.saved')}</div>`;
     } catch (error) {
       if (message) message.innerHTML = `<div class="paneladmin-notice error">${this.safe(error.message)}</div>`;
       if (button) {
         button.disabled = false;
-        button.textContent = 'Save changes';
+        button.textContent = t('amnt.save');
       }
     }
   },
 
   confirmdelete() {
-    Modal.open('Delete Mount', `<p class="adminservers-action-warning">Delete <strong>${this.safe(this.mount.name)}</strong>? This action cannot be reversed.</p><div id="adminmount-delete-error"></div><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button type="button" class="btn btn-danger" id="adminmount-delete-confirm" onclick="adminmounts.remove()">Delete mount</button></div>`);
+    Modal.open(t('amnt.delete.title'), `<p class="adminservers-action-warning">${t('amnt.delete.confirm', { name: this.safe(this.mount.name) })}</p><div id="adminmount-delete-error"></div><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button><button type="button" class="btn btn-danger" id="adminmount-delete-confirm" onclick="adminmounts.remove()">${t('amnt.delete.btn')}</button></div>`);
   },
 
   async remove() {
@@ -174,7 +182,7 @@ const adminmounts = {
       const eggs = (nest.eggs || []).filter(egg => !egg.assigned);
       return eggs.length ? `<optgroup label="${this.safeattr(nest.name)}">${eggs.map(egg => `<option value="${Number(egg.id)}">${this.safe(egg.name)}</option>`).join('')}</optgroup>` : '';
     }).join('');
-    Modal.open('Add Egg', `<div id="adminmount-relation-error"></div><label class="adminmounts-field"><span>Egg</span><select id="adminmount-egg"><option value="">Select an egg</option>${groups}</select></label><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button type="button" class="btn btn-primary" id="adminmount-relation-add" onclick="adminmounts.addegg()" ${groups ? '' : 'disabled'}>Add egg</button></div>`);
+    Modal.open(t('amnt.addegg.title'), `<div id="adminmount-relation-error"></div><label class="adminmounts-field"><span>${t('amnt.egg')}</span><select id="adminmount-egg"><option value="">${t('amnt.selectegg')}</option>${groups}</select></label><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button><button type="button" class="btn btn-primary" id="adminmount-relation-add" onclick="adminmounts.addegg()" ${groups ? '' : 'disabled'}>${t('amnt.addegg.btn')}</button></div>`);
   },
 
   openaddnode() {
@@ -182,7 +190,7 @@ const adminmounts = {
       const nodes = (location.nodes || []).filter(node => !node.assigned);
       return nodes.length ? `<optgroup label="${this.safeattr(location.name)}">${nodes.map(node => `<option value="${Number(node.id)}">${this.safe(node.name)} (${this.safe(node.fqdn)})</option>`).join('')}</optgroup>` : '';
     }).join('');
-    Modal.open('Add Node', `<div id="adminmount-relation-error"></div><label class="adminmounts-field"><span>Node</span><select id="adminmount-node"><option value="">Select a node</option>${groups}</select></label><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button type="button" class="btn btn-primary" id="adminmount-relation-add" onclick="adminmounts.addnode()" ${groups ? '' : 'disabled'}>Add node</button></div>`);
+    Modal.open(t('amnt.addnode.title'), `<div id="adminmount-relation-error"></div><label class="adminmounts-field"><span>${t('amnt.node')}</span><select id="adminmount-node"><option value="">${t('amnt.selectnode')}</option>${groups}</select></label><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button><button type="button" class="btn btn-primary" id="adminmount-relation-add" onclick="adminmounts.addnode()" ${groups ? '' : 'disabled'}>${t('amnt.addnode.btn')}</button></div>`);
   },
 
   async addegg() {
@@ -197,7 +205,7 @@ const adminmounts = {
     const errorbox = Utils.el('adminmount-relation-error');
     const button = Utils.el('adminmount-relation-add');
     if (!Object.values(payload)[0]) {
-      if (errorbox) errorbox.innerHTML = '<div class="paneladmin-notice error">Select an item to add.</div>';
+      if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${t('amnt.err.select')}</div>`;
       return;
     }
     if (button) button.disabled = true;
@@ -234,7 +242,7 @@ const adminmounts = {
   async request(endpoint, method = 'GET', payload = null) {
     const { server, apikey } = await adminpanel.credentials();
     const data = await Api.adminrequest(server.panelUrl, apikey, '/admin/ctrlservers/mounts/' + Number(this.mount.id) + endpoint, method, payload);
-    if (App.currentServer !== server) throw new Error('The selected panel changed.');
+    if (App.currentServer !== server) throw new Error(t('amnt.panelchanged'));
     return data;
   },
 

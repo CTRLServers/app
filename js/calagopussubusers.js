@@ -15,27 +15,27 @@ const calagopussubusers = {
   previewloading: false,
 
   groups: [
-    { key: 'control', label: 'Console', permissions: ['read-console','console','start','stop','restart'] },
-    { key: 'subusers', label: 'Subusers', permissions: ['create','read','update','delete'] },
-    { key: 'files', label: 'Files', permissions: ['create','read','read-content','update','delete','archive','sftp','query-raw'] },
-    { key: 'backups', label: 'Backups', permissions: ['create','read','download','restore','update','delete'] },
-    { key: 'backup-groups', label: 'Backup Groups', permissions: ['create','read','update','delete'] },
-    { key: 'schedules', label: 'Schedules', permissions: ['create','read','update','delete'] },
-    { key: 'allocations', label: 'Allocations', permissions: ['read','create','update','delete'] },
-    { key: 'firewall', label: 'Firewall', permissions: ['read','update'] },
-    { key: 'connections', label: 'Connections', permissions: ['create','read','update','delete'] },
-    { key: 'startup', label: 'Startup', permissions: ['read','update','command','docker-image'] },
-    { key: 'databases', label: 'Databases', permissions: ['create','read','read-password','update','recreate','delete','query','query-raw','edit-rows','edit-structure','delete-structure'] },
-    { key: 'database-instances', label: 'Database Instances', permissions: ['create','read','update','apply-update','delete','power','logs','databases','recreate','users','import','export','query','query-raw','edit-rows','edit-structure','delete-structure'] },
-    { key: 'mounts', label: 'Mounts', permissions: ['attach','read','detach'] },
-    { key: 'devices', label: 'Devices', permissions: ['attach','read','detach'] },
-    { key: 'settings', label: 'Settings', permissions: ['rename','timezone','auto-kill','auto-start','install','cancel-install'] },
-    { key: 'activity', label: 'Activity', permissions: ['read','read-ip'] }
+    { key: 'control', label: 'csub.group.control', permissions: ['read-console','console','start','stop','restart'] },
+    { key: 'subusers', label: 'csub.group.subusers', permissions: ['create','read','update','delete'] },
+    { key: 'files', label: 'csub.group.files', permissions: ['create','read','read-content','update','delete','archive','sftp','query-raw'] },
+    { key: 'backups', label: 'csub.group.backups', permissions: ['create','read','download','restore','update','delete'] },
+    { key: 'backup-groups', label: 'csub.group.backupgroups', permissions: ['create','read','update','delete'] },
+    { key: 'schedules', label: 'csub.group.schedules', permissions: ['create','read','update','delete'] },
+    { key: 'allocations', label: 'csub.group.allocations', permissions: ['read','create','update','delete'] },
+    { key: 'firewall', label: 'csub.group.firewall', permissions: ['read','update'] },
+    { key: 'connections', label: 'csub.group.connections', permissions: ['create','read','update','delete'] },
+    { key: 'startup', label: 'csub.group.startup', permissions: ['read','update','command','docker-image'] },
+    { key: 'databases', label: 'csub.group.databases', permissions: ['create','read','read-password','update','recreate','delete','query','query-raw','edit-rows','edit-structure','delete-structure'] },
+    { key: 'database-instances', label: 'csub.group.dbinstances', permissions: ['create','read','update','apply-update','delete','power','logs','databases','recreate','users','import','export','query','query-raw','edit-rows','edit-structure','delete-structure'] },
+    { key: 'mounts', label: 'csub.group.mounts', permissions: ['attach','read','detach'] },
+    { key: 'devices', label: 'csub.group.devices', permissions: ['attach','read','detach'] },
+    { key: 'settings', label: 'csub.group.settings', permissions: ['rename','timezone','auto-kill','auto-start','install','cancel-install'] },
+    { key: 'activity', label: 'csub.group.activity', permissions: ['read','read-ip'] }
   ],
 
   async request(endpoint, method = 'GET', body = null) {
     const server = App.currentServer;
-    if (!server || server.type !== 'Calagopus') throw new Error('No Calagopus server selected');
+    if (!server || server.type !== 'Calagopus') throw new Error(t('csub.noserver'));
     const apikey = await Servers.resolveapikey(server);
     const options = { method, headers: { Authorization: `Bearer ${apikey}`, Accept: 'application/json' } };
     if (body !== null) {
@@ -71,7 +71,7 @@ const calagopussubusers = {
       this.subusers = this.pagination.data || [];
       this.render();
     } catch (error) {
-      if (container) container.innerHTML = `<div class="calagopus-subuser-empty"><strong>Unable to load subusers</strong><span>${this.safe(error.message)}</span><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.load()">Try Again</button></div>`;
+      if (container) container.innerHTML = `<div class="calagopus-subuser-empty"><strong>${t('csub.loadfail')}</strong><span>${this.safe(error.message)}</span><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.load()">${t('csub.retry')}</button></div>`;
     }
   },
 
@@ -81,15 +81,15 @@ const calagopussubusers = {
     const rows = this.subusers.map((subuser, index) => {
       const user = subuser.user || {};
       const ignored = subuser.ignored_files || [];
-      return `<tr><td><div class="calagopus-subuser-identity"><span>${this.safe((user.username || user.email || '?').charAt(0).toUpperCase())}</span><div><strong>${this.safe(user.username || 'Unknown')}</strong><small>${this.safe(user.email || '')}</small></div></div></td><td>${(subuser.permissions || []).length}</td><td>${ignored.length}</td><td>${user.two_factor_enabled ? 'Enabled' : 'Disabled'}</td><td>${this.safe(this.date(subuser.created))}</td><td><div class="calagopus-subuser-actions"><button title="Edit subuser" onclick="calagopussubusers.openedit(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="danger" title="Remove subuser" onclick="calagopussubusers.remove(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></td></tr>`;
+      return `<tr><td><div class="calagopus-subuser-identity"><span>${this.safe((user.username || user.email || '?').charAt(0).toUpperCase())}</span><div><strong>${this.safe(user.username || t('csub.unknown'))}</strong><small>${this.safe(user.email || '')}</small></div></div></td><td>${(subuser.permissions || []).length}</td><td>${ignored.length}</td><td>${user.two_factor_enabled ? t('csub.enabled') : t('csub.disabled')}</td><td>${this.safe(this.date(subuser.created))}</td><td><div class="calagopus-subuser-actions"><button title="${t('csub.edit.title')}" onclick="calagopussubusers.openedit(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="danger" title="${t('csub.remove.title')}" onclick="calagopussubusers.remove(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></td></tr>`;
     }).join('');
-    container.innerHTML = `<div class="calagopus-subuser-page"><div class="calagopus-subuser-header"><div><h2>Subusers</h2><span>${Number(this.pagination.total || this.subusers.length)} users with server access</span></div><div class="calagopus-subuser-header-actions"><label class="calagopus-subuser-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input value="${this.safe(this.search)}" placeholder="Search subusers" oninput="calagopussubusers.setsearch(this.value)"></label><button class="btn btn-primary btn-sm" onclick="calagopussubusers.opencreate()">New Subuser</button></div></div><div class="calagopus-subuser-table-wrap"><table class="calagopus-subuser-table"><thead><tr><th>User</th><th>Permissions</th><th>Ignored Files</th><th>Two-Factor</th><th>Created</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="6"><div class="calagopus-subuser-empty">No subusers found.</div></td></tr>'}</tbody></table></div>${this.paginationhtml()}</div>`;
+    container.innerHTML = `<div class="calagopus-subuser-page"><div class="calagopus-subuser-header"><div><h2>${t('csub.heading')}</h2><span>${t('csub.count', { n: Number(this.pagination.total || this.subusers.length) })}</span></div><div class="calagopus-subuser-header-actions"><label class="calagopus-subuser-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input value="${this.safe(this.search)}" placeholder="${t('csub.search')}" oninput="calagopussubusers.setsearch(this.value)"></label><button class="btn btn-primary btn-sm" onclick="calagopussubusers.opencreate()">${t('csub.new')}</button></div></div><div class="calagopus-subuser-table-wrap"><table class="calagopus-subuser-table"><thead><tr><th>${t('csub.h.user')}</th><th>${t('csub.h.permissions')}</th><th>${t('csub.h.ignored')}</th><th>${t('csub.h.twofactor')}</th><th>${t('csub.h.created')}</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="6"><div class="calagopus-subuser-empty">${t('csub.empty')}</div></td></tr>`}</tbody></table></div>${this.paginationhtml()}</div>`;
   },
 
   date(value) {
-    if (!value) return 'N/A';
+    if (!value) return t('csub.na');
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? t('csub.na') : date.toLocaleString();
   },
 
   paginationhtml() {
@@ -97,7 +97,7 @@ const calagopussubusers = {
     const perpage = Number(this.pagination.per_page || 25);
     const pages = Math.max(1, Math.ceil(Number(this.pagination.total || 0) / perpage));
     if (pages <= 1) return '';
-    return `<div class="calagopus-subuser-pagination"><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.setpage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.setpage(${page + 1})" ${page >= pages ? 'disabled' : ''}>Next</button></div>`;
+    return `<div class="calagopus-subuser-pagination"><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.setpage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>${t('csub.previous')}</button><span>${t('csub.page', { page, pages })}</span><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.setpage(${page + 1})" ${page >= pages ? 'disabled' : ''}>${t('csub.next')}</button></div>`;
   },
 
   setpage(page) {
@@ -139,10 +139,10 @@ const calagopussubusers = {
   },
 
   rendermodal() {
-    const title = this.editinguuid ? 'Edit Subuser' : 'Create Subuser';
+    const title = this.editinguuid ? t('csub.edit.title') : t('csub.create.title');
     const groups = this.groups.map(group => this.grouphtml(group)).join('');
-    const selected = [...this.selected].sort().map(permission => `<div class="calagopus-selected-permission"><code>${this.safe(permission)}</code><button title="Remove permission" onclick="calagopussubusers.togglepermission('${permission}')">&times;</button></div>`).join('');
-    Modal.open(title, `<div class="calagopus-subuser-form"><label class="form-group"><span class="form-label">Email *</span><input class="form-input" type="email" value="${this.safe(this.email)}" ${this.editinguuid ? 'disabled' : ''} placeholder="user@example.com" oninput="calagopussubusers.email=this.value"></label><div class="calagopus-permission-layout"><div class="calagopus-permission-groups">${groups}</div><aside class="calagopus-selected-panel"><div class="calagopus-selected-title"><strong>Selected Permissions</strong><span>${this.selected.size}</span></div><div class="calagopus-selected-list">${selected || '<p>No permissions selected.</p>'}</div><div class="calagopus-permission-tools"><button class="btn btn-primary btn-sm" onclick="calagopussubusers.selectall()">Select All</button><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.deselectall()">Deselect All</button><button class="btn btn-secondary btn-sm" title="Copy permissions" onclick="calagopussubusers.copypermissions()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy</button><button class="btn btn-secondary btn-sm" title="Paste permissions" onclick="calagopussubusers.pastepermissions()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5h6M9 3h6v4H9z"></path><path d="M9 5H6a2 2 0 0 0-2 2v13h16V7a2 2 0 0 0-2-2h-3"></path></svg>Paste</button></div></aside></div><section class="calagopus-ignored-section"><label class="form-label">Ignored Files</label><p>Files and directories matching these patterns will be hidden from this subuser. Uses gitignore-style glob patterns (e.g. <code>*.env</code>, <code>secrets/</code>). Prefix a pattern with <code>!</code> to un-hide a path that a broader pattern would otherwise exclude.</p><textarea class="form-input" rows="5" spellcheck="false" placeholder="*.env\nsecrets/" oninput="calagopussubusers.setignored(this.value)">${this.safe(this.ignoredtext)}</textarea><label class="calagopus-preview-toggle"><input type="checkbox" ${this.preview ? 'checked' : ''} onchange="calagopussubusers.togglepreview(this.checked)"><span>Preview ignored files</span></label><div id="calagopus-subuser-preview">${this.preview ? this.previewhtml() : ''}</div></section><div id="calagopus-subuser-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button class="btn btn-primary" onclick="calagopussubusers.save()">${this.editinguuid ? 'Save Changes' : 'Create Subuser'}</button></div></div>`);
+    const selected = [...this.selected].sort().map(permission => `<div class="calagopus-selected-permission"><code>${this.safe(permission)}</code><button title="${t('csub.removeperm')}" onclick="calagopussubusers.togglepermission('${permission}')">&times;</button></div>`).join('');
+    Modal.open(title, `<div class="calagopus-subuser-form"><label class="form-group"><span class="form-label">${t('csub.email')}</span><input class="form-input" type="email" value="${this.safe(this.email)}" ${this.editinguuid ? 'disabled' : ''} placeholder="user@example.com" oninput="calagopussubusers.email=this.value"></label><div class="calagopus-permission-layout"><div class="calagopus-permission-groups">${groups}</div><aside class="calagopus-selected-panel"><div class="calagopus-selected-title"><strong>${t('csub.selected')}</strong><span>${this.selected.size}</span></div><div class="calagopus-selected-list">${selected || `<p>${t('csub.nonesel')}</p>`}</div><div class="calagopus-permission-tools"><button class="btn btn-primary btn-sm" onclick="calagopussubusers.selectall()">${t('csub.selectall')}</button><button class="btn btn-secondary btn-sm" onclick="calagopussubusers.deselectall()">${t('csub.deselectall')}</button><button class="btn btn-secondary btn-sm" title="${t('csub.copytooltip')}" onclick="calagopussubusers.copypermissions()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>${t('common.copy')}</button><button class="btn btn-secondary btn-sm" title="${t('csub.pastetooltip')}" onclick="calagopussubusers.pastepermissions()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5h6M9 3h6v4H9z"></path><path d="M9 5H6a2 2 0 0 0-2 2v13h16V7a2 2 0 0 0-2-2h-3"></path></svg>${t('csub.paste')}</button></div></aside></div><section class="calagopus-ignored-section"><label class="form-label">${t('csub.ignored.title')}</label><p>${t('csub.ignored.desc')}</p><textarea class="form-input" rows="5" spellcheck="false" placeholder="*.env\nsecrets/" oninput="calagopussubusers.setignored(this.value)">${this.safe(this.ignoredtext)}</textarea><label class="calagopus-preview-toggle"><input type="checkbox" ${this.preview ? 'checked' : ''} onchange="calagopussubusers.togglepreview(this.checked)"><span>${t('csub.preview.toggle')}</span></label><div id="calagopus-subuser-preview">${this.preview ? this.previewhtml() : ''}</div></section><div id="calagopus-subuser-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('csub.cancel')}</button><button class="btn btn-primary" onclick="calagopussubusers.save()">${this.editinguuid ? t('csub.save') : t('csub.create.title')}</button></div></div>`);
     if (this.preview) this.loadpreview();
   },
 
@@ -150,12 +150,15 @@ const calagopussubusers = {
     const keys = group.permissions.map(permission => `${group.key}.${permission}`);
     const count = keys.filter(permission => this.selected.has(permission)).length;
     const expanded = this.expanded.has(group.key);
+    const label = t(group.label);
     const permissions = expanded ? `<div class="calagopus-permission-items">${group.permissions.map(permission => { const key = `${group.key}.${permission}`; return `<label><input type="checkbox" ${this.selected.has(key) ? 'checked' : ''} onchange="calagopussubusers.togglepermission('${key}')"><span><strong>${this.safe(this.permissionlabel(permission))}</strong><small>${this.safe(key)}</small></span></label>`; }).join('')}</div>` : '';
-    return `<section class="calagopus-permission-group"><div class="calagopus-permission-group-head"><button title="${expanded ? 'Collapse' : 'Expand'} ${this.safe(group.label)}" onclick="calagopussubusers.togglegroup('${group.key}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="${expanded ? 'm18 15-6-6-6 6' : 'm9 18 6-6-6-6'}"></path></svg><strong>${this.safe(group.label)}</strong><span>${count} / ${keys.length}</span></button><input type="checkbox" aria-label="Toggle all ${this.safe(group.label)} permissions" ${count === keys.length ? 'checked' : ''} ${count > 0 && count < keys.length ? 'data-partial="true"' : ''} onchange="calagopussubusers.togglecategory('${group.key}')"></div>${permissions}</section>`;
+    return `<section class="calagopus-permission-group"><div class="calagopus-permission-group-head"><button title="${expanded ? t('csub.collapse') : t('csub.expand')} ${this.safe(label)}" onclick="calagopussubusers.togglegroup('${group.key}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="${expanded ? 'm18 15-6-6-6 6' : 'm9 18 6-6-6-6'}"></path></svg><strong>${this.safe(label)}</strong><span>${count} / ${keys.length}</span></button><input type="checkbox" aria-label="${t('csub.toggleall', { label: this.safe(label) })}" ${count === keys.length ? 'checked' : ''} ${count > 0 && count < keys.length ? 'data-partial="true"' : ''} onchange="calagopussubusers.togglecategory('${group.key}')"></div>${permissions}</section>`;
   },
 
   permissionlabel(permission) {
-    return permission.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+    const key = `csub.perm.${permission}`;
+    const translated = t(key);
+    return translated === key ? permission.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ') : translated;
   },
 
   togglegroup(group) {
@@ -195,9 +198,9 @@ const calagopussubusers = {
   async copypermissions() {
     try {
       await navigator.clipboard.writeText([...this.selected].sort().join('\n'));
-      this.toast('Permissions copied');
+      this.toast(t('csub.copied'));
     } catch (error) {
-      this.toast('Unable to copy permissions', 'error');
+      this.toast(t('csub.copyfail'), 'error');
     }
   },
 
@@ -207,9 +210,9 @@ const calagopussubusers = {
       const text = await navigator.clipboard.readText();
       this.selected = new Set(text.split(/\r?\n/).map(value => value.trim()).filter(value => allowed.has(value)));
       this.rendermodal();
-      this.toast('Permissions pasted');
+      this.toast(t('csub.pasted'));
     } catch (error) {
-      this.toast('Unable to paste permissions', 'error');
+      this.toast(t('csub.pastefail'), 'error');
     }
   },
 
@@ -264,10 +267,10 @@ const calagopussubusers = {
       const path = `${this.previewpath.replace(/\/$/, '')}/${attributes.name}`;
       const ignored = this.isignored(path, directory);
       const icon = directory ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h6l2 2h10v12H3z"></path></svg>' : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6v20h12V6z"></path><path d="M14 2v4h4"></path></svg>';
-      const content = `${icon}<span>${this.safe(attributes.name)}</span>${ignored ? '<strong>Ignored</strong>' : ''}`;
+      const content = `${icon}<span>${this.safe(attributes.name)}</span>${ignored ? `<strong>${t('csub.ignored.badge')}</strong>` : ''}`;
       return directory ? `<button class="${ignored ? 'ignored' : ''}" onclick="calagopussubusers.loadpreview('${this.safe(path)}')">${content}</button>` : `<div class="${ignored ? 'ignored' : ''}">${content}</div>`;
     }).join('');
-    return `<div class="calagopus-ignore-browser"><div class="calagopus-ignore-path">${breadcrumb}</div><div class="calagopus-ignore-entries">${entries || '<p>This directory is empty.</p>'}</div></div>`;
+    return `<div class="calagopus-ignore-browser"><div class="calagopus-ignore-path">${breadcrumb}</div><div class="calagopus-ignore-entries">${entries || `<p>${t('csub.emptydir')}</p>`}</div></div>`;
   },
 
   globregex(pattern) {
@@ -294,7 +297,7 @@ const calagopussubusers = {
   async save() {
     const errorbox = Utils.el('calagopus-subuser-error');
     if (!this.editinguuid && !/^\S+@\S+\.\S+$/.test(this.email)) {
-      errorbox.innerHTML = '<div class="error-msg">Enter a valid email address.</div>';
+      errorbox.innerHTML = `<div class="error-msg">${t('csub.email.invalid')}</div>`;
       return;
     }
     const data = { permissions: [...this.selected], ignored_files: this.patterns() };
@@ -305,7 +308,7 @@ const calagopussubusers = {
     try {
       await this.request(this.editinguuid ? `/subusers/${this.editinguuid}` : '/subusers', this.editinguuid ? 'PATCH' : 'POST', data);
       Modal.close();
-      this.toast(this.editinguuid ? 'Subuser updated' : 'Subuser created');
+      this.toast(this.editinguuid ? t('csub.updated') : t('csub.created'));
       this.load();
     } catch (error) {
       errorbox.innerHTML = `<div class="error-msg">${this.safe(error.message)}</div>`;
@@ -315,11 +318,11 @@ const calagopussubusers = {
   remove(index) {
     const subuser = this.subusers[index];
     const user = subuser.user || {};
-    Modal.confirm('Remove Subuser', `Remove ${this.safe(user.email || user.username)} from this server?`, async () => {
+    Modal.confirm(t('csub.remove.title'), t('csub.remove.confirm', { email: this.safe(user.email || user.username) }), async () => {
       try {
         await this.request(`/subusers/${user.uuid}`, 'DELETE');
         Modal.close();
-        this.toast('Subuser removed');
+        this.toast(t('csub.removed'));
         this.load();
       } catch (error) {
         this.toast(error.message, 'error');

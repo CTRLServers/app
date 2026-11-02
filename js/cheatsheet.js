@@ -16,7 +16,7 @@ const CheatSheet = {
 
   open() {
     this._open = true;
-    Modal.open('Keyboard Shortcuts', this._render(), 'modal-wide');
+    Modal.open(t('cheatsheet.title'), this._render(), 'modal-wide');
   },
 
   close() {
@@ -27,45 +27,45 @@ const CheatSheet = {
   _render() {
     const sections = [
       {
-        title: 'General',
+        title: t('cheatsheet.section.general'),
         shortcuts: [
-          ['Ctrl + N', 'Add new server'],
-          ['Ctrl + W', 'Close active server window'],
-          ['Ctrl + Shift + T', 'Reopen last closed server'],
-          ['Ctrl + /', 'Show keyboard shortcuts'],
-          ['Ctrl + `', 'Toggle CLI terminal'],
-          ['Escape', 'Close editor / modal'],
+          ['Ctrl + N', t('cheatsheet.general.add_server')],
+          ['Ctrl + W', t('cheatsheet.general.close_window')],
+          ['Ctrl + Shift + T', t('cheatsheet.general.reopen')],
+          ['Ctrl + /', t('cheatsheet.general.show_shortcuts')],
+          ['Ctrl + `', t('cheatsheet.general.toggle_cli')],
+          ['Escape', t('cheatsheet.general.close_modal')],
         ]
       },
       {
-        title: 'Dashboard',
+        title: t('cheatsheet.section.dashboard'),
         shortcuts: [
-          ['Ctrl + 1-9', 'Open server by position'],
-          ['Ctrl + R', 'Refresh all servers from API'],
+          ['Ctrl + 1-9', t('cheatsheet.dashboard.open_server')],
+          ['Ctrl + R', t('cheatsheet.dashboard.refresh')],
         ]
       },
       {
-        title: 'Console (Pterodactyl)',
+        title: t('cheatsheet.section.console'),
         shortcuts: [
-          ['Ctrl + F', 'Search console output'],
-          ['Ctrl + +', 'Increase font size'],
-          ['Ctrl + -', 'Decrease font size'],
-          ['Up / Down', 'Navigate command history'],
-          ['Enter', 'Send command'],
+          ['Ctrl + F', t('cheatsheet.console.search')],
+          ['Ctrl + +', t('cheatsheet.console.font_up')],
+          ['Ctrl + -', t('cheatsheet.console.font_down')],
+          ['Up / Down', t('cheatsheet.console.history')],
+          ['Enter', t('cheatsheet.console.send')],
         ]
       },
       {
-        title: 'File Manager',
+        title: t('cheatsheet.section.files'),
         shortcuts: [
-          ['Escape', 'Close file editor'],
+          ['Escape', t('cheatsheet.files.close_editor')],
         ]
       },
       {
-        title: 'CLI Terminal',
+        title: t('cheatsheet.section.cli'),
         shortcuts: [
-          ['Tab', 'Autocomplete command'],
-          ['Up / Down', 'Navigate command history'],
-          ['Escape', 'Close terminal'],
+          ['Tab', t('cheatsheet.cli.autocomplete')],
+          ['Up / Down', t('cheatsheet.cli.history')],
+          ['Escape', t('cheatsheet.cli.close')],
         ]
       },
     ];

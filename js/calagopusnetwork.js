@@ -19,7 +19,7 @@ const calagopusnetwork = {
 
   async request(endpoint, method = 'GET', body = null) {
     const server = App.currentServer;
-    if (!server || server.type !== 'Calagopus') throw new Error('No Calagopus server selected');
+    if (!server || server.type !== 'Calagopus') throw new Error(t('csub.noserver'));
     const apikey = await Servers.resolveapikey(server);
     const options = { method, headers: { Authorization: `Bearer ${apikey}`, Accept: 'application/json' } };
     if (body !== null) {
@@ -28,7 +28,7 @@ const calagopusnetwork = {
     }
     const response = await fetch(`${server.panelUrl.replace(/\/+$/, '')}/api/client/servers/${server.uuid}${endpoint}`, options);
     if (!response.ok) {
-      let message = `HTTP ${response.status}`;
+      let message = t('cset.httperror', { status: response.status });
       try {
         const error = await response.json();
         message = error.errors?.[0] || error.message || message;
@@ -75,11 +75,12 @@ const calagopusnetwork = {
 
   rendererror(message) {
     const container = Utils.el('tabNetwork');
-    if (container) container.innerHTML = `${this.subnav()}<div class="calagopus-network-empty"><strong>Unable to load ${this.view}</strong><span>${this.safe(message)}</span><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.load()">Try Again</button></div>`;
+    const view = this.view === 'firewall' ? t('cnet.firewall') : t('cnet.allocations');
+    if (container) container.innerHTML = `${this.subnav()}<div class="calagopus-network-empty"><strong>${t('cnet.loadfail', { view })}</strong><span>${this.safe(message)}</span><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.load()">${t('csub.retry')}</button></div>`;
   },
 
   subnav() {
-    return `<div class="calagopus-network-subnav"><button class="${this.view === 'allocations' ? 'active' : ''}" onclick="calagopusnetwork.setview('allocations')">Allocations</button><button class="${this.view === 'firewall' ? 'active' : ''}" onclick="calagopusnetwork.setview('firewall')">Firewall</button></div>`;
+    return `<div class="calagopus-network-subnav"><button class="${this.view === 'allocations' ? 'active' : ''}" onclick="calagopusnetwork.setview('allocations')">${t('cnet.allocations')}</button><button class="${this.view === 'firewall' ? 'active' : ''}" onclick="calagopusnetwork.setview('firewall')">${t('cnet.firewall')}</button></div>`;
   },
 
   setview(view) {
@@ -89,9 +90,9 @@ const calagopusnetwork = {
   },
 
   date(value) {
-    if (!value) return 'N/A';
+    if (!value) return t('csub.na');
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? t('csub.na') : date.toLocaleString();
   },
 
   render() {
@@ -100,10 +101,10 @@ const calagopusnetwork = {
     const total = Number(this.pagination.total || this.allocations.length);
     const atlimit = total >= this.limit;
     const allselected = this.allocations.length > 0 && this.allocations.every(allocation => this.selected.has(allocation.uuid));
-    const rows = this.allocations.map((allocation, index) => `<tr class="${this.selected.has(allocation.uuid) ? 'selected' : ''}"><td><input type="checkbox" aria-label="Select allocation" ${this.selected.has(allocation.uuid) ? 'checked' : ''} onchange="calagopusnetwork.toggleselected('${allocation.uuid}',this.checked)"></td><td>${allocation.is_primary ? '<svg class="calagopus-primary-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="m12 2.7 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.3l6.2-.9z"></path></svg>' : ''}</td><td><code>${this.safe(allocation.ip_alias || allocation.ip)}</code></td><td><code>${Number(allocation.port || 0)}</code></td><td><textarea rows="1" maxlength="1024" placeholder="Notes" oninput="calagopusnetwork.notes(${index},this.value)">${this.safe(allocation.notes || '')}</textarea></td><td>${this.safe(this.date(allocation.created))}</td><td><div class="calagopus-network-actions">${allocation.is_primary ? `<button title="Unset primary" ${this.requireprimary ? 'disabled' : ''} onclick="calagopusnetwork.setprimary(${index},false)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2.7 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.3l6.2-.9z"></path></svg></button>` : `<button title="Set primary" onclick="calagopusnetwork.setprimary(${index},true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2.7 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.3l6.2-.9z"></path></svg></button>`}<button class="danger" title="Delete allocation" ${allocation.is_primary ? 'disabled' : ''} onclick="calagopusnetwork.remove(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></td></tr>`).join('');
-    const addbutton = this.selfassign && !atlimit ? '<button class="btn btn-primary btn-sm" onclick="calagopusnetwork.openadd()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>Add</button>' : '';
-    const bulk = this.selected.size ? `<div class="calagopus-network-bulk"><span>${this.selected.size} selected</span><button class="btn btn-danger btn-sm" onclick="calagopusnetwork.removebulk()">Delete Selected</button><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.clearselected()">Clear</button></div>` : '';
-    container.innerHTML = `${this.subnav()}<div class="calagopus-network-page"><div class="calagopus-network-header"><div><h2>Allocations</h2><span>${total} of ${this.limit} allocations</span></div><div class="calagopus-network-header-actions"><label class="calagopus-network-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input value="${this.safe(this.search)}" placeholder="Search allocations" oninput="calagopusnetwork.setsearch(this.value)"></label>${addbutton}</div></div>${bulk}<div class="calagopus-network-table-wrap"><table class="calagopus-network-table"><thead><tr><th><input type="checkbox" aria-label="Select all allocations" ${allselected ? 'checked' : ''} onchange="calagopusnetwork.selectall(this.checked)"></th><th></th><th>Hostname</th><th>Port</th><th>Notes</th><th>Created</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="7"><div class="calagopus-network-empty">No allocations found.</div></td></tr>'}</tbody></table></div>${this.paginationhtml()}</div>`;
+    const rows = this.allocations.map((allocation, index) => `<tr class="${this.selected.has(allocation.uuid) ? 'selected' : ''}"><td><input type="checkbox" aria-label="${t('cnet.selectallocation')}" ${this.selected.has(allocation.uuid) ? 'checked' : ''} onchange="calagopusnetwork.toggleselected('${allocation.uuid}',this.checked)"></td><td>${allocation.is_primary ? '<svg class="calagopus-primary-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="m12 2.7 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.3l6.2-.9z"></path></svg>' : ''}</td><td><code>${this.safe(allocation.ip_alias || allocation.ip)}</code></td><td><code>${Number(allocation.port || 0)}</code></td><td><textarea rows="1" maxlength="1024" placeholder="${t('cnet.notes')}" oninput="calagopusnetwork.notes(${index},this.value)">${this.safe(allocation.notes || '')}</textarea></td><td>${this.safe(this.date(allocation.created))}</td><td><div class="calagopus-network-actions">${allocation.is_primary ? `<button title="${t('cnet.unsetprimary')}" ${this.requireprimary ? 'disabled' : ''} onclick="calagopusnetwork.setprimary(${index},false)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2.7 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.3l6.2-.9z"></path></svg></button>` : `<button title="${t('cnet.setprimary')}" onclick="calagopusnetwork.setprimary(${index},true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2.7 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.3l6.2-.9z"></path></svg></button>`}<button class="danger" title="${t('cnet.deleteallocation')}" ${allocation.is_primary ? 'disabled' : ''} onclick="calagopusnetwork.remove(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></td></tr>`).join('');
+    const addbutton = this.selfassign && !atlimit ? `<button class="btn btn-primary btn-sm" onclick="calagopusnetwork.openadd()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>${t('cnet.add')}</button>` : '';
+    const bulk = this.selected.size ? `<div class="calagopus-network-bulk"><span>${t('cnet.selected', { n: this.selected.size })}</span><button class="btn btn-danger btn-sm" onclick="calagopusnetwork.removebulk()">${t('cnet.deleteselected')}</button><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.clearselected()">${t('cnet.clear')}</button></div>` : '';
+    container.innerHTML = `${this.subnav()}<div class="calagopus-network-page"><div class="calagopus-network-header"><div><h2>${t('cnet.allocations')}</h2><span>${t('cnet.count', { total, limit: this.limit })}</span></div><div class="calagopus-network-header-actions"><label class="calagopus-network-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input value="${this.safe(this.search)}" placeholder="${t('cnet.search')}" oninput="calagopusnetwork.setsearch(this.value)"></label>${addbutton}</div></div>${bulk}<div class="calagopus-network-table-wrap"><table class="calagopus-network-table"><thead><tr><th><input type="checkbox" aria-label="${t('cnet.selectall')}" ${allselected ? 'checked' : ''} onchange="calagopusnetwork.selectall(this.checked)"></th><th></th><th>${t('cnet.h.hostname')}</th><th>${t('cnet.h.port')}</th><th>${t('cnet.h.notes')}</th><th>${t('cnet.h.created')}</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="7"><div class="calagopus-network-empty">${t('cnet.empty')}</div></td></tr>`}</tbody></table></div>${this.paginationhtml()}</div>`;
   },
 
   async loadfirewall() {
@@ -125,12 +126,12 @@ const calagopusnetwork = {
   },
 
   summary(rule) {
-    const protocols = rule.protocols.length ? rule.protocols.map(protocol => protocol.toUpperCase()).join(' & ') : 'TCP & UDP';
+    const protocols = rule.protocols.length ? rule.protocols.map(protocol => protocol.toUpperCase()).join(' & ') : t('cnet.sum.tcpudp');
     const sources = [...rule.sources];
-    if (rule.source_file) sources.push(`entries in ${rule.source_file}`);
-    const source = sources.length ? sources.join(', ') : 'any source';
-    const ports = rule.ports ? this.portranges(rule.ports).join(', ') : 'all allocations';
-    return `${protocols} from ${source} to ${ports}`;
+    if (rule.source_file) sources.push(t('cnet.sum.fileentries', { file: rule.source_file }));
+    const source = sources.length ? sources.join(', ') : t('cnet.sum.anysource');
+    const ports = rule.ports ? this.portranges(rule.ports).join(', ') : t('cnet.sum.allallocations');
+    return t('cnet.sum.rule', { protocols, source, ports });
   },
 
   portranges(ports) {
@@ -153,9 +154,9 @@ const calagopusnetwork = {
   renderfirewall() {
     const container = Utils.el('tabNetwork');
     if (!container) return;
-    const cards = this.firewall.map((rule, index) => `<div class="calagopus-firewall-card"><span class="calagopus-firewall-number">${index + 1}</span><div><strong>${rule.action === 'allow' ? 'Allow' : 'Deny'}</strong><span>${this.safe(this.summary(rule))}</span></div><div class="calagopus-network-actions"><button title="Edit rule" onclick="calagopusnetwork.openrule(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button><button title="Duplicate rule" onclick="calagopusnetwork.duplicaterule(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button><button class="danger" title="Delete rule" onclick="calagopusnetwork.removerule(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></div>`).join('');
-    const warning = this.firewallsupported === false ? '<div class="calagopus-firewall-warning">Firewall rules are not enforced by this server node.</div>' : '';
-    container.innerHTML = `${this.subnav()}<div class="calagopus-network-page"><div class="calagopus-network-header"><div><h2>Firewall</h2><span>${this.firewall.length} rule${this.firewall.length === 1 ? '' : 's'}</span></div><button class="btn btn-primary btn-sm" onclick="calagopusnetwork.openrule()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>Create firewall rule</button></div>${warning}<div class="calagopus-firewall-note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg><span>Rules cover traffic reaching this server from elsewhere, both through its published ports and directly on its container address. Connections opened by the node itself are not filtered.</span></div><div class="calagopus-firewall-list">${cards || '<div class="calagopus-network-empty"><strong>No firewall rules</strong><span>Traffic is allowed until a matching rule is added.</span></div>'}</div></div>`;
+    const cards = this.firewall.map((rule, index) => `<div class="calagopus-firewall-card"><span class="calagopus-firewall-number">${index + 1}</span><div><strong>${rule.action === 'allow' ? t('cnet.allow') : t('cnet.deny')}</strong><span>${this.safe(this.summary(rule))}</span></div><div class="calagopus-network-actions"><button title="${t('cnet.editrule')}" onclick="calagopusnetwork.openrule(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button><button title="${t('cnet.duplicaterule')}" onclick="calagopusnetwork.duplicaterule(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button><button class="danger" title="${t('cnet.deleterule')}" onclick="calagopusnetwork.removerule(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></div>`).join('');
+    const warning = this.firewallsupported === false ? `<div class="calagopus-firewall-warning">${t('cnet.warning')}</div>` : '';
+    container.innerHTML = `${this.subnav()}<div class="calagopus-network-page"><div class="calagopus-network-header"><div><h2>${t('cnet.firewall')}</h2><span>${this.firewall.length === 1 ? t('cnet.rulecount.one', { n: this.firewall.length }) : t('cnet.rulecount', { n: this.firewall.length })}</span></div><button class="btn btn-primary btn-sm" onclick="calagopusnetwork.openrule()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>${t('cnet.createrule')}</button></div>${warning}<div class="calagopus-firewall-note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg><span>${t('cnet.note')}</span></div><div class="calagopus-firewall-list">${cards || `<div class="calagopus-network-empty"><strong>${t('cnet.emptyfirewall')}</strong><span>${t('cnet.emptyfirewall.desc')}</span></div>`}</div></div>`;
   },
 
   openrule(index = -1) {
@@ -167,9 +168,9 @@ const calagopusnetwork = {
 
   renderrule(sourceinput = '', portinput = '') {
     const rule = this.ruleform;
-    const sources = rule.sources.map((source, index) => `<span class="calagopus-firewall-tag"><code>${this.safe(source)}</code><button title="Remove source" onclick="calagopusnetwork.removesource(${index})">&times;</button></span>`).join('');
-    const ports = rule.ports ? this.portranges(rule.ports).map((port, index) => `<span class="calagopus-firewall-tag"><code>${port}</code><button title="Remove port" onclick="calagopusnetwork.removeport(${index})">&times;</button></span>`).join('') : '';
-    Modal.open(this.ruleedit >= 0 ? 'Edit Firewall Rule' : 'Create Firewall Rule', `<div class="calagopus-firewall-form"><label class="form-group"><span>Action</span><select onchange="calagopusnetwork.setrule('action',this.value)"><option value="allow" ${rule.action === 'allow' ? 'selected' : ''}>Allow</option><option value="deny" ${rule.action === 'deny' ? 'selected' : ''}>Deny</option></select></label><div class="form-group"><span>Protocols</span><small>Leave empty to match both TCP and UDP.</small><div class="calagopus-firewall-protocols"><button class="${rule.protocols.includes('tcp') ? 'active' : ''}" onclick="calagopusnetwork.toggleprotocol('tcp')">TCP</button><button class="${rule.protocols.includes('udp') ? 'active' : ''}" onclick="calagopusnetwork.toggleprotocol('udp')">UDP</button></div></div><div class="form-group"><span>Sources</span><small>IP addresses or networks such as 10.0.0.0/8. A network must have its host bits zeroed. Leave empty to match any source.</small><div class="calagopus-firewall-addrow"><input id="calagopus-firewall-source" value="${this.safe(sourceinput)}" placeholder="IP address or network" onkeydown="if(event.key==='Enter'){event.preventDefault();calagopusnetwork.addsource()}"><button class="btn btn-secondary" onclick="calagopusnetwork.addsource()">Add</button></div><div class="calagopus-firewall-tags">${sources}</div><small>${rule.sources.length} of 50 used</small></div><div class="form-group calagopus-firewall-file"><span>Source File</span><small>Path of a file in the server directory with one IP address or network per line, lines starting with # are ignored. Its entries are added to the sources above, and the node picks up edits to the file on its own.</small><input value="${this.safe(rule.source_file || '')}" placeholder="firewall/allowed.txt" oninput="calagopusnetwork.sourcefile(this.value)"><div id="calagopus-firewall-files" class="calagopus-firewall-files"></div></div><div class="form-group"><span>Ports</span><small>Allocation ports this rule applies to, as single ports or ranges like 25565-25570. Leave empty to match every allocation of the server.</small><div class="calagopus-firewall-addrow"><input id="calagopus-firewall-port" value="${this.safe(portinput)}" placeholder="Port or range" onkeydown="if(event.key==='Enter'){event.preventDefault();calagopusnetwork.addport()}"><button class="btn btn-secondary" onclick="calagopusnetwork.addport()">Add</button></div><div class="calagopus-firewall-tags">${ports}</div></div><div class="form-group"><span>Preview</span><div class="calagopus-firewall-preview"><strong>${rule.action === 'allow' ? 'Allow' : 'Deny'}</strong><span>${this.safe(this.summary(rule))}</span></div></div><div id="calagopus-firewall-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button class="btn btn-primary" onclick="calagopusnetwork.saverule()">${this.ruleedit >= 0 ? 'Save Rule' : 'Create Rule'}</button></div></div>`);
+    const sources = rule.sources.map((source, index) => `<span class="calagopus-firewall-tag"><code>${this.safe(source)}</code><button title="${t('cnet.removesource')}" onclick="calagopusnetwork.removesource(${index})">&times;</button></span>`).join('');
+    const ports = rule.ports ? this.portranges(rule.ports).map((port, index) => `<span class="calagopus-firewall-tag"><code>${port}</code><button title="${t('cnet.removeport')}" onclick="calagopusnetwork.removeport(${index})">&times;</button></span>`).join('') : '';
+    Modal.open(this.ruleedit >= 0 ? t('cnet.editrules.title') : t('cnet.createrule'), `<div class="calagopus-firewall-form"><label class="form-group"><span>${t('cnet.field.action')}</span><select onchange="calagopusnetwork.setrule('action',this.value)"><option value="allow" ${rule.action === 'allow' ? 'selected' : ''}>${t('cnet.allow')}</option><option value="deny" ${rule.action === 'deny' ? 'selected' : ''}>${t('cnet.deny')}</option></select></label><div class="form-group"><span>${t('cnet.field.protocols')}</span><small>${t('cnet.protocols.desc')}</small><div class="calagopus-firewall-protocols"><button class="${rule.protocols.includes('tcp') ? 'active' : ''}" onclick="calagopusnetwork.toggleprotocol('tcp')">TCP</button><button class="${rule.protocols.includes('udp') ? 'active' : ''}" onclick="calagopusnetwork.toggleprotocol('udp')">UDP</button></div></div><div class="form-group"><span>${t('cnet.field.sources')}</span><small>${t('cnet.sources.desc')}</small><div class="calagopus-firewall-addrow"><input id="calagopus-firewall-source" value="${this.safe(sourceinput)}" placeholder="${t('cnet.sources.placeholder')}" onkeydown="if(event.key==='Enter'){event.preventDefault();calagopusnetwork.addsource()}"><button class="btn btn-secondary" onclick="calagopusnetwork.addsource()">${t('cnet.add')}</button></div><div class="calagopus-firewall-tags">${sources}</div><small>${t('cnet.sources.used', { n: rule.sources.length })}</small></div><div class="form-group calagopus-firewall-file"><span>${t('cnet.field.sourcefile')}</span><small>${t('cnet.sourcefile.desc')}</small><input value="${this.safe(rule.source_file || '')}" placeholder="firewall/allowed.txt" oninput="calagopusnetwork.sourcefile(this.value)"><div id="calagopus-firewall-files" class="calagopus-firewall-files"></div></div><div class="form-group"><span>${t('cnet.field.ports')}</span><small>${t('cnet.ports.desc')}</small><div class="calagopus-firewall-addrow"><input id="calagopus-firewall-port" value="${this.safe(portinput)}" placeholder="${t('cnet.ports.placeholder')}" onkeydown="if(event.key==='Enter'){event.preventDefault();calagopusnetwork.addport()}"><button class="btn btn-secondary" onclick="calagopusnetwork.addport()">${t('cnet.add')}</button></div><div class="calagopus-firewall-tags">${ports}</div></div><div class="form-group"><span>${t('cnet.field.preview')}</span><div class="calagopus-firewall-preview"><strong>${rule.action === 'allow' ? t('cnet.allow') : t('cnet.deny')}</strong><span>${this.safe(this.summary(rule))}</span></div></div><div id="calagopus-firewall-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('csub.cancel')}</button><button class="btn btn-primary" onclick="calagopusnetwork.saverule()">${this.ruleedit >= 0 ? t('cnet.saverule') : t('cnet.createrule')}</button></div></div>`);
   },
 
   setrule(field, value) {
@@ -205,8 +206,8 @@ const calagopusnetwork = {
   addsource() {
     const input = Utils.el('calagopus-firewall-source');
     const value = input.value.trim();
-    if (!value || !this.validnetwork(value)) return this.adderror('Enter a valid IP address or network with host bits zeroed.');
-    if (this.ruleform.sources.length >= 50) return this.adderror('A rule can contain at most 50 sources.');
+    if (!value || !this.validnetwork(value)) return this.adderror(t('cnet.error.network'));
+    if (this.ruleform.sources.length >= 50) return this.adderror(t('cnet.error.maxsources'));
     if (!this.ruleform.sources.includes(value)) this.ruleform.sources.push(value);
     this.renderrule();
   },
@@ -228,9 +229,9 @@ const calagopusnetwork = {
   addport() {
     const input = Utils.el('calagopus-firewall-port');
     const parsed = this.parseports(input.value);
-    if (!parsed) return this.adderror('Enter a valid port or port range.');
+    if (!parsed) return this.adderror(t('cnet.error.port'));
     const combined = [...new Set([...(this.ruleform.ports || []), ...parsed])];
-    if (combined.length > 1024) return this.adderror('A rule can contain at most 1024 ports.');
+    if (combined.length > 1024) return this.adderror(t('cnet.error.maxports'));
     this.ruleform.ports = combined;
     this.renderrule();
   },
@@ -296,7 +297,7 @@ const calagopusnetwork = {
     try {
       await this.request('/firewall', 'PUT', { rules });
       Modal.close();
-      this.toast(this.ruleedit >= 0 ? 'Firewall rule updated' : 'Firewall rule created');
+      this.toast(this.ruleedit >= 0 ? t('cnet.rule.updated') : t('cnet.rule.created'));
       this.loadfirewall();
     } catch (error) {
       this.adderror(error.message);
@@ -308,7 +309,7 @@ const calagopusnetwork = {
     rules.splice(index + 1, 0, JSON.parse(JSON.stringify(rules[index])));
     try {
       await this.request('/firewall', 'PUT', { rules });
-      this.toast('Firewall rule duplicated');
+      this.toast(t('cnet.rule.duplicated'));
       this.loadfirewall();
     } catch (error) {
       this.toast(error.message, 'error');
@@ -316,11 +317,11 @@ const calagopusnetwork = {
   },
 
   removerule(index) {
-    Modal.confirm('Delete Firewall Rule', `Delete rule ${index + 1}?`, async () => {
+    Modal.confirm(t('cnet.deleterule.title'), t('cnet.deleterule.confirm', { n: index + 1 }), async () => {
       try {
         await this.request('/firewall', 'PUT', { rules: this.firewall.filter((rule, ruleindex) => ruleindex !== index) });
         Modal.close();
-        this.toast('Firewall rule deleted');
+        this.toast(t('cnet.rule.deleted'));
         this.loadfirewall();
       } catch (error) {
         this.toast(error.message, 'error');
@@ -333,7 +334,7 @@ const calagopusnetwork = {
     const perpage = Number(this.pagination.per_page || 25);
     const pages = Math.max(1, Math.ceil(Number(this.pagination.total || 0) / perpage));
     if (pages <= 1) return '';
-    return `<div class="calagopus-network-pagination"><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.setpage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.setpage(${page + 1})" ${page >= pages ? 'disabled' : ''}>Next</button></div>`;
+    return `<div class="calagopus-network-pagination"><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.setpage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>${t('csub.previous')}</button><span>${t('csub.page', { page, pages })}</span><button class="btn btn-secondary btn-sm" onclick="calagopusnetwork.setpage(${page + 1})" ${page >= pages ? 'disabled' : ''}>${t('csub.next')}</button></div>`;
   },
 
   setpage(page) {
@@ -374,7 +375,7 @@ const calagopusnetwork = {
     allocation.notestimer = setTimeout(async () => {
       try {
         await this.request(`/allocations/${allocation.uuid}`, 'PATCH', { notes: value || null });
-        this.toast('Notes updated');
+        this.toast(t('cnet.notes.updated'));
       } catch (error) {
         this.toast(error.message, 'error');
       }
@@ -385,7 +386,7 @@ const calagopusnetwork = {
     const allocation = this.allocations[index];
     try {
       await this.request(`/allocations/${allocation.uuid}`, 'PATCH', { primary });
-      this.toast(primary ? 'Primary allocation set' : 'Primary allocation unset');
+      this.toast(primary ? t('cnet.primary.set') : t('cnet.primary.unset'));
       this.load();
     } catch (error) {
       this.toast(error.message, 'error');
@@ -394,11 +395,11 @@ const calagopusnetwork = {
 
   remove(index) {
     const allocation = this.allocations[index];
-    Modal.confirm('Delete Allocation', `Delete ${this.safe(allocation.ip_alias || allocation.ip)}:${Number(allocation.port || 0)}?`, async () => {
+    Modal.confirm(t('cnet.deleteallocation.title'), t('cnet.deleteallocation.confirm', { target: `${this.safe(allocation.ip_alias || allocation.ip)}:${Number(allocation.port || 0)}` }), async () => {
       try {
         await this.request(`/allocations/${allocation.uuid}`, 'DELETE');
         Modal.close();
-        this.toast('Allocation deleted');
+        this.toast(t('cnet.allocation.deleted'));
         this.load();
       } catch (error) {
         this.toast(error.message, 'error');
@@ -408,27 +409,27 @@ const calagopusnetwork = {
 
   removebulk() {
     const removable = this.allocations.filter(allocation => this.selected.has(allocation.uuid) && !allocation.is_primary);
-    Modal.confirm('Delete Allocations', `Delete ${removable.length} selected allocation${removable.length === 1 ? '' : 's'}? Primary allocations will be skipped.`, async () => {
+    Modal.confirm(t('cnet.deletebulk.title'), t('cnet.deletebulk.confirm', { n: removable.length }), async () => {
       const results = await Promise.allSettled(removable.map(allocation => this.request(`/allocations/${allocation.uuid}`, 'DELETE')));
       const failures = results.filter(result => result.status === 'rejected').length;
       Modal.close();
       this.selected.clear();
-      this.toast(failures ? `${failures} allocation${failures === 1 ? '' : 's'} could not be deleted` : 'Allocations deleted', failures ? 'error' : 'success');
+      this.toast(failures ? t('cnet.deletebulk.failed', { n: failures }) : t('cnet.allocations.deleted'), failures ? 'error' : 'success');
       this.load();
     });
   },
 
   openadd() {
     const remaining = Math.max(0, this.limit - Number(this.pagination.total || this.allocations.length));
-    this.slots = Array.from({ length: remaining }, (_, index) => ({ id: index + 1, label: `Available allocation ${index + 1}` }));
+    this.slots = Array.from({ length: remaining }, (_, index) => ({ id: index + 1, label: t('cnet.available', { n: index + 1 }) }));
     this.selectedslots = new Set();
     this.renderadd();
   },
 
   renderadd(filter = '') {
     const term = filter.trim().toLowerCase();
-    const slots = this.slots.filter(slot => slot.label.toLowerCase().includes(term)).map(slot => `<label class="calagopus-allocation-option"><input type="checkbox" ${this.selectedslots.has(slot.id) ? 'checked' : ''} onchange="calagopusnetwork.toggleslot(${slot.id},this.checked)"><span><strong>${this.safe(slot.label)}</strong><small>The panel will assign the next available hostname and port.</small></span></label>`).join('');
-    Modal.open('Add Allocations', `<div class="calagopus-allocation-add"><label class="calagopus-allocation-filter"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input placeholder="Search available allocations" value="${this.safe(filter)}" oninput="calagopusnetwork.filteradd(this.value)"></label><div id="calagopus-allocation-options" class="calagopus-allocation-options">${slots || '<p>No available allocations found.</p>'}</div><div id="calagopus-allocation-add-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button class="btn btn-primary" onclick="calagopusnetwork.addselected()" ${this.selectedslots.size ? '' : 'disabled'}>Add Selected (${this.selectedslots.size})</button></div></div>`);
+    const slots = this.slots.filter(slot => slot.label.toLowerCase().includes(term)).map(slot => `<label class="calagopus-allocation-option"><input type="checkbox" ${this.selectedslots.has(slot.id) ? 'checked' : ''} onchange="calagopusnetwork.toggleslot(${slot.id},this.checked)"><span><strong>${this.safe(slot.label)}</strong><small>${t('cnet.assign.desc')}</small></span></label>`).join('');
+    Modal.open(t('cnet.add.title'), `<div class="calagopus-allocation-add"><label class="calagopus-allocation-filter"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input placeholder="${t('cnet.add.search')}" value="${this.safe(filter)}" oninput="calagopusnetwork.filteradd(this.value)"></label><div id="calagopus-allocation-options" class="calagopus-allocation-options">${slots || `<p>${t('cnet.add.empty')}</p>`}</div><div id="calagopus-allocation-add-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('csub.cancel')}</button><button class="btn btn-primary" onclick="calagopusnetwork.addselected()" ${this.selectedslots.size ? '' : 'disabled'}>${t('cnet.add.selected', { n: this.selectedslots.size })}</button></div></div>`);
   },
 
   filteradd(value) {
@@ -447,7 +448,7 @@ const calagopusnetwork = {
     try {
       for (const id of this.selectedslots) await this.request('/allocations', 'POST');
       Modal.close();
-      this.toast('Allocations added');
+      this.toast(t('cnet.allocations.added'));
       this.load();
     } catch (error) {
       errorbox.innerHTML = `<div class="error-msg">${this.safe(error.message)}</div>`;

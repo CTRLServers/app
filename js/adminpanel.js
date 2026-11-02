@@ -4,9 +4,9 @@ const adminpanel = {
 
   async credentials() {
     const server = App.currentServer;
-    if (!server || server.type !== 'Pterodactyl Admin') throw new Error('Panel is not available');
+    if (!server || server.type !== 'Pterodactyl Admin') throw new Error(t('apanel.err.unavailable'));
     const apikey = await Servers.resolveapikey(server);
-    if (!apikey) throw new Error('Unable to decrypt the API key');
+    if (!apikey) throw new Error(t('apanel.err.apikey'));
     return { server, apikey };
   },
 
@@ -28,7 +28,7 @@ const adminpanel = {
   },
 
   loading(container) {
-    container.innerHTML = '<div class="paneladmin-loading"><div class="spinner"></div><span>Loading panel data...</span></div>';
+    container.innerHTML = `<div class="paneladmin-loading"><div class="spinner"></div><span>${t('apanel.loading')}</span></div>`;
   },
 
   async loadoverview() {
@@ -51,25 +51,25 @@ const adminpanel = {
 
   renderoverview(versions, system) {
     const container = Utils.el('tabpaneloverview');
-    const installed = versions.version || 'Unknown';
-    const latest = versions.latest_version || 'Unavailable';
+    const installed = versions.version || t('aapi.unknown');
+    const latest = versions.latest_version || t('cset.unavailable');
     let state = 'neutral';
-    let description = `You are running Pterodactyl Panel version ${this.safe(installed)}. The update status is unavailable.`;
+    let description = t('apanel.desc.neutral', { version: this.safe(installed) });
     let update = '';
     if (versions.up_to_date === true) {
       state = 'current';
-      description = `You are running Pterodactyl Panel version ${this.safe(installed)}. Your panel is up-to-date!`;
+      description = t('apanel.desc.current', { version: this.safe(installed) });
     } else if (versions.up_to_date === false) {
       state = 'outdated';
-      description = `You are running Pterodactyl Panel version ${this.safe(installed)}. Your panel is outdated.`;
-      update = `<button type="button" class="btn btn-primary btn-sm" onclick="adminpanel.openrelease()">View ${this.safe(latest)} on GitHub</button>`;
+      description = t('apanel.desc.outdated', { version: this.safe(installed) });
+      update = `<button type="button" class="btn btn-primary btn-sm" onclick="adminpanel.openrelease()">${t('apanel.viewrelease', { latest: this.safe(latest) })}</button>`;
     }
     container.innerHTML = `
       <div class="paneladmin-page">
         <section class="paneladmin-system-card">
           <div class="paneladmin-system-heading">
-            <h2>System Information</h2>
-            <button type="button" class="paneladmin-refresh" onclick="adminpanel.loadoverview()" title="Refresh">
+            <h2>${t('apanel.systeminfo')}</h2>
+            <button type="button" class="paneladmin-refresh" onclick="adminpanel.loadoverview()" title="${t('aloc.refresh')}">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
             </button>
           </div>
@@ -92,21 +92,31 @@ const adminpanel = {
     return `
       <div class="paneladmin-resources">
         <div class="paneladmin-resource">
-          <div class="paneladmin-resource-heading"><span>CPU</span><strong>${cpuused}% / 100%</strong></div>
+          <div class="paneladmin-resource-heading"><span>${t('apanel.cpu')}</span><strong>${cpuused}% / 100%</strong></div>
           <div class="paneladmin-resource-track"><span style="width:${cpuused}%"></span></div>
-          <small>${this.safe(cpu.name || 'Unknown processor')} &middot; ${this.safe(cpu.cores || 1)} core${Number(cpu.cores) === 1 ? '' : 's'}</small>
+          <small>${this.safe(cpu.name || t('apanel.unknownproc'))} &middot; ${this.safe(this.cores(cpu.cores || 1))}</small>
         </div>
         <div class="paneladmin-resource">
-          <div class="paneladmin-resource-heading"><span>Memory</span><strong>${this.formatbytes(memory.used)} / ${this.formatbytes(memory.total)}</strong></div>
+          <div class="paneladmin-resource-heading"><span>${t('apanel.memory')}</span><strong>${this.formatbytes(memory.used)} / ${this.formatbytes(memory.total)}</strong></div>
           <div class="paneladmin-resource-track"><span style="width:${memoryused}%"></span></div>
-          <small>${memoryused}% in use</small>
+          <small>${t('apanel.inuse', { value: memoryused })}</small>
         </div>
         <div class="paneladmin-resource">
-          <div class="paneladmin-resource-heading"><span>Disk</span><strong>${this.formatbytes(disk.used)} / ${this.formatbytes(disk.total)}</strong></div>
+          <div class="paneladmin-resource-heading"><span>${t('apanel.disk')}</span><strong>${this.formatbytes(disk.used)} / ${this.formatbytes(disk.total)}</strong></div>
           <div class="paneladmin-resource-track"><span style="width:${diskused}%"></span></div>
-          <small>${diskused}% in use</small>
+          <small>${t('apanel.inuse', { value: diskused })}</small>
         </div>
       </div>`;
+  },
+
+  cores(count) {
+    const value = Number(count || 1);
+    const key = value % 10 === 1 && value % 100 !== 11
+      ? 'apanel.cores.one'
+      : value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 >= 20)
+        ? 'apanel.cores.few'
+        : 'apanel.cores.many';
+    return t(key, { count: value });
   },
 
   percentage(used, total) {
@@ -131,13 +141,13 @@ const adminpanel = {
       <div class="paneladmin-page paneladmin-settings-page">
         <div class="paneladmin-heading">
           <div>
-            <h2>Settings</h2>
+            <h2>${t('apanel.settings')}</h2>
           </div>
         </div>
         <div class="paneladmin-settings-tabs">
-          <button type="button" data-paneladmin-section="general" onclick="adminpanel.switchsettings('general')">General</button>
-          <button type="button" data-paneladmin-section="mail" onclick="adminpanel.switchsettings('mail')">Mail</button>
-          <button type="button" data-paneladmin-section="advanced" onclick="adminpanel.switchsettings('advanced')">Advanced</button>
+          <button type="button" data-paneladmin-section="general" onclick="adminpanel.switchsettings('general')">${t('apanel.tab.general')}</button>
+          <button type="button" data-paneladmin-section="mail" onclick="adminpanel.switchsettings('mail')">${t('apanel.tab.mail')}</button>
+          <button type="button" data-paneladmin-section="advanced" onclick="adminpanel.switchsettings('advanced')">${t('apanel.tab.advanced')}</button>
         </div>
         <div class="paneladmin-settings-body" id="paneladmin-settings-body"></div>
       </div>`;
@@ -176,15 +186,15 @@ const adminpanel = {
     this.setsettingsbody(`
       <div class="paneladmin-form-grid">
         <label class="paneladmin-field paneladmin-field-wide">
-          <span>Company Name</span>
+          <span>${t('apanel.company')}</span>
           <input type="text" id="panel-company-name" value="${this.safe(fields.company_name)}" maxlength="191" />
         </label>
         <label class="paneladmin-field">
-          <span>Require 2-Factor Authentication</span>
+          <span>${t('apanel.twofactor')}</span>
           <select id="panel-two-factor">${twofactor}</select>
         </label>
         <label class="paneladmin-field">
-          <span>Default Language</span>
+          <span>${t('apanel.defaultlang')}</span>
           <select id="panel-default-language">${languages}</select>
         </label>
       </div>
@@ -194,39 +204,39 @@ const adminpanel = {
   rendermail(data) {
     const fields = data.fields || {};
     const disabled = data.smtp_available === false;
-    const configured = fields.smtp_password_configured ? 'Password is configured. Leave blank to keep it.' : 'No SMTP password is configured.';
+    const configured = fields.smtp_password_configured ? t('apanel.smtp.configured') : t('apanel.smtp.notconfigured');
     this.setsettingsbody(`
-      ${disabled ? `<div class="paneladmin-notice error">The panel mail driver is set to ${this.safe(data.mail_driver || 'another driver')}. Select SMTP on the panel before changing these settings.</div>` : ''}
+      ${disabled ? `<div class="paneladmin-notice error">${t('apanel.smtp.warning', { driver: this.safe(data.mail_driver || t('apanel.smtp.otherdriver')) })}</div>` : ''}
       <div class="paneladmin-form-grid">
         <label class="paneladmin-field paneladmin-field-wide">
-          <span>SMTP Host</span>
+          <span>${t('apanel.mail.host')}</span>
           <input type="text" id="panel-smtp-host" value="${this.safe(fields.smtp_host)}" ${disabled ? 'disabled' : ''} />
         </label>
         <label class="paneladmin-field">
-          <span>SMTP Port</span>
+          <span>${t('apanel.mail.port')}</span>
           <input type="number" id="panel-smtp-port" value="${this.safe(fields.smtp_port)}" min="1" max="65535" ${disabled ? 'disabled' : ''} />
         </label>
         <label class="paneladmin-field">
-          <span>Encryption</span>
+          <span>${t('apanel.mail.encryption')}</span>
           <select id="panel-encryption" ${disabled ? 'disabled' : ''}>
             <option value="tls" ${fields.encryption === 'tls' ? 'selected' : ''}>TLS</option>
             <option value="ssl" ${fields.encryption === 'ssl' ? 'selected' : ''}>SSL</option>
           </select>
         </label>
         <label class="paneladmin-field">
-          <span>Username</span>
+          <span>${t('apanel.mail.username')}</span>
           <input type="text" id="panel-smtp-username" value="${this.safe(fields.smtp_username)}" ${disabled ? 'disabled' : ''} />
         </label>
         <label class="paneladmin-field">
-          <span>Password</span>
+          <span>${t('apanel.mail.password')}</span>
           <input type="password" id="panel-smtp-password" value="" placeholder="${this.safe(configured)}" ${disabled ? 'disabled' : ''} />
         </label>
         <label class="paneladmin-field">
-          <span>Mail from</span>
+          <span>${t('apanel.mail.from')}</span>
           <input type="email" id="panel-mail-from" value="${this.safe(fields.mail_from)}" ${disabled ? 'disabled' : ''} />
         </label>
         <label class="paneladmin-field">
-          <span>Mail from name</span>
+          <span>${t('apanel.mail.fromname')}</span>
           <input type="text" id="panel-mail-from-name" value="${this.safe(fields.mail_from_name)}" ${disabled ? 'disabled' : ''} />
         </label>
       </div>
@@ -239,29 +249,29 @@ const adminpanel = {
     this.setsettingsbody(`
       <div class="paneladmin-form-section">
         <div class="paneladmin-form-section-heading">
-          <div><h3>reCAPTCHA</h3></div>
+          <div><h3>${t('apanel.recaptcha')}</h3></div>
           ${this.toggle('panel-recaptcha-status', fields.recaptcha_enabled, "adminpanel.statustoggle('panel-recaptcha-status')")}
         </div>
         <div class="paneladmin-form-grid">
-          <label class="paneladmin-field"><span>Site Key</span><input type="text" id="panel-recaptcha-site-key" value="${this.safe(fields.recaptcha_site_key)}" /></label>
-          <label class="paneladmin-field"><span>Secret key</span><input type="password" id="panel-recaptcha-secret-key" value="${this.safe(fields.recaptcha_secret_key)}" /></label>
+          <label class="paneladmin-field"><span>${t('apanel.sitekey')}</span><input type="text" id="panel-recaptcha-site-key" value="${this.safe(fields.recaptcha_site_key)}" /></label>
+          <label class="paneladmin-field"><span>${t('apanel.secretkey')}</span><input type="password" id="panel-recaptcha-secret-key" value="${this.safe(fields.recaptcha_secret_key)}" /></label>
         </div>
       </div>
       <div class="paneladmin-form-section">
-        <div class="paneladmin-form-section-heading"><div><h3>HTTP Connections</h3></div></div>
+        <div class="paneladmin-form-section-heading"><div><h3>${t('apanel.http')}</h3></div></div>
         <div class="paneladmin-form-grid">
-          <label class="paneladmin-field"><span>Connection Timeout</span><input type="number" id="panel-connection-timeout" value="${this.safe(fields.connection_timeout)}" min="1" max="60" /></label>
-          <label class="paneladmin-field"><span>Request Timeout</span><input type="number" id="panel-request-timeout" value="${this.safe(fields.request_timeout)}" min="1" max="60" /></label>
+          <label class="paneladmin-field"><span>${t('apanel.conntimeout')}</span><input type="number" id="panel-connection-timeout" value="${this.safe(fields.connection_timeout)}" min="1" max="60" /></label>
+          <label class="paneladmin-field"><span>${t('apanel.reqtimeout')}</span><input type="number" id="panel-request-timeout" value="${this.safe(fields.request_timeout)}" min="1" max="60" /></label>
         </div>
       </div>
       <div class="paneladmin-form-section">
         <div class="paneladmin-form-section-heading">
-          <div><h3>Automatic Allocation Creation</h3></div>
+          <div><h3>${t('apanel.allocation')}</h3></div>
           ${this.toggle('panel-allocation-status', fields.automatic_allocation_enabled, 'adminpanel.allocationtoggle()')}
         </div>
         <div class="paneladmin-form-grid">
-          <label class="paneladmin-field"><span>Starting Port</span><input type="number" id="panel-starting-port" value="${this.safe(fields.starting_port)}" min="1024" max="65535" ${allocationdisabled ? 'disabled' : ''} /></label>
-          <label class="paneladmin-field"><span>Ending Port</span><input type="number" id="panel-ending-port" value="${this.safe(fields.ending_port)}" min="1024" max="65535" ${allocationdisabled ? 'disabled' : ''} /></label>
+          <label class="paneladmin-field"><span>${t('apanel.startingport')}</span><input type="number" id="panel-starting-port" value="${this.safe(fields.starting_port)}" min="1024" max="65535" ${allocationdisabled ? 'disabled' : ''} /></label>
+          <label class="paneladmin-field"><span>${t('apanel.endingport')}</span><input type="number" id="panel-ending-port" value="${this.safe(fields.ending_port)}" min="1024" max="65535" ${allocationdisabled ? 'disabled' : ''} /></label>
         </div>
       </div>
       ${this.formactions('saveadvanced')}`);
@@ -273,11 +283,11 @@ const adminpanel = {
   },
 
   formactions(action, disabled = false) {
-    return `<div class="paneladmin-form-actions"><button type="button" class="btn btn-primary" id="paneladmin-save" onclick="adminpanel.${action}()" ${disabled ? 'disabled' : ''}>Save changes</button></div>`;
+    return `<div class="paneladmin-form-actions"><button type="button" class="btn btn-primary" id="paneladmin-save" onclick="adminpanel.${action}()" ${disabled ? 'disabled' : ''}>${t('aloc.save')}</button></div>`;
   },
 
   toggle(id, checked, action = '') {
-    return `<label class="paneladmin-toggle"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} ${action ? `onchange="${action}"` : ''} /><span></span><em>${checked ? 'Enabled' : 'Disabled'}</em></label>`;
+    return `<label class="paneladmin-toggle"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} ${action ? `onchange="${action}"` : ''} /><span></span><em>${checked ? t('csub.enabled') : t('csub.disabled')}</em></label>`;
   },
 
   allocationtoggle() {
@@ -287,13 +297,13 @@ const adminpanel = {
     if (starting) starting.disabled = !enabled;
     if (ending) ending.disabled = !enabled;
     const label = Utils.el('panel-allocation-status')?.closest('.paneladmin-toggle')?.querySelector('em');
-    if (label) label.textContent = enabled ? 'Enabled' : 'Disabled';
+    if (label) label.textContent = enabled ? t('csub.enabled') : t('csub.disabled');
   },
 
   statustoggle(id) {
     const input = Utils.el(id);
     const label = input?.closest('.paneladmin-toggle')?.querySelector('em');
-    if (label) label.textContent = input.checked ? 'Enabled' : 'Disabled';
+    if (label) label.textContent = input.checked ? t('csub.enabled') : t('csub.disabled');
   },
 
   async savegeneral() {
@@ -337,7 +347,7 @@ const adminpanel = {
     const message = Utils.el('paneladmin-form-message');
     if (button) {
       button.disabled = true;
-      button.textContent = 'Saving...';
+      button.textContent = t('cset.saving');
     }
     if (message) message.innerHTML = '';
     try {
@@ -358,12 +368,12 @@ const adminpanel = {
       else if (section === 'mail') this.rendermail(data);
       else this.renderadvanced(data);
       const refreshed = Utils.el('paneladmin-form-message');
-      if (refreshed) refreshed.innerHTML = '<div class="paneladmin-notice success">Settings saved.</div>';
+      if (refreshed) refreshed.innerHTML = `<div class="paneladmin-notice success">${t('apanel.saved')}</div>`;
     } catch (error) {
       if (message) message.innerHTML = `<div class="paneladmin-notice error">${this.safe(error.message)}</div>`;
       if (button) {
         button.disabled = false;
-        button.textContent = 'Save changes';
+        button.textContent = t('aloc.save');
       }
     }
   },
@@ -372,9 +382,9 @@ const adminpanel = {
     container.innerHTML = `
       <div class="paneladmin-error-state">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <strong>Unable to load panel data</strong>
+        <strong>${t('apanel.loaderror')}</strong>
         <span>${this.safe(error.message)}</span>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="adminpanel.openextension()">Open extension repository</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="adminpanel.openextension()">${t('apanel.openext')}</button>
       </div>`;
   },
 

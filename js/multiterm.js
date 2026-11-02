@@ -22,11 +22,11 @@ const MultiTerm = {
       <div class="multiterm-container">
         <div class="multiterm-sidebar">
           <div class="multiterm-header">
-            <h3>Servers</h3>
-            <button class="btn btn-sm btn-secondary" onclick="MultiTerm.selectall()">${this._selected.size === all.length && all.length > 0 ? 'Deselect All' : 'Select All'}</button>
+            <h3>${t('multiterm.servers')}</h3>
+            <button class="btn btn-sm btn-secondary" onclick="MultiTerm.selectall()">${this._selected.size === all.length && all.length > 0 ? t('multiterm.deselect_all') : t('multiterm.select_all')}</button>
           </div>
           <div class="multiterm-server-list">
-            ${all.length === 0 ? '<p class="multiterm-empty">No servers added.</p>' : ''}
+            ${all.length === 0 ? `<p class="multiterm-empty">${t('multiterm.no_servers')}</p>` : ''}
             ${all.map((s, i) => {
               const idx = Servers.list.indexOf(s);
               const checked = this._selected.has(idx) ? 'checked' : '';
@@ -43,7 +43,7 @@ const MultiTerm = {
                 </label>`;
             }).join('')}
           </div>
-          <div class="multiterm-count">${this._selected.size} of ${all.length} selected</div>
+          <div class="multiterm-count">${t('multiterm.selected', { selected: this._selected.size, total: all.length })}</div>
         </div>
         <div class="multiterm-main">
           <div class="multiterm-output" id="multiTermOutput">
@@ -51,13 +51,13 @@ const MultiTerm = {
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
               </svg>
-              <p>Select servers and type a command to run on all of them simultaneously.</p>
+              <p>${t('multiterm.hint')}</p>
             </div>
           </div>
           <div class="multiterm-input-row">
             <span class="multiterm-prompt">&gt;</span>
-            <input type="text" class="multiterm-input" id="multiTermInput" placeholder="Type a command..." onkeydown="if(event.key==='Enter')MultiTerm.run()" />
-            <button class="btn btn-primary btn-sm" onclick="MultiTerm.run()" id="multiTermRunBtn">Run</button>
+            <input type="text" class="multiterm-input" id="multiTermInput" placeholder="${t('multiterm.placeholder')}" onkeydown="if(event.key==='Enter')MultiTerm.run()" />
+            <button class="btn btn-primary btn-sm" onclick="MultiTerm.run()" id="multiTermRunBtn">${t('multiterm.run')}</button>
           </div>
         </div>
       </div>`;
@@ -88,7 +88,7 @@ const MultiTerm = {
     else this._selected.add(idx);
     const countEl = document.querySelector('.multiterm-count');
     const all = this._available_servers();
-    if (countEl) countEl.textContent = this._selected.size + ' of ' + all.length + ' selected';
+    if (countEl) countEl.textContent = t('multiterm.selected', { selected: this._selected.size, total: all.length });
   },
 
   async run() {
@@ -97,13 +97,13 @@ const MultiTerm = {
     const cmd = (input?.value || '').trim();
     if (!cmd) return;
     if (this._selected.size === 0) {
-      this._appendoutput('system', 'No servers selected.');
+      this._appendoutput('system', t('multiterm.no_selected'));
       return;
     }
 
     this._running = true;
     const btn = Utils.el('multiTermRunBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Running...'; }
+    if (btn) { btn.disabled = true; btn.textContent = t('multiterm.running'); }
     input.value = '';
 
     this._appendoutput('cmd', '> ' + cmd);
@@ -129,7 +129,7 @@ const MultiTerm = {
           await this._runpterodactyl(server, cmd);
         }
       } catch (e) {
-        this._appendoutput('error', server.name, cmd, e.message || 'Connection failed');
+        this._appendoutput('error', server.name, cmd, e.message || t('multiterm.connection_failed'));
       }
       const row = pending.get(idx);
       if (row && row.parentNode) row.remove();
@@ -140,7 +140,7 @@ const MultiTerm = {
     for (const [, row] of pending) { if (row.parentNode) row.remove(); }
     pending.clear();
     this._running = false;
-    if (btn) { btn.disabled = false; btn.textContent = 'Run'; }
+    if (btn) { btn.disabled = false; btn.textContent = t('multiterm.run'); }
   },
 
   async _runvps(server, cmd) {
@@ -149,17 +149,17 @@ const MultiTerm = {
     const stdout = result?.stdout || '';
     const stderr = result?.stderr || '';
     const output = stdout + (stderr ? '\n' + stderr : '');
-    this._appendoutput('server', server.name, cmd, output.trim() || '(no output)', !stdout && stderr);
+    this._appendoutput('server', server.name, cmd, output.trim() || t('multiterm.no_output'), !stdout && stderr);
   },
 
   async _runpterodactyl(server, cmd) {
     const apiKey = await Servers.resolveapikey(server);
-    if (!apiKey) throw new Error('API key is unavailable');
+    if (!apiKey) throw new Error(t('multiterm.api_unavailable'));
     const is_calagopus = server.type === 'Calagopus';
     const data = is_calagopus
       ? await Api.fetchcalagopuswebsocket(server.panelUrl, apiKey, server.uuid)
       : await Api.fetchwebsocket(server.panelUrl, apiKey, server.uuid);
-    if (!data || !data.socket || !data.token) throw new Error('Invalid WebSocket response');
+    if (!data || !data.socket || !data.token) throw new Error(t('multiterm.invalid_ws'));
 
     return new Promise((resolve, reject) => {
       let resolved = false;
@@ -179,7 +179,7 @@ const MultiTerm = {
         }
       };
 
-      const finish = (fallback = '(no output)') => {
+      const finish = (fallback = t('multiterm.no_output')) => {
         if (resolved) return;
         resolved = true;
         cleanup();
@@ -210,7 +210,7 @@ const MultiTerm = {
             }
           } else if (msg.event === 'token expired') {
             cleanup();
-            if (!resolved) { resolved = true; reject(new Error('Token expired')); }
+            if (!resolved) { resolved = true; reject(new Error(t('multiterm.token_expired'))); }
           }
         } catch (e) {}
       };
@@ -227,7 +227,7 @@ const MultiTerm = {
       this._listeners.push(cleanup);
 
       timeout = setTimeout(() => {
-        finish('(timed out)');
+        finish(t('multiterm.timed_out'));
       }, 15000);
 
       window.electronAPI.connectwebsocket(data.socket, data.token, {
@@ -271,7 +271,7 @@ const MultiTerm = {
       if (output && attempt > 0) break;
     }
 
-    this._appendoutput('server', server.name, cmd, output.trim() || '(no output)', false);
+    this._appendoutput('server', server.name, cmd, output.trim() || t('multiterm.no_output'), false);
   },
 
   _stripansi(str) {
@@ -290,7 +290,7 @@ const MultiTerm = {
     if (placeholder) placeholder.remove();
     const row = document.createElement('div');
     row.className = 'mt-line mt-loading';
-    row.innerHTML = `<span class="mt-server-name">${Utils.escape(name)}</span><span class="mt-spinner"></span><span class="mt-loading-text">Waiting for response...</span>`;
+    row.innerHTML = `<span class="mt-server-name">${Utils.escape(name)}</span><span class="mt-spinner"></span><span class="mt-loading-text">${t('multiterm.waiting')}</span>`;
     out.appendChild(row);
     out.scrollTop = out.scrollHeight;
     return row;

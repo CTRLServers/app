@@ -7,17 +7,42 @@ const fs = require('fs');
 const os = require('os');
 const { PERMISSION_DEFINITIONS, defaultpermissions, permissionfortool } = require('./mcp/permissions.cjs');
 
-const APP_VERSION = '1.1.9';
+const APP_VERSION = '1.2.0';
 const GITHUB_REPO = 'CTRLServers/app';
 app.setAppUserModelId('com.ctrlservers.app');
 
 const CLOUD_CALLBACK_PORT = 12747;
 
 const isPortable = process.env.PORTABLE_EXECUTABLE_DIR || process.argv.includes('--portable');
+const APP_BASE_DIR = isPortable
+  ? (process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath))
+  : (app.isPackaged ? path.dirname(app.getPath('exe')) : __dirname);
 if (isPortable) {
-  const portableDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
-  app.setPath('userData', path.join(portableDir, 'ctrlservers-data'));
+  app.setPath('userData', path.join(APP_BASE_DIR, 'ctrlservers-data'));
 }
+
+const CUSTOM_LOCALES_DIR = path.join(APP_BASE_DIR, 'custom-locales');
+const CUSTOM_LOCALES_TXT = path.join(CUSTOM_LOCALES_DIR, 'custom-locales.txt');
+
+const CUSTOM_LOCALES_TXT_CONTENT = `Custom locales
+==============
+
+Put your custom locale JSON files into this folder, next to CTRLServers.
+
+How it works
+------------
+- Name the file after the language code, for example: mylanguage.json
+- The file is validated on startup and only shown in Settings > Language if it has no errors.
+- A valid file appears as: mylanguage (custom-locales)
+
+Rules
+-----
+- The file must be valid JSON with a single object at the root.
+- It must contain exactly the same keys as locales/en.json (no missing keys, no extra/renamed keys).
+- Every value must be a string. Placeholders like {name} must be kept exactly as they are.
+
+Files that fail validation are ignored.
+`;
 
 function handleDeepLink(url) {
   if (!url || typeof url !== 'string') return;
@@ -58,6 +83,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     app.setAsDefaultProtocolClient('ctrlservers');
+    ensurecustomlocalesdir();
     createwindow();
     createtray();
     startmcpifneeded();
@@ -1338,6 +1364,106 @@ ipcMain.handle('show-save-dialog', async (event, defaultPath) => {
   return result.canceled ? null : result.filePath;
 });
 
+function ensurecustomlocalesdir() {
+  try {
+    if (!fs.existsSync(CUSTOM_LOCALES_DIR)) fs.mkdirSync(CUSTOM_LOCALES_DIR, { recursive: true });
+    if (!fs.existsSync(CUSTOM_LOCALES_TXT)) fs.writeFileSync(CUSTOM_LOCALES_TXT, CUSTOM_LOCALES_TXT_CONTENT, 'utf8');
+  } catch (e) {
+    console.warn('[custom-locales] could not create folder:', e.message);
+  }
+}
+
+let builtinlocalecodescache = null;
+function getbuiltinlocalecodes() {
+  if (builtinlocalecodescache) return builtinlocalecodescache;
+  try {
+    builtinlocalecodescache = fs.readdirSync(path.join(__dirname, 'locales'))
+      .filter(f => f.toLowerCase().endsWith('.json'))
+      .map(f => f.slice(0, -5));
+  } catch (e) {
+    builtinlocalecodescache = ['en', 'ru', 'fr', 'es', 'vi', 'pt-BR', 'it'];
+  }
+  return builtinlocalecodescache;
+}
+
+let enlocalekeyscache = null;
+function getenlocalekeys() {
+  if (enlocalekeyscache) return enlocalekeyscache;
+  try {
+    enlocalekeyscache = JSON.parse(fs.readFileSync(path.join(__dirname, 'locales', 'en.json'), 'utf8'));
+  } catch (e) {
+    enlocalekeyscache = {};
+  }
+  return enlocalekeyscache;
+}
+
+function validatecustomlocale(file) {
+  const errors = [];
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+  } catch (e) {
+    return { errors: ['invalid JSON: ' + e.message] };
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return { errors: ['root must be a JSON object'] };
+  }
+  const baseline = getenlocalekeys();
+  for (const key of Object.keys(data)) {
+    if (typeof data[key] !== 'string') errors.push('value of "' + key + '" must be a string');
+    if (!Object.prototype.hasOwnProperty.call(baseline, key)) errors.push('unknown key "' + key + '" (renamed or wrong key)');
+  }
+  for (const key of Object.keys(baseline)) {
+    if (!Object.prototype.hasOwnProperty.call(data, key)) errors.push('missing key "' + key + '"');
+  }
+  return { errors, data };
+}
+
+function listcustomlocales() {
+  ensurecustomlocalesdir();
+  const out = [];
+  const builtin = getbuiltinlocalecodes();
+  let files = [];
+  try { files = fs.readdirSync(CUSTOM_LOCALES_DIR); } catch (e) { return out; }
+  for (const name of files) {
+    if (!name.toLowerCase().endsWith('.json')) continue;
+    const code = name.slice(0, -5);
+    if (!/^[A-Za-z0-9_-]+$/.test(code)) {
+      console.warn('[custom-locales] skipped "' + name + '": file name may only contain letters, numbers, - and _');
+      continue;
+    }
+    if (builtin.includes(code)) {
+      console.warn('[custom-locales] skipped "' + name + '": conflicts with built-in locale');
+      continue;
+    }
+    const { errors } = validatecustomlocale(path.join(CUSTOM_LOCALES_DIR, name));
+    if (errors.length) {
+      console.warn('[custom-locales] skipped "' + name + '":\n  - ' + errors.slice(0, 10).join('\n  - ') + (errors.length > 10 ? '\n  ...' : ''));
+      continue;
+    }
+    out.push({ code, name: code + ' (custom-locales)' });
+  }
+  return out;
+}
+
+ipcMain.handle('get-custom-locales', async () => listcustomlocales());
+
+ipcMain.handle('get-locale-data', async (event, lang) => {
+  try {
+    const code = String(lang || 'en').replace(/[^a-zA-Z0-9_-]/g, '') || 'en';
+    const builtin = path.join(__dirname, 'locales', code + '.json');
+    if (fs.existsSync(builtin)) return JSON.parse(fs.readFileSync(builtin, 'utf8'));
+    const custom = path.join(CUSTOM_LOCALES_DIR, code + '.json');
+    if (fs.existsSync(custom)) {
+      const { errors, data } = validatecustomlocale(custom);
+      if (!errors.length) return data;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+});
+
 ipcMain.on('get-platform', (event) => {
   const plat = process.platform;
   const arch = process.arch;
@@ -1898,6 +2024,64 @@ ipcMain.handle('check-update', async () => {
   } catch (e) {
     return { currentVersion: APP_VERSION, latestVersion: null, outdated: false };
   }
+});
+
+const INSTALLER_EXTENSIONS = {
+  win32: ['.exe'],
+  darwin: ['.dmg'],
+  linux: ['.deb', '.appimage']
+};
+
+function validateinstallerpath(input) {
+  if (typeof input !== 'string' || !input.trim()) return { ok: false, reason: 'empty' };
+  let file = input.trim().replace(/^"(.*)"$/, '$1');
+  file = path.resolve(file);
+  const ext = path.extname(file).toLowerCase();
+  const allowed = INSTALLER_EXTENSIONS[process.platform] || INSTALLER_EXTENSIONS.linux;
+  if (!allowed.includes(ext)) return { ok: false, reason: 'wrong-type' };
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch (e) {
+    return { ok: false, reason: 'not-found' };
+  }
+  if (!stat.isFile()) return { ok: false, reason: 'not-file' };
+  return { ok: true, file };
+}
+
+ipcMain.handle('check-installer', async (event, installerPath) => {
+  const result = validateinstallerpath(installerPath);
+  return result.ok ? { ok: true } : result;
+});
+
+ipcMain.handle('quit-app', async () => {
+  app.quit();
+});
+
+ipcMain.handle('run-installer-update', async (event, installerPath) => {
+  const result = validateinstallerpath(installerPath);
+  if (!result.ok) return result;
+  const { spawn } = require('child_process');
+  const args = ['--update', '--directory', APP_BASE_DIR, '--current-version', APP_VERSION];
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(result.file, args, {
+        cwd: path.dirname(result.file),
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+    } catch (e) {
+      resolve({ ok: false, reason: 'spawn-failed' });
+      return;
+    }
+    child.once('error', () => resolve({ ok: false, reason: 'spawn-failed' }));
+    child.once('spawn', () => {
+      child.unref();
+      resolve({ ok: true });
+    });
+  });
 });
 
 ipcMain.handle('toggle-devtools', async (event) => {

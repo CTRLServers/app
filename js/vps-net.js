@@ -20,19 +20,19 @@ const VPSNet = {
 
   renderloading() {
     const c = Utils.el('tabVpsNet');
-    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+    if (c) c.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
   },
 
   render() {
     const c = Utils.el('tabVpsNet');
     c.innerHTML = `
       <div class="vps-section-header">
-        <h2>Network Monitor</h2>
-        <button class="btn btn-sm btn-secondary" onclick="VPSNet.fetch()">Refresh</button>
+        <h2>${t('vnet.heading')}</h2>
+        <button class="btn btn-sm btn-secondary" onclick="VPSNet.fetch()">${t('vnet.refresh')}</button>
       </div>
       <div class="vps-net-interfaces" id="netInterfaces"></div>
       <div class="vps-net-section">
-        <h3>Bandwidth Graph</h3>
+        <h3>${t('vnet.graph')}</h3>
         <div class="vps-net-graphs" id="netGraphs"></div>
       </div>`;
   },
@@ -75,7 +75,7 @@ const VPSNet = {
     if (!el) return;
     const ifaces = Object.keys(this._prev);
     if (ifaces.length === 0) {
-      el.innerHTML = '<div class="vps-net-empty">No network interfaces detected.</div>';
+      el.innerHTML = `<div class="vps-net-empty">${t('vnet.empty')}</div>`;
       return;
     }
     el.innerHTML = ifaces.map(iface => {
@@ -86,12 +86,12 @@ const VPSNet = {
           <div class="vps-net-stat">
             <span class="vps-net-arrow vps-net-rx">\u2193</span>
             <span class="vps-net-rate">${Utils.formatbytes(d.rxRate)}/s</span>
-            <span class="vps-net-total">Total: ${Utils.formatbytes(d.rx)}</span>
+            <span class="vps-net-total">${t('vnet.total', { size: Utils.formatbytes(d.rx) })}</span>
           </div>
           <div class="vps-net-stat">
             <span class="vps-net-arrow vps-net-tx">\u2191</span>
             <span class="vps-net-rate">${Utils.formatbytes(d.txRate)}/s</span>
-            <span class="vps-net-total">Total: ${Utils.formatbytes(d.tx)}</span>
+            <span class="vps-net-total">${t('vnet.total', { size: Utils.formatbytes(d.tx) })}</span>
           </div>
         </div>
       </div>`;

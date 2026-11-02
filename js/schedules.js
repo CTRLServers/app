@@ -85,7 +85,7 @@ const ServerSchedules = {
   },
 
   async remove(id) {
-    Modal.confirm('Delete Schedule', 'Are you sure you want to delete this schedule?', async () => {
+    Modal.confirm(t('sched.delete.title'), t('sched.delete.confirm'), async () => {
       const s = App.currentServer;
       if (!s) return;
       const apiKey = await Servers.resolveapikey(s);
@@ -103,44 +103,44 @@ const ServerSchedules = {
     if (!this.selected) return;
     const sched = this.selected;
     const c = sched.cron || {};
-    Modal.open('Edit Schedule', `
+    Modal.open(t('sched.edit.title'), `
       <div class="form-group">
-        <label class="form-label">Schedule Name</label>
+        <label class="form-label">${t('sched.namelabel')}</label>
         <input type="text" class="form-input" id="schedName" value="${Utils.escape(sched.name)}" />
       </div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
         <div class="form-group">
-          <label class="form-label">Minute</label>
+          <label class="form-label">${t('sched.minute')}</label>
           <input type="text" class="form-input" id="schedMin" value="${Utils.escape(c.minute || '*')}" />
         </div>
         <div class="form-group">
-          <label class="form-label">Hour</label>
+          <label class="form-label">${t('sched.hour')}</label>
           <input type="text" class="form-input" id="schedHour" value="${Utils.escape(c.hour || '*')}" />
         </div>
         <div class="form-group">
-          <label class="form-label">Day (Month)</label>
+          <label class="form-label">${t('sched.daymonth')}</label>
           <input type="text" class="form-input" id="schedDom" value="${Utils.escape(c.day_of_month || '*')}" />
         </div>
         <div class="form-group">
-          <label class="form-label">Month</label>
+          <label class="form-label">${t('sched.month')}</label>
           <input type="text" class="form-input" id="schedMonth" value="${Utils.escape(c.month || '*')}" />
         </div>
         <div class="form-group">
-          <label class="form-label">Day (Week)</label>
+          <label class="form-label">${t('sched.dayweek')}</label>
           <input type="text" class="form-input" id="schedDow" value="${Utils.escape(c.day_of_week || '*')}" />
         </div>
       </div>
       <div class="form-group" style="display:flex;gap:16px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
-          <input type="checkbox" id="schedActive" ${sched.is_active ? 'checked' : ''} style="width:auto;" /> Enabled
+          <input type="checkbox" id="schedActive" ${sched.is_active ? 'checked' : ''} style="width:auto;" /> ${t('sched.enabled')}
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
-          <input type="checkbox" id="schedOnlyOnline" ${sched.only_when_online ? 'checked' : ''} style="width:auto;" /> Only when online
+          <input type="checkbox" id="schedOnlyOnline" ${sched.only_when_online ? 'checked' : ''} style="width:auto;" /> ${t('sched.onlyonline')}
         </label>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="schedEditBtn">Save Changes</button>
+        <button class="btn btn-primary" id="schedEditBtn">${t('sched.save')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -162,7 +162,7 @@ const ServerSchedules = {
           only_when_online: document.getElementById('schedOnlyOnline').checked,
         };
         btn.disabled = true;
-        btn.textContent = 'Saving...';
+        btn.textContent = t('sched.saving');
         try {
           const ok = await Api.updateschedule(s.panelUrl, apiKey, s.uuid, sched.id, payload);
           if (ok) {
@@ -171,57 +171,57 @@ const ServerSchedules = {
           } else {
             alert('Failed to update schedule');
             btn.disabled = false;
-            btn.textContent = 'Save Changes';
+            btn.textContent = t('sched.save');
           }
         } catch (e) {
           console.error(e);
           alert('Failed to update schedule');
           btn.disabled = false;
-          btn.textContent = 'Save Changes';
+          btn.textContent = t('sched.save');
         }
       });
     }, 0);
   },
 
   opencreatemodal() {
-    Modal.open('New Schedule', `
+    Modal.open(t('sched.create.title'), `
       <div class="form-group">
-        <label class="form-label">Schedule Name</label>
-        <input type="text" class="form-input" id="schedName" placeholder="e.g. Daily restart" />
+        <label class="form-label">${t('sched.namelabel')}</label>
+        <input type="text" class="form-input" id="schedName" placeholder="${t('sched.name.ph')}" />
       </div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
         <div class="form-group">
-          <label class="form-label">Minute</label>
+          <label class="form-label">${t('sched.minute')}</label>
           <input type="text" class="form-input" id="schedMin" value="*/5" />
         </div>
         <div class="form-group">
-          <label class="form-label">Hour</label>
+          <label class="form-label">${t('sched.hour')}</label>
           <input type="text" class="form-input" id="schedHour" value="*" />
         </div>
         <div class="form-group">
-          <label class="form-label">Day (Month)</label>
+          <label class="form-label">${t('sched.daymonth')}</label>
           <input type="text" class="form-input" id="schedDom" value="*" />
         </div>
         <div class="form-group">
-          <label class="form-label">Month</label>
+          <label class="form-label">${t('sched.month')}</label>
           <input type="text" class="form-input" id="schedMonth" value="*" />
         </div>
         <div class="form-group">
-          <label class="form-label">Day (Week)</label>
+          <label class="form-label">${t('sched.dayweek')}</label>
           <input type="text" class="form-input" id="schedDow" value="*" />
         </div>
       </div>
       <div class="form-group" style="display:flex;gap:16px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
-          <input type="checkbox" id="schedActive" checked style="width:auto;" /> Enabled
+          <input type="checkbox" id="schedActive" checked style="width:auto;" /> ${t('sched.enabled')}
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
-          <input type="checkbox" id="schedOnlyOnline" checked style="width:auto;" /> Only when online
+          <input type="checkbox" id="schedOnlyOnline" checked style="width:auto;" /> ${t('sched.onlyonline')}
         </label>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="schedCreateBtn">Create Schedule</button>
+        <button class="btn btn-primary" id="schedCreateBtn">${t('sched.create.btn')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -243,7 +243,7 @@ const ServerSchedules = {
           only_when_online: document.getElementById('schedOnlyOnline').checked,
         };
         btn.disabled = true;
-        btn.textContent = 'Creating...';
+        btn.textContent = t('sched.creating');
         try {
           const ok = await Api.createschedule(s.panelUrl, apiKey, s.uuid, payload);
           if (ok) {
@@ -252,13 +252,13 @@ const ServerSchedules = {
           } else {
             alert('Failed to create schedule');
             btn.disabled = false;
-            btn.textContent = 'Create Schedule';
+            btn.textContent = t('sched.create.btn');
           }
         } catch (e) {
           console.error(e);
           alert('Failed to create schedule');
           btn.disabled = false;
-          btn.textContent = 'Create Schedule';
+          btn.textContent = t('sched.create.btn');
         }
       });
     }, 0);
@@ -267,31 +267,31 @@ const ServerSchedules = {
   opentaskmodal() {
     if (!this.selected) return;
     const scheduleId = this.selected.id;
-    Modal.open('New Task', `
+    Modal.open(t('sched.task.title'), `
       <div class="form-group">
-        <label class="form-label">Action</label>
+        <label class="form-label">${t('sched.action')}</label>
         <select class="form-input" id="taskAction">
-          <option value="command">Send Command</option>
-          <option value="power">Send Power Action</option>
-          <option value="backup">Create Backup</option>
+          <option value="command">${t('sched.act.command')}</option>
+          <option value="power">${t('sched.act.power')}</option>
+          <option value="backup">${t('sched.act.backup')}</option>
         </select>
       </div>
       <div class="form-group" id="taskPayloadGroup">
-        <label class="form-label">Payload</label>
+        <label class="form-label">${t('sched.payload')}</label>
         <input type="text" class="form-input" id="taskPayload" placeholder="e.g. save-all" />
       </div>
       <div class="form-group">
-        <label class="form-label">Time Offset (seconds)</label>
+        <label class="form-label">${t('sched.timeoffset')}</label>
         <input type="number" class="form-input" id="taskOffset" value="0" />
-        <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0;">The amount of time to wait after the previous task executes before running this one. If this is the first task on a schedule this will not be applied.</p>
+        <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0;">${t('sched.offsethelp')}</p>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:6px;">
         <input type="checkbox" id="taskContinue" style="width:auto;" />
-        <label for="taskContinue" style="margin:0;font-size:13px;color:var(--text-secondary);cursor:pointer;">Continue on Failure</label>
+        <label for="taskContinue" style="margin:0;font-size:13px;color:var(--text-secondary);cursor:pointer;">${t('sched.continuefail')}</label>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="taskCreateBtn">Create Task</button>
+        <button class="btn btn-primary" id="taskCreateBtn">${t('sched.task.create')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -301,7 +301,7 @@ const ServerSchedules = {
         const v = actionEl.value;
         if (v === 'command') { payloadEl.placeholder = 'e.g. save-all'; }
         else if (v === 'power') { payloadEl.placeholder = 'start / stop / restart / kill'; }
-        else if (v === 'backup') { payloadEl.placeholder = 'Optional backup name'; }
+        else if (v === 'backup') { payloadEl.placeholder = t('backups.name.ph'); }
       });
       const btn = Utils.el('taskCreateBtn');
       if (btn) btn.addEventListener('click', async () => {
@@ -313,7 +313,7 @@ const ServerSchedules = {
         const timeOffset = parseInt(document.getElementById('taskOffset').value) || 0;
         const continueOnFailure = document.getElementById('taskContinue').checked;
         btn.disabled = true;
-        btn.textContent = 'Creating...';
+        btn.textContent = t('sched.creating');
         try {
           const ok = await Api.createscheduletask(s.panelUrl, apiKey, s.uuid, scheduleId, {
             action,
@@ -340,7 +340,7 @@ const ServerSchedules = {
   },
 
   async removetask(taskId) {
-    Modal.confirm('Delete Task', 'Are you sure you want to delete this task?', async () => {
+    Modal.confirm(t('sched.task.delete.title'), t('sched.task.delete.confirm'), async () => {
       const s = App.currentServer;
       if (!s || !this.selected) return;
       const apiKey = await Servers.resolveapikey(s);
@@ -364,17 +364,17 @@ const ServerSchedules = {
     const d = new Date(ts);
     const now = new Date();
     const diff = (now - d) / 1000;
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    if (diff < 60) return t('time.justnow');
+    if (diff < 3600) return t('time.mago', { n: Math.floor(diff / 60) });
+    if (diff < 86400) return t('time.hago', { n: Math.floor(diff / 3600) });
+    if (diff < 604800) return t('time.dago', { n: Math.floor(diff / 86400) });
     return d.toLocaleDateString();
   },
 
   formataction(action) {
-    if (action === 'command') return 'Send Command';
-    if (action === 'power') return 'Send Power Action';
-    if (action === 'backup') return 'Create Backup';
+    if (action === 'command') return t('sched.act.command');
+    if (action === 'power') return t('sched.act.power');
+    if (action === 'backup') return t('sched.act.backup');
     return action;
   },
 
@@ -384,11 +384,11 @@ const ServerSchedules = {
         <div class="network-header">
           <div class="network-info-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Schedules allow you to automate server tasks at specific intervals.</span>
+            <span>${t('sched.intro')}</span>
           </div>
           <button class="btn btn-primary btn-sm" onclick="ServerSchedules.opencreatemodal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            New Schedule
+            ${t('sched.newbtn')}
           </button>
         </div>
         <div class="schedule-list">`;
@@ -404,34 +404,34 @@ const ServerSchedules = {
               <div class="schedule-details">
                 <div class="schedule-name-row">
                   <h4>${Utils.escape(sched.name)}</h4>
-                  ${!sched.is_active ? '<span class="inactive-badge">Inactive</span>' : ''}
+                  ${!sched.is_active ? `<span class="inactive-badge">${t('sched.inactive')}</span>` : ''}
                 </div>
                 <div class="schedule-cron"><code>${Utils.escape(this.formatcron(sched))}</code></div>
               </div>
               <div class="schedule-timing">
                 <div class="timing-item">
-                  <span class="timing-label">Last run:</span>
-                  <span class="timing-val">${sched.last_run_at ? this.formatdate(sched.last_run_at) : 'Never'}</span>
+                  <span class="timing-label">${t('sched.lastrun')}</span>
+                  <span class="timing-val">${sched.last_run_at ? this.formatdate(sched.last_run_at) : t('sched.never')}</span>
                 </div>
                 <div class="timing-item">
-                  <span class="timing-label">Next run:</span>
-                  <span class="timing-val">${sched.next_run_at ? this.formatdate(sched.next_run_at) : 'Not scheduled'}</span>
+                  <span class="timing-label">${t('sched.nextrun')}</span>
+                  <span class="timing-val">${sched.next_run_at ? this.formatdate(sched.next_run_at) : t('sched.notscheduled')}</span>
                 </div>
               </div>
             </div>
             <div class="schedule-actions">
               <button class="btn btn-secondary btn-sm" onclick="ServerSchedules.execute('${sched.id}')" ${isExec ? 'disabled' : ''}>
                 ${isExec ? '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'}
-                Run Now
+                ${t('sched.runnow')}
               </button>
-              <button class="btn-icon btn-danger-sm" onclick="ServerSchedules.remove('${sched.id}')" title="Delete">
+              <button class="btn-icon btn-danger-sm" onclick="ServerSchedules.remove('${sched.id}')" title="${t('files.delete')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
             </div>
           </div>`;
     }
     if (!this.schedules.length) {
-      html += '<div class="tab-empty">No automated schedules configured.</div>';
+      html += `<div class="tab-empty">${t('sched.empty')}</div>`;
     }
     html += '</div></div>';
     return html;
@@ -460,42 +460,42 @@ const ServerSchedules = {
             <span class="schedule-status-badge ${sched.is_active ? 'active' : ''}">${status}</span>
           </div>
           <div class="schedule-detail-runs">
-            <span>Last run at: <strong>${sched.last_run_at ? this.formatdate(sched.last_run_at) : 'Never'}</strong></span>
+            <span>${t('sched.lastrunat')} <strong>${sched.last_run_at ? this.formatdate(sched.last_run_at) : t('sched.never')}</strong></span>
             <span class="run-sep">|</span>
-            <span>Next run at: <strong>${sched.next_run_at ? this.formatdate(sched.next_run_at) : 'Not scheduled'}</strong></span>
+            <span>${t('sched.nextrunat')} <strong>${sched.next_run_at ? this.formatdate(sched.next_run_at) : t('sched.notscheduled')}</strong></span>
           </div>
         </div>
         <div class="schedule-detail-actions">
           <button class="btn btn-secondary btn-sm" onclick="ServerSchedules.execute('${sched.id}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Run Now
+            ${t('sched.runnow')}
           </button>
           <button class="btn btn-secondary btn-sm" onclick="ServerSchedules.openeditmodal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-            Edit
+            ${t('users.editbtn')}
           </button>
           <button class="btn btn-primary btn-sm" onclick="ServerSchedules.opentaskmodal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            New Task
+            ${t('sched.task.new')}
           </button>
         </div>`;
     const c = sched.cron || {};
     html += `
         <div class="schedule-cron-cards">
-          <div class="cron-card"><span class="cron-card-label">Minute</span><code>${Utils.escape(c.minute || '*')}</code></div>
-          <div class="cron-card"><span class="cron-card-label">Hour</span><code>${Utils.escape(c.hour || '*')}</code></div>
-          <div class="cron-card"><span class="cron-card-label">Day (Month)</span><code>${Utils.escape(c.day_of_month || '*')}</code></div>
-          <div class="cron-card"><span class="cron-card-label">Month</span><code>${Utils.escape(c.month || '*')}</code></div>
-          <div class="cron-card"><span class="cron-card-label">Day (Week)</span><code>${Utils.escape(c.day_of_week || '*')}</code></div>
+          <div class="cron-card"><span class="cron-card-label">${t('sched.minute')}</span><code>${Utils.escape(c.minute || '*')}</code></div>
+          <div class="cron-card"><span class="cron-card-label">${t('sched.hour')}</span><code>${Utils.escape(c.hour || '*')}</code></div>
+          <div class="cron-card"><span class="cron-card-label">${t('sched.daymonth')}</span><code>${Utils.escape(c.day_of_month || '*')}</code></div>
+          <div class="cron-card"><span class="cron-card-label">${t('sched.month')}</span><code>${Utils.escape(c.month || '*')}</code></div>
+          <div class="cron-card"><span class="cron-card-label">${t('sched.dayweek')}</span><code>${Utils.escape(c.day_of_week || '*')}</code></div>
         </div>`;
-    html += '<div class="schedule-tasks-section"><h3 class="tasks-title">Tasks</h3>';
+    html += `<div class="schedule-tasks-section"><h3 class="tasks-title">${t('sched.tasks')}</h3>`;
     if (!this.tasks.length) {
-      html += '<div class="tab-empty">No tasks configured for this schedule.</div>';
+      html += `<div class="tab-empty">${t('sched.notasks')}</div>`;
     } else {
       html += '<div class="task-list">';
       for (const task of this.tasks) {
         const payloadText = task.action === 'power'
-          ? ({start:'Start',stop:'Stop',restart:'Restart',kill:'Kill'}[task.payload] || task.payload)
+          ? ({start:t('dashboard.start'),stop:t('dashboard.stop'),restart:t('dashboard.restart'),kill:t('console.kill')}[task.payload] || task.payload)
           : (task.payload || '-');
         html += `
             <div class="task-card">
@@ -504,13 +504,13 @@ const ServerSchedules = {
                 <div class="task-info">
                   <div class="task-action-row">
                     <span class="task-action-badge">${Utils.escape(this.formataction(task.action))}</span>
-                    ${task.continue_on_failure ? '<span class="task-continue-badge">Continue on Failure</span>' : ''}
+                    ${task.continue_on_failure ? `<span class="task-continue-badge">${t('sched.continuefail')}</span>` : ''}
                   </div>
                   <div class="task-payload">${Utils.escape(payloadText)}</div>
-                  <div class="task-meta">Time offset: ${task.time_offset}s</div>
+                  <div class="task-meta">${t('sched.offsetline', { n: task.time_offset })}</div>
                 </div>
               </div>
-              <button class="btn-icon btn-danger-sm" onclick="ServerSchedules.removetask('${task.id}')" title="Delete task">
+              <button class="btn-icon btn-danger-sm" onclick="ServerSchedules.removetask('${task.id}')" title="${t('sched.task.delete.title')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
             </div>`;

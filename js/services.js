@@ -83,7 +83,7 @@ const Services = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      tab.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
@@ -98,21 +98,21 @@ const Services = {
       <div class="svc-stats">
         <div class="svc-stat">
           <span class="svc-stat-value">${this.services.length}</span>
-          <span class="svc-stat-label">Total</span>
+          <span class="svc-stat-label">${t('services.total')}</span>
         </div>
         <div class="svc-stat svc-stat-active">
           <span class="svc-stat-value">${activeCount}</span>
-          <span class="svc-stat-label">Active</span>
+          <span class="svc-stat-label">${t('services.active')}</span>
         </div>
         ${failedCount > 0 ? `<div class="svc-stat svc-stat-failed">
           <span class="svc-stat-value">${failedCount}</span>
-          <span class="svc-stat-label">Failed</span>
+          <span class="svc-stat-label">${t('services.failed')}</span>
         </div>` : ''}
       </div>
 
       <div class="svc-search-wrap">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="svc-search" id="svcSearch" placeholder="Search services..." value="${Utils.escape(this.filter)}" oninput="Services.onsearch(this.value)" />
+        <input type="text" class="svc-search" id="svcSearch" placeholder="${t('services.search')}" value="${Utils.escape(this.filter)}" oninput="Services.onsearch(this.value)" />
       </div>
 
       <div class="svc-list">`;
@@ -133,17 +133,17 @@ const Services = {
         </div>
         <div class="svc-card-actions">
           ${isRunning
-            ? `<button class="btn btn-sm btn-yellow" onclick="Services.action('${s.name}', 'stop')" title="Stop">Stop</button>
-               <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'restart')" title="Restart">Restart</button>`
-            : `<button class="btn btn-sm btn-green" onclick="Services.action('${s.name}', 'start')" title="Start">Start</button>`}
-          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'enable')" title="Enable">Enable</button>
-          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'disable')" title="Disable">Disable</button>
+            ? `<button class="btn btn-sm btn-yellow" onclick="Services.action('${s.name}', 'stop')" title="${t('services.stop')}">${t('services.stop')}</button>
+               <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'restart')" title="${t('services.restart')}">${t('services.restart')}</button>`
+            : `<button class="btn btn-sm btn-green" onclick="Services.action('${s.name}', 'start')" title="${t('services.start')}">${t('services.start')}</button>`}
+          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'enable')" title="${t('services.enable')}">${t('services.enable')}</button>
+          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'disable')" title="${t('services.disable')}">${t('services.disable')}</button>
         </div>
       </div>`;
     }
 
     if (!filtered.length) {
-      html += '<div class="fw-empty">No services found</div>';
+      html += `<div class="fw-empty">${t('services.empty')}</div>`;
     }
 
     html += '</div></div>';
@@ -181,17 +181,17 @@ const Services = {
         </div>
         <div class="svc-card-actions">
           ${isRunning
-            ? `<button class="btn btn-sm btn-yellow" onclick="Services.action('${s.name}', 'stop')">Stop</button>
-               <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'restart')">Restart</button>`
-            : `<button class="btn btn-sm btn-green" onclick="Services.action('${s.name}', 'start')">Start</button>`}
-          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'enable')">Enable</button>
-          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'disable')">Disable</button>
+            ? `<button class="btn btn-sm btn-yellow" onclick="Services.action('${s.name}', 'stop')">${t('services.stop')}</button>
+               <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'restart')">${t('services.restart')}</button>`
+            : `<button class="btn btn-sm btn-green" onclick="Services.action('${s.name}', 'start')">${t('services.start')}</button>`}
+          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'enable')">${t('services.enable')}</button>
+          <button class="btn btn-sm btn-secondary" onclick="Services.action('${s.name}', 'disable')">${t('services.disable')}</button>
         </div>
       </div>`;
     }
 
     if (!filtered.length) {
-      html = '<div class="fw-empty">No services found</div>';
+      html = `<div class="fw-empty">${t('services.empty')}</div>`;
     }
 
     listEl.innerHTML = html;

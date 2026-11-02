@@ -6,6 +6,14 @@ const Firewall = {
   rules: [],
   rawOutput: '',
 
+  pluralform(n) {
+    if (I18n.getlang() !== 'ru') return n === 1 ? 'one' : 'many';
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'one';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'few';
+    return 'many';
+  },
+
   async load() {
     this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
@@ -157,15 +165,15 @@ const Firewall = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      tab.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
     if (!this.fwType) {
       tab.innerHTML = `<div class="fw-unsupported">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <h3>No supported firewall found</h3>
-        <p>Install UFW or firewalld to manage firewall rules</p>
+        <h3>${t('fw.unsupported.title')}</h3>
+        <p>${t('fw.unsupported.desc')}</p>
       </div>`;
       return;
     }
@@ -179,25 +187,25 @@ const Firewall = {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <div class="fw-status-info">
-            <h3>Firewall ${this.active ? 'Active' : 'Inactive'}</h3>
-            <span>${fwLabel} - ${this.rules.length} rule${this.rules.length !== 1 ? 's' : ''}</span>
+            <h3>${this.active ? t('fw.title.active') : t('fw.title.inactive')}</h3>
+            <span>${fwLabel} - ${t('fw.rules.' + this.pluralform(this.rules.length), { n: this.rules.length })}</span>
           </div>
         </div>
         ${this.fwType === 'iptables' ? '' : `<button class="btn btn-sm ${this.active ? 'btn-red' : 'btn-green'}" onclick="Firewall.togglefirewall()">
-          ${this.active ? 'Disable' : 'Enable'}
+          ${this.active ? t('fw.disable') : t('fw.enable')}
         </button>`}
       </div>
 
       <div class="fw-card">
         <div class="fw-card-header">
-          <h3>Rules</h3>
-          <button class="btn btn-primary btn-sm" onclick="Firewall.showaddrule()">Add Rule</button>
+          <h3>${t('fw.rules_title')}</h3>
+          <button class="btn btn-primary btn-sm" onclick="Firewall.showaddrule()">${t('fw.add_rule')}</button>
         </div>
         <div class="fw-card-body">`;
 
     if (this.fwType === 'ufw' && this.rules.length > 0) {
       html += `<div class="fw-table-wrap"><table class="fw-table">
-        <thead><tr><th>#</th><th>Port/Service</th><th>Action</th><th>Direction</th><th>Source</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>${t('fw.col.port_service')}</th><th>${t('fw.col.action')}</th><th>${t('fw.col.direction')}</th><th>${t('fw.col.source')}</th><th></th></tr></thead>
         <tbody>`;
       for (const r of this.rules) {
         html += `<tr>
@@ -205,8 +213,8 @@ const Firewall = {
           <td><code>${Utils.escape(r.port)}</code></td>
           <td><span class="fw-action fw-action-${r.action.toLowerCase()}">${r.action}</span></td>
           <td>${r.direction}</td>
-          <td>${r.source ? '<code>' + Utils.escape(r.source) + '</code>' : '<span class="text-muted">Any</span>'}</td>
-          <td><button class="btn-icon btn-danger-sm" onclick="Firewall.deleterule(${r.number})" title="Delete">
+          <td>${r.source ? '<code>' + Utils.escape(r.source) + '</code>' : `<span class="text-muted">${t('fw.any')}</span>`}</td>
+          <td><button class="btn-icon btn-danger-sm" onclick="Firewall.deleterule(${r.number})" title="${t('fw.delete')}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button></td>
         </tr>`;
@@ -214,27 +222,27 @@ const Firewall = {
       html += '</tbody></table></div>';
     } else if (this.fwType === 'firewalld' && this.rules.length > 0) {
       html += `<div class="fw-table-wrap"><table class="fw-table">
-        <thead><tr><th>#</th><th>Service/Port</th><th>Type</th><th>Action</th></tr></thead>
+        <thead><tr><th>#</th><th>${t('fw.col.service_port')}</th><th>${t('fw.col.type')}</th><th>${t('fw.col.action')}</th></tr></thead>
         <tbody>`;
       for (const r of this.rules) {
         html += `<tr>
           <td class="fw-td-num">${r.number}</td>
           <td><code>${Utils.escape(r.port)}</code></td>
-          <td>${r.type || 'port'}</td>
+          <td>${r.type === 'service' ? t('fw.type.service') : t('fw.type.port')}</td>
           <td><span class="fw-action fw-action-allow">${r.action}</span></td>
         </tr>`;
       }
       html += '</tbody></table></div>';
     } else {
-      html += `<div class="fw-empty">No rules configured</div>`;
+      html += `<div class="fw-empty">${t('fw.no_rules')}</div>`;
     }
 
     html += `</div></div>
 
       <div class="fw-card">
-        <div class="fw-card-header"><h3>Raw Output</h3></div>
+        <div class="fw-card-header"><h3>${t('fw.raw')}</h3></div>
         <div class="fw-card-body">
-          <pre class="fw-raw">${Utils.escape(this.rawOutput || 'No output')}</pre>
+          <pre class="fw-raw">${Utils.escape(this.rawOutput || t('fw.no_output'))}</pre>
         </div>
       </div>
     </div>`;
@@ -243,33 +251,33 @@ const Firewall = {
   },
 
   showaddrule() {
-    Modal.open('Add Firewall Rule', `
+    Modal.open(t('fw.add_title'), `
       <div class="form-group">
-        <label class="form-label">Port / Service</label>
+        <label class="form-label">${t('fw.form.port')}</label>
         <input class="form-input" type="text" id="fwRulePort" placeholder="80, 443, 22, ssh, http" />
       </div>
       <div class="form-group">
-        <label class="form-label">Protocol</label>
+        <label class="form-label">${t('fw.form.protocol')}</label>
         <select class="form-input" id="fwRuleProto">
           <option value="tcp">TCP</option>
           <option value="udp">UDP</option>
-          <option value="both">Both</option>
+          <option value="both">${t('fw.form.both')}</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Action</label>
+        <label class="form-label">${t('fw.form.action')}</label>
         <select class="form-input" id="fwRuleAction">
-          <option value="ALLOW">Allow</option>
-          <option value="DENY">Deny</option>
+          <option value="ALLOW">${t('fw.form.allow')}</option>
+          <option value="DENY">${t('fw.form.deny')}</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Source IP (optional)</label>
-        <input class="form-input" type="text" id="fwRuleSource" placeholder="Leave empty for any" />
+        <label class="form-label">${t('fw.form.source')}</label>
+        <input class="form-input" type="text" id="fwRuleSource" placeholder="${t('fw.form.source_placeholder')}" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="fwAddRuleBtn">Add Rule</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('fw.cancel')}</button>
+        <button class="btn btn-primary" id="fwAddRuleBtn">${t('fw.add_rule')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -281,7 +289,7 @@ const Firewall = {
         const source = Utils.el('fwRuleSource').value.trim();
         if (!port) return;
         btn.disabled = true;
-        btn.textContent = 'Adding...';
+        btn.textContent = t('fw.adding');
         await Firewall.addrule(port, proto, action, source);
         Modal.close();
       });

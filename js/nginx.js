@@ -115,8 +115,8 @@ const WebServer = {
       this.sslCerts.push({
         domain,
         path: p,
-        expiry: expiry.stdout.trim() || 'Unknown',
-        issuer: issuer.stdout.trim() || 'Unknown'
+        expiry: expiry.stdout.trim() || t('nginx.unknown'),
+        issuer: issuer.stdout.trim() || t('nginx.unknown')
       });
     }
   },
@@ -157,29 +157,29 @@ const WebServer = {
     if (!el) return;
 
     if (this.loading) {
-      el.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      el.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
     if (!this.type) {
-      el.innerHTML = `<div class="pkg-container"><div class="pkg-os-banner"><div class="pkg-os-info"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><h3>No web server detected</h3><p class="text-muted">Nginx or Apache is not installed</p></div></div></div>`;
+      el.innerHTML = `<div class="pkg-container"><div class="pkg-os-banner"><div class="pkg-os-info"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><h3>${t('nginx.no_server.title')}</h3><p class="text-muted">${t('nginx.no_server.desc')}</p></div></div></div>`;
       return;
     }
 
     const statusClass = this.status === 'running' ? 'svc-active' : 'svc-failed';
-    const statuslabel = this.status === 'running' ? 'Running' : 'Stopped';
+    const statuslabel = this.status === 'running' ? t('status.running') : t('nginx.stopped');
     const typeName = this.type === 'nginx' ? 'Nginx' : 'Apache';
 
     let html = `<div class="ws-container">
       <div class="ws-header-row">
         <div class="ws-type-badge">${typeName}</div>
         <span class="svc-state-badge ${statusClass}">${statuslabel}</span>
-        <button class="btn btn-sm btn-secondary" onclick="WebServer.reloadwebserver()">Reload Config</button>
-        <button class="btn btn-sm btn-secondary" onclick="WebServer.load()">Refresh</button>
+        <button class="btn btn-sm btn-secondary" onclick="WebServer.reloadwebserver()">${t('nginx.reload')}</button>
+        <button class="btn btn-sm btn-secondary" onclick="WebServer.load()">${t('nginx.refresh')}</button>
       </div>
 
       <div class="fw-card">
-        <div class="fw-card-header"><h3>Virtual Hosts (${this.vhosts.length})</h3></div>
+        <div class="fw-card-header"><h3>${t('nginx.vhosts', { count: this.vhosts.length })}</h3></div>
         <div class="fw-card-body">`;
 
     if (this.vhosts.length) {
@@ -197,16 +197,16 @@ const WebServer = {
         </div>`;
       }
     } else {
-      html += '<div class="fw-empty">No virtual hosts found</div>';
+      html += `<div class="fw-empty">${t('nginx.vhosts_empty')}</div>`;
     }
 
     html += `</div></div>`;
 
     if (this.sslCerts.length) {
       html += `<div class="fw-card">
-        <div class="fw-card-header"><h3>SSL Certificates (${this.sslCerts.length})</h3></div>
+        <div class="fw-card-header"><h3>${t('nginx.certs', { count: this.sslCerts.length })}</h3></div>
         <div class="fw-card-body">
-          <table class="fw-table"><thead><tr><th>Domain</th><th>Issuer</th><th>Expires</th></tr></thead><tbody>`;
+          <table class="fw-table"><thead><tr><th>${t('nginx.domain')}</th><th>${t('nginx.issuer')}</th><th>${t('nginx.expires')}</th></tr></thead><tbody>`;
       for (const cert of this.sslCerts) {
         html += `<tr>
           <td><code>${Utils.escape(cert.domain)}</code></td>

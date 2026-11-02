@@ -180,7 +180,7 @@ const ServerConsole = {
       this.connected = false;
       this._stopping();
       this._setconnectionstatus(false);
-      this.log('system', 'Disconnected (code: ' + code + ')');
+      this.log('system', t('console.disconnected') + ' (code: ' + code + ')');
       this._updateconsolestate();
       this._schedulereconnect(5000);
     });
@@ -408,7 +408,7 @@ const ServerConsole = {
         return;
       }
 
-      this.log('system', 'Connecting...');
+      this.log('system', t('console.connecting.title'));
       const id = await window.electronAPI.connectwebsocket(data.socket, data.token, {
         'Authorization': 'Bearer ' + apiKey,
         'Accept': server.type === 'Calagopus' ? 'application/json' : 'application/vnd.pterodactyl.v1+json'
@@ -658,7 +658,7 @@ const ServerConsole = {
   async power(signal) {
     if (!this.server) return;
     if (signal === 'kill') {
-      Modal.confirm('Force Stop', 'Kill may corrupt server files. Are you sure?', () => {
+      Modal.confirm(t('console.kill.title'), t('console.kill.text'), () => {
         this.sendpower('kill');
       });
       return;
@@ -677,7 +677,7 @@ const ServerConsole = {
           if (this.server.type === 'Calagopus') await Api.calagopuspower(this.server.panelUrl, apiKey, this.server.uuid, signal);
           else await Api.power(this.server.panelUrl, apiKey, this.server.uuid, signal);
         } catch (error) {
-          Modal.alert('Power Error', error.message || String(error));
+          Modal.alert(t('console.power.error'), error.message || String(error));
           return;
         }
       }
@@ -893,8 +893,8 @@ const ServerConsole = {
     }
     if (text && show) {
       text.textContent = connected
-        ? `Connected${Number.isFinite(ping) ? ` (${ping}ms ping)` : ''}`
-        : 'Disconnected';
+        ? t('console.connected') + (Number.isFinite(ping) ? ` (${t('console.ping', { n: ping })})` : '')
+        : t('console.disconnected');
     }
   },
 

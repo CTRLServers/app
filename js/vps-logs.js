@@ -5,16 +5,16 @@ const VPSLogs = {
   _lines: 500,
   _logpath: '/var/log/syslog',
   _logfiles: [
-    { name: 'System Log (syslog)', path: '/var/log/syslog' },
-    { name: 'Auth Log', path: '/var/log/auth.log' },
-    { name: 'Kernel Log', path: '/var/log/kern.log' },
-    { name: 'Nginx Error', path: '/var/log/nginx/error.log' },
-    { name: 'Apache Error', path: '/var/log/apache2/error.log' },
-    { name: 'Docker Log', path: '/var/log/docker.log' },
-    { name: 'MySQL Log', path: '/var/log/mysql/error.log' },
-    { name: 'PostgreSQL Log', path: '/var/log/postgresql/postgresql.log' },
-    { name: 'Journal (systemd)', path: '__journal__' },
-    { name: 'Syslog (dmesg)', path: '__dmesg__' }
+    { label: 'logs.file.syslog', path: '/var/log/syslog' },
+    { label: 'logs.file.auth', path: '/var/log/auth.log' },
+    { label: 'logs.file.kern', path: '/var/log/kern.log' },
+    { label: 'logs.file.nginx', path: '/var/log/nginx/error.log' },
+    { label: 'logs.file.apache', path: '/var/log/apache2/error.log' },
+    { label: 'logs.file.docker', path: '/var/log/docker.log' },
+    { label: 'logs.file.mysql', path: '/var/log/mysql/error.log' },
+    { label: 'logs.file.postgres', path: '/var/log/postgresql/postgresql.log' },
+    { label: 'logs.file.journal', path: '__journal__' },
+    { label: 'logs.file.dmesg', path: '__dmesg__' }
   ],
 
   load() {
@@ -30,35 +30,35 @@ const VPSLogs = {
 
   renderloading() {
     const c = Utils.el('tabLogs');
-    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+    if (c) c.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
   },
 
   render() {
     const c = Utils.el('tabLogs');
     const opts = this._logfiles.map(f =>
-      `<option value="${f.path}" ${f.path === this._logpath ? 'selected' : ''}>${f.name}</option>`
+      `<option value="${f.path}" ${f.path === this._logpath ? 'selected' : ''}>${t(f.label)}</option>`
     ).join('');
     c.innerHTML = `
       <div class="vps-section-header">
-        <h2>Log Viewer</h2>
+        <h2>${t('logs.heading')}</h2>
         <div class="vps-log-controls">
           <select class="vps-log-select" id="logFileSelect" onchange="VPSLogs.changelog(this.value)">${opts}</select>
           <select class="vps-log-select" id="logLinesSelect" onchange="VPSLogs.changelines(this.value)">
-            <option value="100">100 lines</option>
-            <option value="250">250 lines</option>
-            <option value="500" selected>500 lines</option>
-            <option value="1000">1000 lines</option>
+            <option value="100">${t('logs.lines', { n: 100 })}</option>
+            <option value="250">${t('logs.lines', { n: 250 })}</option>
+            <option value="500" selected>${t('logs.lines', { n: 500 })}</option>
+            <option value="1000">${t('logs.lines', { n: 1000 })}</option>
           </select>
-          <button class="btn btn-sm btn-secondary" id="logStreamBtn" onclick="VPSLogs.togglestream()">Start Stream</button>
-          <button class="btn btn-sm btn-secondary" onclick="VPSLogs.loadlog()">Refresh</button>
-          <button class="btn btn-sm btn-secondary" onclick="VPSLogs.clearlog()">Clear</button>
+          <button class="btn btn-sm btn-secondary" id="logStreamBtn" onclick="VPSLogs.togglestream()">${t('logs.start')}</button>
+          <button class="btn btn-sm btn-secondary" onclick="VPSLogs.loadlog()">${t('logs.refresh')}</button>
+          <button class="btn btn-sm btn-secondary" onclick="VPSLogs.clearlog()">${t('logs.clear')}</button>
         </div>
       </div>
       <div class="vps-log-wrap">
         <div class="vps-log-output" id="logOutput"></div>
       </div>
       <div class="vps-log-search">
-        <input type="text" class="vps-log-search-input" id="logSearchInput" placeholder="Filter logs..." oninput="VPSLogs.filterlogs(this.value)" />
+        <input type="text" class="vps-log-search-input" id="logSearchInput" placeholder="${t('logs.filter')}" oninput="VPSLogs.filterlogs(this.value)" />
       </div>`;
   },
 
@@ -79,7 +79,7 @@ const VPSLogs = {
     if (!output) return;
     const text = (res?.stdout || '') + (res?.stderr || '');
     if (!text.trim()) {
-      output.innerHTML = '<div class="vps-log-empty">No log data or permission denied.</div>';
+      output.innerHTML = `<div class="vps-log-empty">${t('logs.empty')}</div>`;
       return;
     }
     this.renderlines(text.split('\n'));
@@ -118,7 +118,7 @@ const VPSLogs = {
     this._streaming = false;
     if (this._interval) { clearInterval(this._interval); this._interval = null; }
     const btn = Utils.el('logStreamBtn');
-    if (btn) btn.textContent = 'Start Stream';
+    if (btn) btn.textContent = t('logs.start');
     this.loadlog();
   },
 
@@ -131,10 +131,10 @@ const VPSLogs = {
     this._streaming = !this._streaming;
     const btn = Utils.el('logStreamBtn');
     if (this._streaming) {
-      if (btn) btn.textContent = 'Stop Stream';
+      if (btn) btn.textContent = t('logs.stop');
       this._interval = setInterval(() => this.loadlog(), 2000);
     } else {
-      if (btn) btn.textContent = 'Start Stream';
+      if (btn) btn.textContent = t('logs.start');
       if (this._interval) { clearInterval(this._interval); this._interval = null; }
     }
   },

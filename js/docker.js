@@ -124,39 +124,39 @@ const Docker = {
   },
 
   showcreatecontainer() {
-    Modal.open('Create Container', `
+    Modal.open(t('docker.create_container'), `
       <div class="form-group">
-        <label class="form-label">Container Name</label>
+        <label class="form-label">${t('docker.form.name')}</label>
         <input class="form-input" type="text" id="dkrName" placeholder="my-container" />
       </div>
       <div class="form-group">
-        <label class="form-label">Image</label>
+        <label class="form-label">${t('docker.form.image')}</label>
         <input class="form-input" type="text" id="dkrImage" placeholder="nginx:latest" />
       </div>
       <div class="form-group">
-        <label class="form-label">Ports (optional)</label>
+        <label class="form-label">${t('docker.form.ports')}</label>
         <input class="form-input" type="text" id="dkrPorts" placeholder="8080:80, 443:443" />
       </div>
       <div class="form-group">
-        <label class="form-label">Volumes (optional)</label>
+        <label class="form-label">${t('docker.form.volumes')}</label>
         <input class="form-input" type="text" id="dkrVolumes" placeholder="/host/path:/container/path" />
       </div>
       <div class="form-group">
-        <label class="form-label">Environment (optional)</label>
+        <label class="form-label">${t('docker.form.env')}</label>
         <input class="form-input" type="text" id="dkrEnv" placeholder="KEY=value, KEY2=value2" />
       </div>
       <div class="form-group">
-        <label class="form-label">Restart Policy</label>
+        <label class="form-label">${t('docker.form.restart')}</label>
         <select class="form-input" id="dkrRestart">
-          <option value="no">No</option>
-          <option value="always">Always</option>
-          <option value="unless-stopped">Unless Stopped</option>
-          <option value="on-failure">On Failure</option>
+          <option value="no">${t('docker.restart.no')}</option>
+          <option value="always">${t('docker.restart.always')}</option>
+          <option value="unless-stopped">${t('docker.restart.unless_stopped')}</option>
+          <option value="on-failure">${t('docker.restart.on_failure')}</option>
         </select>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="Docker.createcontainer()">Create</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('docker.cancel')}</button>
+        <button class="btn btn-primary" onclick="Docker.createcontainer()">${t('docker.create')}</button>
       </div>
     `);
   },
@@ -213,12 +213,12 @@ const Docker = {
     if (!el) return;
 
     if (this.loading) {
-      el.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      el.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
     if (!this.installed) {
-      el.innerHTML = `<div class="pkg-container"><div class="pkg-os-banner"><div class="pkg-os-info"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><h3>Docker is not installed</h3></div></div></div>`;
+      el.innerHTML = `<div class="pkg-container"><div class="pkg-os-banner"><div class="pkg-os-info"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><h3>${t('docker.not_installed')}</h3></div></div></div>`;
       return;
     }
 
@@ -227,22 +227,22 @@ const Docker = {
 
     let html = `<div class="dkr-container">
       <div class="pkg-stats">
-        <div class="pkg-stat-card"><div class="pkg-stat-label">Containers</div><div class="pkg-stat-value">${this.containers.length}</div><div class="pkg-stat-detail">${running} running, ${stopped} stopped</div></div>
-        <div class="pkg-stat-card"><div class="pkg-stat-label">Images</div><div class="pkg-stat-value">${this.images.length}</div></div>
-        <div class="pkg-stat-card"><div class="pkg-stat-label">Volumes</div><div class="pkg-stat-value">${this.volumes.length}</div></div>
+        <div class="pkg-stat-card"><div class="pkg-stat-label">${t('docker.stats.containers')}</div><div class="pkg-stat-value">${this.containers.length}</div><div class="pkg-stat-detail">${t('docker.stats.detail', { running, stopped })}</div></div>
+        <div class="pkg-stat-card"><div class="pkg-stat-label">${t('docker.stats.images')}</div><div class="pkg-stat-value">${this.images.length}</div></div>
+        <div class="pkg-stat-card"><div class="pkg-stat-label">${t('docker.stats.volumes')}</div><div class="pkg-stat-value">${this.volumes.length}</div></div>
       </div>
 
       <div class="dkr-tabs">
-        <button class="dkr-tab ${this.activeTab === 'containers' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('containers')">Containers</button>
-        <button class="dkr-tab ${this.activeTab === 'images' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('images')">Images</button>
-        <button class="dkr-tab ${this.activeTab === 'volumes' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('volumes')">Volumes</button>
+        <button class="dkr-tab ${this.activeTab === 'containers' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('containers')">${t('docker.stats.containers')}</button>
+        <button class="dkr-tab ${this.activeTab === 'images' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('images')">${t('docker.stats.images')}</button>
+        <button class="dkr-tab ${this.activeTab === 'volumes' ? 'dkr-tab-active' : ''}" onclick="Docker.setactivetab('volumes')">${t('docker.stats.volumes')}</button>
       </div>`;
 
     if (this.activeTab === 'containers') {
       html += `<div class="dkr-header-row">
         <button class="btn btn-primary btn-sm" onclick="Docker.showcreatecontainer()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Create Container
+          ${t('docker.create_container')}
         </button>
       </div>
       <div class="dkr-list">`;
@@ -262,14 +262,14 @@ const Docker = {
           </div>
           <div class="dkr-card-actions">
             ${c.running
-              ? `<button class="btn btn-sm btn-yellow" onclick="Docker.containeraction('${c.id}','stop')">Stop</button>
-                 <button class="btn btn-sm btn-secondary" onclick="Docker.containeraction('${c.id}','restart')">Restart</button>`
-              : `<button class="btn btn-sm btn-green" onclick="Docker.containeraction('${c.id}','start')">Start</button>`}
-            <button class="btn btn-sm btn-red-outline" onclick="Docker.containerremove('${c.id}')">Remove</button>
+              ? `<button class="btn btn-sm btn-yellow" onclick="Docker.containeraction('${c.id}','stop')">${t('docker.action.stop')}</button>
+                 <button class="btn btn-sm btn-secondary" onclick="Docker.containeraction('${c.id}','restart')">${t('docker.action.restart')}</button>`
+              : `<button class="btn btn-sm btn-green" onclick="Docker.containeraction('${c.id}','start')">${t('docker.action.start')}</button>`}
+            <button class="btn btn-sm btn-red-outline" onclick="Docker.containerremove('${c.id}')">${t('docker.action.remove')}</button>
           </div>
         </div>`;
       }
-      if (!this.containers.length) html += '<div class="fw-empty">No containers found</div>';
+      if (!this.containers.length) html += `<div class="fw-empty">${t('docker.empty.containers')}</div>`;
       html += '</div>';
     }
 
@@ -287,11 +287,11 @@ const Docker = {
             </div>
           </div>
           <div class="dkr-card-actions">
-            <button class="btn btn-sm btn-red-outline" onclick="Docker.imageremove('${img.id}')">Remove</button>
+            <button class="btn btn-sm btn-red-outline" onclick="Docker.imageremove('${img.id}')">${t('docker.action.remove')}</button>
           </div>
         </div>`;
       }
-      if (!this.images.length) html += '<div class="fw-empty">No images found</div>';
+      if (!this.images.length) html += `<div class="fw-empty">${t('docker.empty.images')}</div>`;
       html += '</div>';
     }
 
@@ -306,11 +306,11 @@ const Docker = {
             </div>
           </div>
           <div class="dkr-card-actions">
-            <button class="btn btn-sm btn-red-outline" onclick="Docker.volumeremove('${Utils.escape(v.name)}')">Remove</button>
+            <button class="btn btn-sm btn-red-outline" onclick="Docker.volumeremove('${Utils.escape(v.name)}')">${t('docker.action.remove')}</button>
           </div>
         </div>`;
       }
-      if (!this.volumes.length) html += '<div class="fw-empty">No volumes found</div>';
+      if (!this.volumes.length) html += `<div class="fw-empty">${t('docker.empty.volumes')}</div>`;
       html += '</div>';
     }
 

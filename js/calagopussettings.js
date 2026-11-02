@@ -19,7 +19,7 @@ const calagopussettings = {
 
   async request(session, path, method = 'GET', body = undefined, absolute = false) {
     const apikey = await Servers.resolveapikey(session.server);
-    if (method !== 'GET' && !this.active(session)) throw new Error('The selected server changed. Please reopen Settings.');
+    if (method !== 'GET' && !this.active(session)) throw new Error(t('cset.changed'));
     const options = { method, headers: Api.calagopusheaders(apikey) };
     if (body !== undefined) options.body = JSON.stringify(body);
     const response = await fetch(`${session.base}${absolute ? path : `/api/client/servers/${encodeURIComponent(session.server.uuid)}${path}`}`, options);
@@ -27,13 +27,13 @@ const calagopussettings = {
     let data;
     try { data = raw ? JSON.parse(raw) : {}; }
     catch (error) {
-      if (response.ok) throw new Error('The panel returned an invalid JSON response.');
+      if (response.ok) throw new Error(t('cset.badjson'));
       data = {};
     }
     if (!response.ok) {
       const errors = Array.isArray(data.errors) ? data.errors : Object.values(data.errors || {});
       const message = errors.map(item => typeof item === 'string' ? item : item.detail || item.message || JSON.stringify(item)).join('; ');
-      throw new Error(message || data.message || `Request failed (HTTP ${response.status})`);
+      throw new Error(message || data.message || t('cset.httperror', { status: response.status }));
     }
     return { data, status: response.status };
   },
@@ -61,9 +61,9 @@ const calagopussettings = {
     ]);
     if (!this.active(session)) return;
     if (results[1].status === 'fulfilled') session.user = results[1].value.data.user || results[1].value.data;
-    else session.warnings.push(`Unable to load role permissions: ${results[1].reason.message}`);
+    else session.warnings.push(t('cset.warn.perms', { msg: results[1].reason.message }));
     if (results[2].status === 'fulfilled') session.config = results[2].value.data;
-    else session.warnings.push(`Unable to load installation failure policy: ${results[2].reason.message}`);
+    else session.warnings.push(t('cset.warn.policy', { msg: results[2].reason.message }));
     if (results[0].status === 'rejected') session.error = results[0].reason.message;
     this.updatebanner();
     this.schedulepoll(session);
@@ -75,7 +75,7 @@ const calagopussettings = {
     const result = await this.request(session, '');
     if (!this.active(session) || revision !== session.revision || sequence !== session.sequence) return;
     const detail = result.data.server || result.data;
-    if (!detail.uuid || !Array.isArray(detail.permissions)) throw new Error('The panel returned incomplete server information.');
+    if (!detail.uuid || !Array.isArray(detail.permissions)) throw new Error(t('cset.incomplete'));
     const previous = session.detail?.status;
     session.detail = detail;
     session.error = null;
@@ -111,7 +111,7 @@ const calagopussettings = {
     const session = this.session;
     if (!session) return;
     const container = Utils.el('tabSettings');
-    container.innerHTML = '<div class="tab-loading" role="status"><span class="spinner"></span>Loading settings...</div>';
+    container.innerHTML = `<div class="tab-loading" role="status"><span class="spinner"></span>${t('cset.loading')}</div>`;
     await session.ready;
     if (!this.active(session) || App.currentServerPage !== 'settings') return;
     try {
@@ -121,13 +121,13 @@ const calagopussettings = {
       this.render(session);
     } catch (error) {
       if (!this.active(session) || App.currentServerPage !== 'settings') return;
-      container.innerHTML = `<div class="calagopus-settings-empty" role="alert"><strong>Unable to load Settings</strong><p>${this.safe(error.message)}</p><button class="btn btn-secondary" id="calagopus-settings-retry">Try Again</button></div>`;
+      container.innerHTML = `<div class="calagopus-settings-empty" role="alert"><strong>${t('cset.loadfail')}</strong><p>${this.safe(error.message)}</p><button class="btn btn-secondary" id="calagopus-settings-retry">${t('cset.retry')}</button></div>`;
       Utils.el('calagopus-settings-retry').onclick = () => { this.start(session.server); this.load(); };
     }
   },
 
   section(title, content, kind = '') {
-    return `<section class="calagopus-settings-section"><h3>${title}</h3>${kind ? `<form data-setting="${kind}"><fieldset>${content}<p class="calagopus-settings-feedback" role="status"></p><button type="submit" class="btn btn-primary btn-sm">Save</button></fieldset></form>` : content}</section>`;
+    return `<section class="calagopus-settings-section"><h3>${title}</h3>${kind ? `<form data-setting="${kind}"><fieldset>${content}<p class="calagopus-settings-feedback" role="status"></p><button type="submit" class="btn btn-primary btn-sm">${t('cset.save')}</button></fieldset></form>` : content}</section>`;
   },
 
   field(label, content) {
@@ -138,29 +138,29 @@ const calagopussettings = {
     const detail = session.detail;
     const input = (name, value, extra = '') => `<input class="settings-input" name="${name}" value="${this.safe(value)}" ${extra}>`;
     const nameduuid = (name, uuid) => uuid ? (name ? `${name} (${uuid})` : uuid) : '';
-    const fields = [['Node (UUID)', nameduuid(detail.node_name, detail.node_uuid)], ['Location (UUID)', nameduuid(detail.location_name, detail.location_uuid)], ['Server UUID', detail.uuid]];
-    let html = this.section('Debug Information', fields.map(([label, value], index) => `<div class="calagopus-settings-field"><span>${label}</span><button type="button" class="copy-field" data-debug="${index}" title="Copy ${label}" ${value ? '' : 'disabled'}><span>${index === 1 && detail.location_flag ? `<img class="calagopus-settings-flag" src="${this.safe(session.base)}/flags/${encodeURIComponent(detail.location_flag)}.svg" alt="">` : ''}${this.safe(value || 'Unavailable')}</span><span class="calagopus-settings-copy">Copy</span></button></div>`).join(''));
-    if (this.can('settings.rename', session)) html += this.section('Rename Server', this.field('Server Name *', input('name', detail.name, 'required maxlength="255"')) + this.field('Description', `<textarea name="description" class="settings-input" rows="3" maxlength="1024">${this.safe(detail.description)}</textarea>`), 'rename');
+    const fields = [[t('cset.node'), nameduuid(detail.node_name, detail.node_uuid)], [t('cset.location'), nameduuid(detail.location_name, detail.location_uuid)], [t('cset.serveruuid'), detail.uuid]];
+    let html = this.section(t('cset.debug.title'), fields.map(([label, value], index) => `<div class="calagopus-settings-field"><span>${label}</span><button type="button" class="copy-field" data-debug="${index}" title="${t('cset.copyfield', { label })}" ${value ? '' : 'disabled'}><span>${index === 1 && detail.location_flag ? `<img class="calagopus-settings-flag" src="${this.safe(session.base)}/flags/${encodeURIComponent(detail.location_flag)}.svg" alt="">` : ''}${this.safe(value || t('cset.unavailable'))}</span><span class="calagopus-settings-copy">${t('common.copy')}</span></button></div>`).join(''));
+    if (this.can('settings.rename', session)) html += this.section(t('cset.rename.title'), this.field(t('cset.name'), input('name', detail.name, 'required maxlength="255"')) + this.field(t('cset.description'), `<textarea name="description" class="settings-input" rows="3" maxlength="1024">${this.safe(detail.description)}</textarea>`), 'rename');
     if (this.can('settings.auto-kill', session)) html += detail.auto_kill && typeof detail.auto_kill.enabled === 'boolean' && Number.isInteger(detail.auto_kill.seconds)
-      ? this.section('Auto-Kill', `<label class="calagopus-settings-toggle"><input type="checkbox" role="switch" name="enabled" ${detail.auto_kill.enabled ? 'checked' : ''}>Enabled</label>` + this.field('Seconds until auto-kill', input('seconds', detail.auto_kill.seconds, 'type="number" required min="1" max="3600" step="1"')), 'auto-kill')
-      : this.section('Auto-Kill', '<p>This panel version did not return auto-kill settings.</p>');
+      ? this.section(t('cset.autokill.title'), `<label class="calagopus-settings-toggle"><input type="checkbox" role="switch" name="enabled" ${detail.auto_kill.enabled ? 'checked' : ''}>${t('cset.enabled')}</label>` + this.field(t('cset.autokill.seconds'), input('seconds', detail.auto_kill.seconds, 'type="number" required min="1" max="3600" step="1"')), 'auto-kill')
+      : this.section(t('cset.autokill.title'), `<p>${t('cset.autokill.unavailable')}</p>`);
     if (this.can('settings.auto-start', session)) html += ['always', 'unless_stopped', 'never'].includes(detail.auto_start_behavior)
-      ? this.section('Auto-Start', this.field('Behavior *', `<select class="settings-input" name="behavior">${[['always', 'Always'], ['unless_stopped', 'Unless Stopped'], ['never', 'Never']].map(([value, label]) => `<option value="${value}" ${detail.auto_start_behavior === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`), 'auto-start')
-      : this.section('Auto-Start', '<p>This panel version did not return auto-start settings.</p>');
+      ? this.section(t('cset.autostart.title'), this.field(t('cset.behavior'), `<select class="settings-input" name="behavior">${[['always', t('cset.always')], ['unless_stopped', t('cset.unlessstopped')], ['never', t('cset.never')]].map(([value, label]) => `<option value="${value}" ${detail.auto_start_behavior === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`), 'auto-start')
+      : this.section(t('cset.autostart.title'), `<p>${t('cset.autostart.unavailable')}</p>`);
     if (this.can('settings.timezone', session)) html += Object.hasOwn(detail, 'timezone')
-      ? this.section('Timezone', this.field('Timezone', `<div class="calagopus-settings-timezone">${input('timezone', detail.timezone, 'list="calagopus-timezones" placeholder="System" autocomplete="off" aria-label="Timezone"')}<button type="button" class="btn btn-secondary btn-sm" data-clear title="Use the node system timezone">Clear</button></div>`) + `<datalist id="calagopus-timezones">${calagopustimezones.map(zone => `<option value="${zone}"></option>`).join('')}</datalist><p class="settings-note" data-zone-current>Current: ${this.safe(detail.timezone || 'System (node timezone)')}</p><p class="calagopus-settings-clock" data-clock aria-live="off"></p>`, 'timezone')
-      : this.section('Timezone', '<p>This panel version did not return timezone settings.</p>');
-    if (this.can('settings.install', session)) html += this.section('Reinstall Server', '<p>Reinstalling your server will stop it, and then re-run the installation script that initially set it up. Some files may be deleted or modified during this process, please back up your data before continuing.</p><button type="button" class="btn btn-danger btn-sm" data-reinstall>Reinstall Server</button>');
+      ? this.section(t('cset.timezone.title'), this.field(t('cset.timezone.title'), `<div class="calagopus-settings-timezone">${input('timezone', detail.timezone, `list="calagopus-timezones" placeholder="${t('cset.timezone.ph')}" autocomplete="off" aria-label="${t('cset.timezone.title')}"`)}<button type="button" class="btn btn-secondary btn-sm" data-clear title="${t('cset.timezone.cleartitle')}">${t('cset.timezone.clear')}</button></div>`) + `<datalist id="calagopus-timezones">${calagopustimezones.map(zone => `<option value="${zone}"></option>`).join('')}</datalist><p class="settings-note" data-zone-current>${t('cset.timezone.current', { zone: this.safe(detail.timezone || t('cset.timezone.system')) })}</p><p class="calagopus-settings-clock" data-clock aria-live="off"></p>`, 'timezone')
+      : this.section(t('cset.timezone.title'), `<p>${t('cset.timezone.unavailable')}</p>`);
+    if (this.can('settings.install', session)) html += this.section(t('cset.reinstall.title'), `<p>${t('cset.reinstall.desc')}</p><button type="button" class="btn btn-danger btn-sm" data-reinstall>${t('cset.reinstall.btn')}</button>`);
     const container = Utils.el('tabSettings');
     container.innerHTML = `<div class="calagopus-settings">${session.warnings.map(message => `<p role="alert" class="calagopus-settings-warning">${this.safe(message)}</p>`).join('')}${html}</div>`;
     container.querySelectorAll('[data-debug]').forEach(button => {
       button.onclick = async () => {
         try {
           await navigator.clipboard.writeText(fields[Number(button.dataset.debug)][1]);
-          button.querySelector('.calagopus-settings-copy').textContent = 'Copied';
-          this.toast('Copied to clipboard');
-          setTimeout(() => { if (button.isConnected) button.querySelector('.calagopus-settings-copy').textContent = 'Copy'; }, 2000);
-        } catch (error) { this.toast(`Unable to copy: ${error.message}`, 'error'); }
+          button.querySelector('.calagopus-settings-copy').textContent = t('cset.copied');
+          this.toast(t('cset.copiedtoast'));
+          setTimeout(() => { if (button.isConnected) button.querySelector('.calagopus-settings-copy').textContent = t('common.copy'); }, 2000);
+        } catch (error) { this.toast(t('cset.copyfail', { msg: error.message }), 'error'); }
       };
     });
     container.querySelectorAll('form').forEach(form => {
@@ -187,14 +187,14 @@ const calagopussettings = {
     if (!input.value) { target.textContent = ''; return; }
     try {
       target.textContent = new Intl.DateTimeFormat(undefined, { timeZone: input.value, year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', timeZoneName: 'short' }).format(new Date());
-    } catch (error) { target.textContent = 'Clock preview unavailable for this timezone.'; }
+    } catch (error) { target.textContent = t('cset.clockfail'); }
   },
 
   validate(form) {
     const zone = form.elements.namedItem('timezone');
-    if (zone) zone.setCustomValidity(!zone.value || calagopustimezones.includes(zone.value) ? '' : 'Select a timezone from the list, or clear to use System.');
+    if (zone) zone.setCustomValidity(!zone.value || calagopustimezones.includes(zone.value) ? '' : t('cset.validation.timezone'));
     const seconds = form.elements.namedItem('seconds');
-    if (seconds) seconds.setCustomValidity(Number.isInteger(Number(seconds.value)) && Number(seconds.value) >= 1 && Number(seconds.value) <= 3600 ? '' : 'Enter a whole number from 1 to 3600.');
+    if (seconds) seconds.setCustomValidity(Number.isInteger(Number(seconds.value)) && Number(seconds.value) >= 1 && Number(seconds.value) <= 3600 ? '' : t('cset.validation.seconds'));
     const valid = form.checkValidity();
     form.querySelector('[type="submit"]').disabled = !valid;
     return valid;
@@ -207,7 +207,7 @@ const calagopussettings = {
       case 'auto-kill': return { enabled: form.elements.namedItem('enabled').checked, seconds: Number(value('seconds')) };
       case 'auto-start': return { behavior: value('behavior') };
       case 'timezone': return { timezone: value('timezone') || null };
-      default: throw new Error('Unknown setting');
+      default: throw new Error(t('cset.unknown'));
     }
   },
 
@@ -220,7 +220,7 @@ const calagopussettings = {
     session.busy.add(kind);
     session.revision++;
     fieldset.disabled = true;
-    feedback.textContent = 'Saving...';
+    feedback.textContent = t('cset.saving');
     feedback.classList.remove('error');
     try {
       await this.request(session, `/settings/${kind}`, kind === 'rename' ? 'POST' : 'PUT', body);
@@ -230,10 +230,10 @@ const calagopussettings = {
       if (kind === 'auto-start') session.detail.auto_start_behavior = body.behavior;
       if (kind === 'timezone') {
         session.detail.timezone = body.timezone;
-        form.querySelector('[data-zone-current]').textContent = `Current: ${body.timezone || 'System (node timezone)'}`;
+        form.querySelector('[data-zone-current]').textContent = t('cset.timezone.current', { zone: body.timezone || t('cset.timezone.system') });
       }
-      feedback.textContent = 'Saved';
-      if (this.active(session)) this.toast('Settings saved');
+      feedback.textContent = t('cset.saved');
+      if (this.active(session)) this.toast(t('cset.savedtoast'));
     } catch (error) {
       feedback.classList.add('error');
       feedback.textContent = error.message;
@@ -264,7 +264,7 @@ const calagopussettings = {
 
   reinstall(session) {
     if (!this.active(session) || !this.can('settings.install', session) || this.blocked(session)) return;
-    Modal.open('Reinstall Server', `<form id="calagopus-reinstall"><fieldset><p>Reinstalling your server will stop it, and then re-run the installation script that initially set it up. Some files may be deleted or modified during this process, please back up your data before continuing.</p><label class="calagopus-settings-toggle"><input type="checkbox" role="switch" name="truncate_directory">Delete all server files</label><p class="settings-note">Do you want to delete all files of this server before performing this action? This cannot be undone.</p>${this.can('control.start', session) ? '<label class="calagopus-settings-toggle"><input type="checkbox" role="switch" name="start_on_completion">Start the server after the reinstall has finished.</label>' : ''}<p role="status" class="calagopus-settings-feedback"></p><div class="modal-actions"><button type="button" class="btn btn-secondary" data-close>Close</button><button type="submit" class="btn btn-danger">Reinstall</button></div></fieldset></form>`);
+    Modal.open(t('cset.reinstall.title'), `<form id="calagopus-reinstall"><fieldset><p>${t('cset.reinstall.desc')}</p><label class="calagopus-settings-toggle"><input type="checkbox" role="switch" name="truncate_directory">${t('cset.reinstall.truncate')}</label><p class="settings-note">${t('cset.reinstall.truncatenote')}</p>${this.can('control.start', session) ? `<label class="calagopus-settings-toggle"><input type="checkbox" role="switch" name="start_on_completion">${t('cset.reinstall.startafter')}</label>` : ''}<p role="status" class="calagopus-settings-feedback"></p><div class="modal-actions"><button type="button" class="btn btn-secondary" data-close>${t('cset.close')}</button><button type="submit" class="btn btn-danger">${t('cset.reinstall.submit')}</button></div></fieldset></form>`);
     const form = Utils.el('calagopus-reinstall');
     this.modalform = form;
     Modal.closeguard = event => !session.busy.has('install') && (event?.key !== 'Escape' || ![...form.querySelectorAll('input')].some(input => input.checked));
@@ -277,14 +277,14 @@ const calagopussettings = {
       const revision = ++session.revision;
       form.querySelector('fieldset').disabled = true;
       const feedback = form.querySelector('[role="status"]');
-      feedback.textContent = 'Requesting reinstall...';
+      feedback.textContent = t('cset.reinstall.requesting');
       try {
         await this.request(session, '/settings/install', 'POST', body);
         if (session.revision === revision) { session.detail.status = 'installing'; session.progress = null; }
         session.revision++;
         if (this.active(session)) {
           if (form.isConnected) { Modal.closeguard = null; Modal.close(); }
-          this.toast('Server reinstall requested');
+          this.toast(t('cset.reinstall.requested'));
           App.switchserverpage('console');
           this.updatebanner();
           this.schedulepoll(session);
@@ -300,7 +300,7 @@ const calagopussettings = {
 
   acknowledge(session) {
     if (!this.active(session) || !this.canacknowledge(session)) return;
-    Modal.open('Acknowledge Installation Failure', '<form id="calagopus-acknowledge"><fieldset><p>This will clear the failed installation state and allow you to interact with the server again. The server may not function correctly until the underlying issue is resolved.</p><p role="status" class="calagopus-settings-feedback"></p><div class="modal-actions"><button type="button" class="btn btn-secondary" data-close>Cancel</button><button type="submit" class="btn btn-danger">Acknowledge Failure</button></div></fieldset></form>');
+    Modal.open(t('cset.ack.title'), `<form id="calagopus-acknowledge"><fieldset><p>${t('cset.ack.desc')}</p><p role="status" class="calagopus-settings-feedback"></p><div class="modal-actions"><button type="button" class="btn btn-secondary" data-close>${t('cset.cancel')}</button><button type="submit" class="btn btn-danger">${t('cset.ack.btn')}</button></div></fieldset></form>`);
     const form = Utils.el('calagopus-acknowledge');
     this.modalform = form;
     form.querySelector('[data-close]').onclick = () => Modal.close();
@@ -321,7 +321,7 @@ const calagopussettings = {
         session.detail.status = null;
         this.completed(session, null);
         if (this.active(session) && form?.isConnected) Modal.close();
-      } else if (form) form.querySelector('[role="status"]').textContent = 'Waiting for the node to confirm cancellation...';
+      } else if (form) form.querySelector('[role="status"]').textContent = t('cset.ack.waiting');
       if (this.active(session)) this.schedulepoll(session);
     } catch (error) {
       session.cancelling = false;
@@ -338,8 +338,8 @@ const calagopussettings = {
     session.cancelling = false;
     if (!this.active(session)) return;
     if (cancelling && !status && this.modalform?.id === 'calagopus-acknowledge' && this.modalform.isConnected) Modal.close();
-    if (status === 'install_failed') this.toast('Server installation failed', 'error');
-    else if (!status) this.toast(cancelling ? 'Installation cancelled or failure acknowledged' : 'Server installation completed');
+    if (status === 'install_failed') this.toast(t('cset.toast.installfailed'), 'error');
+    else if (!status) this.toast(cancelling ? t('cset.toast.cancelled') : t('cset.toast.completed'));
   },
 
   socketevent(server, message) {
@@ -369,7 +369,7 @@ const calagopussettings = {
     const valid = Number.isFinite(total) && total > 0 && Number.isFinite(amount);
     const percent = valid ? Math.max(0, Math.min(100, amount / total * 100)) : 0;
     const text = valid ? total === 100 ? `${Math.round(percent)}%` : `${Utils.formatbytes(amount)} / ${Utils.formatbytes(total)}` : '';
-    return `<div class="calagopus-install-progress"><span>${this.safe(label || '')} ${this.safe(text)}</span><progress aria-label="${this.safe(label || 'Installation progress')}" ${valid ? `value="${percent}" max="100"` : ''}></progress></div>`;
+    return `<div class="calagopus-install-progress"><span>${this.safe(label || '')} ${this.safe(text)}</span><progress aria-label="${this.safe(label || t('cset.progress.aria'))}" ${valid ? `value="${percent}" max="100"` : ''}></progress></div>`;
   },
 
   updatebanner() {
@@ -380,11 +380,11 @@ const calagopussettings = {
     const installing = detail?.status === 'installing';
     const failed = detail?.status === 'install_failed';
     const blocked = this.blocked(session);
-    let title = installing ? 'Installing server' : failed ? 'Server installation failed' : blocked ? 'Server unavailable' : '';
-    let message = installing ? 'The installation script is running. Please wait for it to finish.' : failed ? 'The installation failed. Resolve the underlying issue before using this server.' : blocked ? detail.node_maintenance_enabled ? 'The node is under maintenance.' : detail.is_suspended ? 'This server is suspended.' : detail.is_transferring ? 'This server is being transferred.' : `Server state: ${detail.status}` : '';
-    if (session.error) { title ||= 'Unable to refresh server settings'; message += ` ${session.error}`; }
+    let title = installing ? t('cset.banner.installing') : failed ? t('cset.banner.failed') : blocked ? t('cset.banner.unavailable') : '';
+    let message = installing ? t('cset.banner.installingmsg') : failed ? t('cset.banner.failedmsg') : blocked ? detail.node_maintenance_enabled ? t('cset.banner.maintenance') : detail.is_suspended ? t('cset.banner.suspended') : detail.is_transferring ? t('cset.banner.transferring') : t('cset.banner.state', { status: detail.status }) : '';
+    if (session.error) { title ||= t('cset.banner.refreshfail'); message += ` ${session.error}`; }
     banner.hidden = !title && !session.pulls.size;
-    banner.innerHTML = `<div class="calagopus-install-header"><div><strong>${this.safe(title)}</strong><p>${this.safe(message)}</p></div>${installing && this.can('settings.cancel-install', session) ? `<button class="btn btn-secondary btn-sm" data-cancel ${session.cancelling ? 'disabled' : ''}>${session.cancelling ? 'Cancelling...' : 'Cancel Installation'}</button>` : failed && this.canacknowledge(session) ? `<button class="btn btn-danger btn-sm" data-acknowledge ${session.cancelling ? 'disabled' : ''}>Acknowledge Failure</button>` : ''}${session.error ? '<button class="btn btn-secondary btn-sm" data-retry>Retry</button>' : ''}</div>${installing ? this.progresshtml(session.progress, session.progress?.label) : ''}${[...session.pulls].map(([id, item]) => this.progresshtml({ progress: item.bytes_processed, total: item.bytes_total }, `${id}: ${item.status}`)).join('')}`;
+    banner.innerHTML = `<div class="calagopus-install-header"><div><strong>${this.safe(title)}</strong><p>${this.safe(message)}</p></div>${installing && this.can('settings.cancel-install', session) ? `<button class="btn btn-secondary btn-sm" data-cancel ${session.cancelling ? 'disabled' : ''}>${session.cancelling ? t('cset.banner.cancelling') : t('cset.banner.cancel')}</button>` : failed && this.canacknowledge(session) ? `<button class="btn btn-danger btn-sm" data-acknowledge ${session.cancelling ? 'disabled' : ''}>${t('cset.banner.ack')}</button>` : ''}${session.error ? `<button class="btn btn-secondary btn-sm" data-retry>${t('cset.banner.retry')}</button>` : ''}</div>${installing ? this.progresshtml(session.progress, session.progress?.label) : ''}${[...session.pulls].map(([id, item]) => this.progresshtml({ progress: item.bytes_processed, total: item.bytes_total }, `${id}: ${item.status}`)).join('')}`;
     banner.querySelector('[data-cancel]')?.addEventListener('click', () => this.cancelinstall(session));
     banner.querySelector('[data-acknowledge]')?.addEventListener('click', () => this.acknowledge(session));
     banner.querySelector('[data-retry]')?.addEventListener('click', () => { this.start(session.server); if (App.currentServerPage === 'settings') this.load(); });

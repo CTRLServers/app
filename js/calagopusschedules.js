@@ -17,7 +17,7 @@ const calagopusschedules = {
 
   async request(endpoint, method = 'GET', body = null) {
     const server = App.currentServer;
-    if (!server || server.type !== 'Calagopus') throw new Error('No Calagopus server selected');
+    if (!server || server.type !== 'Calagopus') throw new Error(t('csub.noserver'));
     const apikey = await Servers.resolveapikey(server);
     const options = { method, headers: { Authorization: `Bearer ${apikey}`, Accept: 'application/json' } };
     if (body !== null) {
@@ -81,18 +81,18 @@ const calagopusschedules = {
 
   renderunavailable() {
     const container = Utils.el('tabSchedules');
-    if (container) container.innerHTML = '<div class="calagopus-schedule-unavailable"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><strong>Schedules are not available</strong><span>Schedules can\'t be created for this server.</span></div>';
+    if (container) container.innerHTML = `<div class="calagopus-schedule-unavailable"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><strong>${t('csched.unavailable')}</strong><span>${t('csched.unavailable.desc')}</span></div>`;
   },
 
   rendererror(message) {
     const container = Utils.el('tabSchedules');
-    if (container) container.innerHTML = `<div class="calagopus-schedule-unavailable"><strong>Unable to load schedules</strong><span>${this.safe(message)}</span><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.load()">Try Again</button></div>`;
+    if (container) container.innerHTML = `<div class="calagopus-schedule-unavailable"><strong>${t('csched.loadfail')}</strong><span>${this.safe(message)}</span><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.load()">${t('csub.retry')}</button></div>`;
   },
 
   date(value) {
-    if (!value) return 'N/A';
+    if (!value) return t('csub.na');
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? t('csub.na') : date.toLocaleString();
   },
 
   render() {
@@ -103,13 +103,13 @@ const calagopusschedules = {
       <td><button class="calagopus-schedule-name">${this.safe(schedule.name)}</button></td>
       <td>${this.safe(this.date(schedule.last_run))}</td>
       <td>${this.safe(this.date(schedule.last_failure))}</td>
-      <td><span class="calagopus-schedule-status ${schedule.enabled ? 'enabled' : ''}">${schedule.enabled ? 'Enabled' : 'Disabled'}</span></td>
+      <td><span class="calagopus-schedule-status ${schedule.enabled ? 'enabled' : ''}">${schedule.enabled ? t('csub.enabled') : t('csub.disabled')}</span></td>
       <td>${this.safe(this.date(schedule.created))}</td>
-      <td><div class="calagopus-schedule-actions"><button title="Run now" onclick="event.stopPropagation();calagopusschedules.run(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 5 11 7-11 7z"></path></svg></button><button title="Edit" onclick="event.stopPropagation();calagopusschedules.openedit(${index})">Edit</button><button class="danger" title="Delete" onclick="event.stopPropagation();calagopusschedules.remove(${index})">Delete</button></div></td>
+      <td><div class="calagopus-schedule-actions"><button title="${t('csched.runnow')}" onclick="event.stopPropagation();calagopusschedules.run(${index})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 5 11 7-11 7z"></path></svg></button><button title="${t('csched.edit')}" onclick="event.stopPropagation();calagopusschedules.openedit(${index})">${t('csched.edit')}</button><button class="danger" title="${t('csched.delete')}" onclick="event.stopPropagation();calagopusschedules.remove(${index})">${t('csched.delete')}</button></div></td>
     </tr>`).join('');
     container.innerHTML = `<div class="calagopus-schedule-page">
-      <div class="calagopus-schedule-header"><div><h2>Schedules</h2><span>${Number(this.pagination.total || this.schedules.length)} of ${this.limit} schedules</span></div><div class="calagopus-schedule-header-actions"><label class="calagopus-schedule-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input value="${this.safe(this.search)}" placeholder="Search schedules" oninput="calagopusschedules.setsearch(this.value)"></label><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.openimport()" ${atlimit ? 'disabled' : ''}>Import</button><button class="btn btn-primary btn-sm" onclick="calagopusschedules.opencreate()" ${atlimit ? 'disabled' : ''}>New Schedule</button></div></div>
-      <div class="calagopus-schedule-table-wrap"><table class="calagopus-schedule-table"><thead><tr><th>Name</th><th>Last Run</th><th>Last Failure</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="6"><div class="calagopus-schedule-empty">No schedules found.</div></td></tr>'}</tbody></table></div>${this.paginationhtml()}</div>`;
+      <div class="calagopus-schedule-header"><div><h2>${t('csched.heading')}</h2><span>${t('csched.count', { n: Number(this.pagination.total || this.schedules.length), max: this.limit })}</span></div><div class="calagopus-schedule-header-actions"><label class="calagopus-schedule-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input value="${this.safe(this.search)}" placeholder="${t('csched.search')}" oninput="calagopusschedules.setsearch(this.value)"></label><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.openimport()" ${atlimit ? 'disabled' : ''}>${t('csched.import')}</button><button class="btn btn-primary btn-sm" onclick="calagopusschedules.opencreate()" ${atlimit ? 'disabled' : ''}>${t('csched.new')}</button></div></div>
+      <div class="calagopus-schedule-table-wrap"><table class="calagopus-schedule-table"><thead><tr><th>${t('csched.h.name')}</th><th>${t('csched.h.lastrun')}</th><th>${t('csched.h.lastfailure')}</th><th>${t('csched.h.status')}</th><th>${t('csched.h.created')}</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="6"><div class="calagopus-schedule-empty">${t('csched.empty')}</div></td></tr>`}</tbody></table></div>${this.paginationhtml()}</div>`;
   },
 
   paginationhtml() {
@@ -117,7 +117,7 @@ const calagopusschedules = {
     const perpage = Number(this.pagination.per_page || 25);
     const pages = Math.max(1, Math.ceil(Number(this.pagination.total || 0) / perpage));
     if (pages <= 1) return '';
-    return `<div class="calagopus-schedule-pagination"><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.setpage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>Previous</button><span>Page ${page} of ${pages}</span><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.setpage(${page + 1})" ${page >= pages ? 'disabled' : ''}>Next</button></div>`;
+    return `<div class="calagopus-schedule-pagination"><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.setpage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>${t('csub.previous')}</button><span>${t('csub.page', { page, pages })}</span><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.setpage(${page + 1})" ${page >= pages ? 'disabled' : ''}>${t('csub.next')}</button></div>`;
   },
 
   setpage(page) {
@@ -181,7 +181,7 @@ const calagopusschedules = {
     if (this.detailtab === 'actions') content = this.actionshtml();
     if (this.detailtab === 'conditions') content = this.conditionshtml();
     if (this.detailtab === 'triggers') content = this.triggershtml();
-    container.innerHTML = `<div class="calagopus-schedule-detail"><div class="calagopus-schedule-detail-head"><div class="calagopus-schedule-detail-title"><button title="Back to schedules" onclick="calagopusschedules.backtolist()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg></button><div><h2>${this.safe(schedule.name)}</h2><span class="calagopus-schedule-status ${schedule.enabled ? 'enabled' : ''}">${schedule.enabled ? 'Enabled' : 'Disabled'}</span></div></div><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.openeditdetail()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>Edit Schedule</button></div><div class="calagopus-schedule-facts"><div><span>Last Run</span><strong>${this.safe(this.date(schedule.last_run))}</strong></div><div><span>Last Failure</span><strong class="${schedule.last_failure ? 'failure' : ''}">${this.safe(this.date(schedule.last_failure))}</strong></div></div><div class="calagopus-schedule-detail-tabs"><button class="${this.detailtab === 'actions' ? 'active' : ''}" onclick="calagopusschedules.setdetailtab('actions')">Actions <span>${this.steps.length}</span></button><button class="${this.detailtab === 'conditions' ? 'active' : ''}" onclick="calagopusschedules.setdetailtab('conditions')">Conditions</button><button class="${this.detailtab === 'triggers' ? 'active' : ''}" onclick="calagopusschedules.setdetailtab('triggers')">Triggers <span>${(schedule.triggers || []).length}</span></button></div><div class="calagopus-schedule-detail-content">${content}</div></div>`;
+    container.innerHTML = `<div class="calagopus-schedule-detail"><div class="calagopus-schedule-detail-head"><div class="calagopus-schedule-detail-title"><button title="${t('csched.back')}" onclick="calagopusschedules.backtolist()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg></button><div><h2>${this.safe(schedule.name)}</h2><span class="calagopus-schedule-status ${schedule.enabled ? 'enabled' : ''}">${schedule.enabled ? t('csub.enabled') : t('csub.disabled')}</span></div></div><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.openeditdetail()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>${t('csched.edit.title')}</button></div><div class="calagopus-schedule-facts"><div><span>${t('csched.h.lastrun')}</span><strong>${this.safe(this.date(schedule.last_run))}</strong></div><div><span>${t('csched.h.lastfailure')}</span><strong class="${schedule.last_failure ? 'failure' : ''}">${this.safe(this.date(schedule.last_failure))}</strong></div></div><div class="calagopus-schedule-detail-tabs"><button class="${this.detailtab === 'actions' ? 'active' : ''}" onclick="calagopusschedules.setdetailtab('actions')">${t('csched.actions')} <span>${this.steps.length}</span></button><button class="${this.detailtab === 'conditions' ? 'active' : ''}" onclick="calagopusschedules.setdetailtab('conditions')">${t('csched.conditions')}</button><button class="${this.detailtab === 'triggers' ? 'active' : ''}" onclick="calagopusschedules.setdetailtab('triggers')">${t('csched.triggers')} <span>${(schedule.triggers || []).length}</span></button></div><div class="calagopus-schedule-detail-content">${content}</div></div>`;
   },
 
   openeditdetail() {
@@ -193,28 +193,28 @@ const calagopusschedules = {
     const steps = [...this.steps].sort((left, right) => Number(left.order || 0) - Number(right.order || 0));
     const rows = steps.map((step, index) => {
       const action = step.action || {};
-      return `<div class="calagopus-action-row"><span class="calagopus-action-order">${index + 1}</span><div><strong>${this.safe(this.actionlabel(action.type))}</strong><span>${this.safe(this.actionsummary(action))}</span>${step.error ? `<small>${this.safe(step.error)}</small>` : ''}</div><div class="calagopus-action-badges">${action.ignore_failure ? '<span>Ignore Failure</span>' : ''}<button title="Delete action" onclick="calagopusschedules.removeaction('${this.safe(step.uuid)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></div>`;
+      return `<div class="calagopus-action-row"><span class="calagopus-action-order">${index + 1}</span><div><strong>${this.safe(this.actionlabel(action.type))}</strong><span>${this.safe(this.actionsummary(action))}</span>${step.error ? `<small>${this.safe(step.error)}</small>` : ''}</div><div class="calagopus-action-badges">${action.ignore_failure ? `<span>${t('csched.ignorefailure')}</span>` : ''}<button title="${t('csched.deleteaction')}" onclick="calagopusschedules.removeaction('${this.safe(step.uuid)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div></div>`;
     }).join('');
-    return `<div class="calagopus-schedule-section-head"><div><h3>Actions</h3><p>Actions run in order whenever this schedule is triggered.</p></div><button class="btn btn-primary btn-sm" onclick="calagopusschedules.openaction()">New Action</button></div><div class="calagopus-action-list">${rows || '<div class="calagopus-schedule-panel-empty">No actions have been created for this schedule.</div>'}</div>`;
+    return `<div class="calagopus-schedule-section-head"><div><h3>${t('csched.actions')}</h3><p>${t('csched.actions.desc')}</p></div><button class="btn btn-primary btn-sm" onclick="calagopusschedules.openaction()">${t('csched.newaction')}</button></div><div class="calagopus-action-list">${rows || `<div class="calagopus-schedule-panel-empty">${t('csched.actions.empty')}</div>`}</div>`;
   },
 
   actionlabel(type) {
-    const labels = { send_command: 'Send Command', send_power: 'Send Power Action', wait_for_state: 'Wait for Server State', create_backup: 'Create Backup', restore_backup: 'Restore Backup', delete_backup: 'Delete Backup', move_backup: 'Move Backup', create_database_backup: 'Create Database Backup', delete_database_backup: 'Delete Database Backup', move_database_backup: 'Move Database Backup', restore_database_backup: 'Restore Database Backup', compress_files: 'Compress Files', copy_file: 'Copy File', create_directory: 'Create Directory', decompress_file: 'Decompress File', delete_files: 'Delete Files', pull_file: 'Pull File', rename_files: 'Rename Files', write_file: 'Write File', update_startup_docker_image: 'Update Startup Docker Image', update_startup_command: 'Update Startup Command', update_startup_variable: 'Update Startup Variable', if: 'If', else_if: 'Else If', else: 'Else', end_if: 'End If', ensure: 'Ensure', exit: 'Exit', format: 'Format Text', http_request: 'HTTP Request', match_regex: 'Match Regular Expression', sleep: 'Wait', wait_for_console_line: 'Wait for Console Line' };
-    return labels[type] || String(type || 'Action').replaceAll('_', ' ');
+    const labels = { send_command: t('csched.action.send_command'), send_power: t('csched.action.send_power'), wait_for_state: t('csched.action.wait_for_state'), create_backup: t('csched.action.create_backup'), restore_backup: t('csched.action.restore_backup'), delete_backup: t('csched.action.delete_backup'), move_backup: t('csched.action.move_backup'), create_database_backup: t('csched.action.create_database_backup'), delete_database_backup: t('csched.action.delete_database_backup'), move_database_backup: t('csched.action.move_database_backup'), restore_database_backup: t('csched.action.restore_database_backup'), compress_files: t('csched.action.compress_files'), copy_file: t('csched.action.copy_file'), create_directory: t('csched.action.create_directory'), decompress_file: t('csched.action.decompress_file'), delete_files: t('csched.action.delete_files'), pull_file: t('csched.action.pull_file'), rename_files: t('csched.action.rename_files'), write_file: t('csched.action.write_file'), update_startup_docker_image: t('csched.action.update_startup_docker_image'), update_startup_command: t('csched.action.update_startup_command'), update_startup_variable: t('csched.action.update_startup_variable'), if: t('csched.action.if'), else_if: t('csched.action.else_if'), else: t('csched.action.else'), end_if: t('csched.action.end_if'), ensure: t('csched.action.ensure'), exit: t('csched.action.exit'), format: t('csched.action.format'), http_request: t('csched.action.http_request'), match_regex: t('csched.action.match_regex'), sleep: t('csched.action.sleep'), wait_for_console_line: t('csched.action.wait_for_console_line') };
+    return labels[type] || String(type || t('csched.action.default')).replaceAll('_', ' ');
   },
 
   actionsummary(action) {
-    if (action.type === 'wait_for_state') return `Wait for ${action.state || 'running'} for up to ${Number(action.timeout || 0)} ms`;
-    if (action.type === 'send_command') return action.command || 'Send a console command';
-    if (action.type === 'send_power') return `Send ${action.action || 'start'} power signal`;
-    if (action.type === 'sleep') return `Wait ${Number(action.duration || 0)} ms`;
-    return 'Configured schedule action';
+    if (action.type === 'wait_for_state') return t('csched.sum.waitstate', { state: { running: t('status.running'), offline: t('status.offline'), starting: t('status.starting'), stopping: t('status.stopping') }[action.state] || action.state || t('status.running'), ms: Number(action.timeout || 0) });
+    if (action.type === 'send_command') return action.command || t('csched.sum.command');
+    if (action.type === 'send_power') return t('csched.sum.power', { action: { start: t('csched.power.start'), stop: t('csched.power.stop'), restart: t('csched.power.restart'), kill: t('csched.power.kill') }[action.action] || action.action || t('csched.power.start') });
+    if (action.type === 'sleep') return t('csched.sum.sleep', { ms: Number(action.duration || 0) });
+    return t('csched.sum.default');
   },
 
   openaction() {
     const options = this.actiontypes.map(type => `<option value="${type}">${this.safe(this.actionlabel(type))}</option>`).join('');
     const type = this.actiontypes[0];
-    Modal.open('Create Action', `<div class="calagopus-action-form"><label class="form-group"><span class="form-label">Action Type</span><select class="form-input" id="calagopus-action-type" onchange="calagopusschedules.actiontypechanged()">${options}</select></label><p id="calagopus-action-description" class="calagopus-action-description">${this.safe(this.actiondescription(type))}</p><div id="calagopus-action-fields">${this.actionfields(type)}</div><div id="calagopus-action-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button class="btn btn-primary" onclick="calagopusschedules.createaction()">Create Action</button></div></div>`, 'calagopus-action-modal');
+    Modal.open(t('csched.newaction'), `<div class="calagopus-action-form"><label class="form-group"><span class="form-label">${t('csched.action.type')}</span><select class="form-input" id="calagopus-action-type" onchange="calagopusschedules.actiontypechanged()">${options}</select></label><p id="calagopus-action-description" class="calagopus-action-description">${this.safe(this.actiondescription(type))}</p><div id="calagopus-action-fields">${this.actionfields(type)}</div><div id="calagopus-action-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('csub.cancel')}</button><button class="btn btn-primary" onclick="calagopusschedules.createaction()">${t('csched.createaction')}</button></div></div>`, 'calagopus-action-modal');
   },
 
   actiontypechanged() {
@@ -224,8 +224,8 @@ const calagopusschedules = {
   },
 
   actiondescription(type) {
-    const descriptions = { send_command: 'Sends a command to the server console.', send_power: 'Changes the server power state.', wait_for_state: 'Waits until the server reaches a selected power state or the timeout expires.', create_backup: 'Creates a new server backup.', restore_backup: 'Restores a selected server backup.', delete_backup: 'Deletes a selected server backup.', move_backup: 'Moves a backup into another backup group.', create_database_backup: 'Creates a backup of a database instance.', delete_database_backup: 'Deletes a database backup.', move_database_backup: 'Moves a database backup into another group.', restore_database_backup: 'Restores a database backup.', compress_files: 'Compresses selected files into an archive.', copy_file: 'Copies a file or directory.', create_directory: 'Creates a directory.', decompress_file: 'Extracts an archive.', delete_files: 'Deletes selected files or directories.', pull_file: 'Downloads a remote file into the server.', rename_files: 'Renames or moves files.', write_file: 'Writes content to a file.', update_startup_docker_image: 'Changes the server Docker image.', update_startup_command: 'Changes the startup command.', update_startup_variable: 'Changes a startup environment variable.', if: 'Starts a conditional action block.', else_if: 'Adds another condition to an If block.', else: 'Adds a fallback branch to an If block.', end_if: 'Ends an If block.', ensure: 'Stops the schedule unless a condition passes.', exit: 'Ends the schedule immediately.', format: 'Formats values and stores the result in a variable.', http_request: 'Sends an HTTP request.', match_regex: 'Matches input against a regular expression.', sleep: 'Pauses the schedule for a duration.', wait_for_console_line: 'Waits for matching console output.' };
-    return descriptions[type] || 'Runs the selected schedule action.';
+    const descriptions = { send_command: t('csched.desc.send_command'), send_power: t('csched.desc.send_power'), wait_for_state: t('csched.desc.wait_for_state'), create_backup: t('csched.desc.create_backup'), restore_backup: t('csched.desc.restore_backup'), delete_backup: t('csched.desc.delete_backup'), move_backup: t('csched.desc.move_backup'), create_database_backup: t('csched.desc.create_database_backup'), delete_database_backup: t('csched.desc.delete_database_backup'), move_database_backup: t('csched.desc.move_database_backup'), restore_database_backup: t('csched.desc.restore_database_backup'), compress_files: t('csched.desc.compress_files'), copy_file: t('csched.desc.copy_file'), create_directory: t('csched.desc.create_directory'), decompress_file: t('csched.desc.decompress_file'), delete_files: t('csched.desc.delete_files'), pull_file: t('csched.desc.pull_file'), rename_files: t('csched.desc.rename_files'), write_file: t('csched.desc.write_file'), update_startup_docker_image: t('csched.desc.update_startup_docker_image'), update_startup_command: t('csched.desc.update_startup_command'), update_startup_variable: t('csched.desc.update_startup_variable'), if: t('csched.desc.if'), else_if: t('csched.desc.else_if'), else: t('csched.desc.else'), end_if: t('csched.desc.end_if'), ensure: t('csched.desc.ensure'), exit: t('csched.desc.exit'), format: t('csched.desc.format'), http_request: t('csched.desc.http_request'), match_regex: t('csched.desc.match_regex'), sleep: t('csched.desc.sleep'), wait_for_console_line: t('csched.desc.wait_for_console_line') };
+    return descriptions[type] || t('csched.desc.default');
   },
 
   defaultaction(type) {
@@ -242,15 +242,20 @@ const calagopusschedules = {
 
   actionfields(type) {
     const action = this.defaultaction(type);
-    return Object.entries(action).filter(([key]) => key !== 'type').map(([key, value]) => this.actionfield(key, value)).join('') || '<p class="calagopus-action-description">This action has no additional settings.</p>';
+    return Object.entries(action).filter(([key]) => key !== 'type').map(([key, value]) => this.actionfield(key, value)).join('') || `<p class="calagopus-action-description">${t('csched.action.emptyfields')}</p>`;
+  },
+
+  actionfieldlabel(key) {
+    const labels = { ignore_failure: t('csched.field.ignore_failure'), command: t('csched.field.command'), action: t('csched.field.action'), state: t('csched.field.state'), timeout: t('csched.field.timeout'), foreground: t('csched.field.foreground'), name: t('csched.field.name'), backup_group_uuid: t('csched.field.backup_group_uuid'), ignored_files: t('csched.field.ignored_files'), output_into: t('csched.field.output_into'), truncate_directory: t('csched.field.truncate_directory'), restore_startup: t('csched.field.restore_startup'), backup: t('csched.field.backup'), database_instance_uuid: t('csched.field.database_instance_uuid'), source_database_instance_uuid: t('csched.field.source_database_instance_uuid'), root: t('csched.field.root'), files: t('csched.field.files'), format: t('csched.field.format'), destination: t('csched.field.destination'), file: t('csched.field.file'), url: t('csched.field.url'), file_name: t('csched.field.file_name'), use_header: t('csched.field.use_header'), append: t('csched.field.append'), content: t('csched.field.content'), image: t('csched.field.image'), env_variable: t('csched.field.env_variable'), value: t('csched.field.value'), condition: t('csched.field.condition'), successful: t('csched.field.successful'), method: t('csched.field.method'), headers: t('csched.field.headers'), body: t('csched.field.body'), ignore_error_status: t('csched.field.ignore_error_status'), output_status_into: t('csched.field.output_status_into'), output_body_into: t('csched.field.output_body_into'), input: t('csched.field.input'), regex: t('csched.field.regex'), duration: t('csched.field.duration'), contains: t('csched.field.contains'), case_insensitive: t('csched.field.case_insensitive'), variable: t('csched.field.variable') };
+    return labels[key] || key.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
   },
 
   actionfield(key, value) {
-    const label = key.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
-    if (key === 'state') return `<label class="form-group"><span class="form-label">${label}</span><select class="form-input" data-action-field="${key}" data-kind="string"><option value="running">Running</option><option value="offline">Offline</option><option value="starting">Starting</option><option value="stopping">Stopping</option></select></label>`;
-    if (key === 'action') return `<label class="form-group"><span class="form-label">${label}</span><select class="form-input" data-action-field="${key}" data-kind="string"><option value="start">Start</option><option value="stop">Stop</option><option value="restart">Restart</option><option value="kill">Kill</option></select></label>`;
+    const label = this.actionfieldlabel(key);
+    if (key === 'state') return `<label class="form-group"><span class="form-label">${label}</span><select class="form-input" data-action-field="${key}" data-kind="string"><option value="running">${t('status.running')}</option><option value="offline">${t('status.offline')}</option><option value="starting">${t('status.starting')}</option><option value="stopping">${t('status.stopping')}</option></select></label>`;
+    if (key === 'action') return `<label class="form-group"><span class="form-label">${label}</span><select class="form-input" data-action-field="${key}" data-kind="string"><option value="start">${t('csched.power.start')}</option><option value="stop">${t('csched.power.stop')}</option><option value="restart">${t('csched.power.restart')}</option><option value="kill">${t('csched.power.kill')}</option></select></label>`;
     if (key === 'method') return `<label class="form-group"><span class="form-label">${label}</span><select class="form-input" data-action-field="${key}" data-kind="string"><option value="get">GET</option><option value="post" selected>POST</option><option value="put">PUT</option><option value="patch">PATCH</option><option value="delete">DELETE</option><option value="head">HEAD</option></select></label>`;
-    if (key === 'format' && value === 'tar_gz') return `<label class="form-group"><span class="form-label">Archive Format</span><select class="form-input" data-action-field="${key}" data-kind="string"><option value="tar_gz">tar.gz</option><option value="tar_xz">tar.xz</option><option value="tar_bz2">tar.bz2</option><option value="zip">zip</option></select></label>`;
+    if (key === 'format' && value === 'tar_gz') return `<label class="form-group"><span class="form-label">${t('csched.field.archiveformat')}</span><select class="form-input" data-action-field="${key}" data-kind="string"><option value="tar_gz">tar.gz</option><option value="tar_xz">tar.xz</option><option value="tar_bz2">tar.bz2</option><option value="zip">zip</option></select></label>`;
     if (typeof value === 'boolean') return `<label class="calagopus-trigger-check"><input type="checkbox" data-action-field="${key}" data-kind="boolean" ${value ? 'checked' : ''}>${label}</label>`;
     if (typeof value === 'number') return `<label class="form-group"><span class="form-label">${label}${key.includes('timeout') || key === 'duration' ? ' (ms)' : ''}</span><input class="form-input" type="number" data-action-field="${key}" data-kind="number" min="0" value="${value}"></label>`;
     if (Array.isArray(value) || (value && typeof value === 'object')) return `<label class="form-group"><span class="form-label">${label} (JSON)</span><textarea class="form-input calagopus-action-json" data-action-field="${key}" data-kind="json" rows="3">${this.safe(JSON.stringify(value, null, 2))}</textarea></label>`;
@@ -271,7 +276,7 @@ const calagopusschedules = {
         else action[key] = field.value;
       });
     } catch (error) {
-      Utils.el('calagopus-action-error').innerHTML = `<div class="error-msg">Invalid JSON: ${this.safe(error.message)}</div>`;
+      Utils.el('calagopus-action-error').innerHTML = `<div class="error-msg">${t('csched.invalidjson')}: ${this.safe(error.message)}</div>`;
       return;
     }
     try {
@@ -283,7 +288,7 @@ const calagopusschedules = {
         this.steps.push(ending.schedule_step);
       }
       Modal.close();
-      this.toast('Action created');
+      this.toast(t('csched.action.created'));
       this.renderdetail();
     } catch (error) {
       Utils.el('calagopus-action-error').innerHTML = `<div class="error-msg">${this.safe(error.message)}</div>`;
@@ -291,12 +296,12 @@ const calagopusschedules = {
   },
 
   removeaction(uuid) {
-    Modal.confirm('Delete Action', 'Delete this schedule action?', async () => {
+    Modal.confirm(t('csched.deleteaction'), t('csched.deleteaction.confirm'), async () => {
       try {
         await this.request(`/schedules/${this.selectedschedule.uuid}/steps/${uuid}`, 'DELETE');
         this.steps = this.steps.filter(step => step.uuid !== uuid);
         Modal.close();
-        this.toast('Action deleted');
+        this.toast(t('csched.action.deleted'));
         this.renderdetail();
       } catch (error) {
         this.toast(error.message, 'error');
@@ -306,9 +311,14 @@ const calagopusschedules = {
 
   conditionshtml() {
     const condition = this.condition || { type: 'none' };
-    const types = [['none','None'],['and','All Conditions (AND)'],['or','Any Condition (OR)'],['not','Negated Condition (NOT)'],['server_state','Server State'],['uptime','Uptime'],['resource_usage','Resource Usage'],['file_exists','File Exists'],['variable_exists','Variable Exists'],['variable_equals','Variable Equals'],['variable_contains','Variable Contains'],['variable_starts_with','Variable Starts With'],['variable_ends_with','Variable Ends With']];
-    const options = types.map(item => `<option value="${item[0]}" ${condition.type === item[0] ? 'selected' : ''}>${item[1]}</option>`).join('');
-    return `<div class="calagopus-schedule-section-head"><div><h3>Conditions</h3><p>The schedule runs only when its condition passes.</p></div><button class="btn btn-primary btn-sm" onclick="calagopusschedules.savecondition()">Save Condition</button></div><div class="calagopus-condition-editor"><label class="form-group"><span class="form-label">Condition Type</span><select class="form-input" id="calagopus-condition-type" onchange="calagopusschedules.conditiontypechanged(this.value)">${options}</select></label><div id="calagopus-condition-fields">${this.conditionfields(condition)}</div><div id="calagopus-condition-error"></div></div>`;
+    const types = ['none', 'and', 'or', 'not', 'server_state', 'uptime', 'resource_usage', 'file_exists', 'variable_exists', 'variable_equals', 'variable_contains', 'variable_starts_with', 'variable_ends_with'];
+    const options = types.map(type => `<option value="${type}" ${condition.type === type ? 'selected' : ''}>${this.conditionlabel(type)}</option>`).join('');
+    return `<div class="calagopus-schedule-section-head"><div><h3>${t('csched.conditions')}</h3><p>${t('csched.conditions.desc')}</p></div><button class="btn btn-primary btn-sm" onclick="calagopusschedules.savecondition()">${t('csched.savecondition')}</button></div><div class="calagopus-condition-editor"><label class="form-group"><span class="form-label">${t('csched.condition.type')}</span><select class="form-input" id="calagopus-condition-type" onchange="calagopusschedules.conditiontypechanged(this.value)">${options}</select></label><div id="calagopus-condition-fields">${this.conditionfields(condition)}</div><div id="calagopus-condition-error"></div></div>`;
+  },
+
+  conditionlabel(type) {
+    const labels = { none: t('csched.cond.none'), and: t('csched.cond.and'), or: t('csched.cond.or'), not: t('csched.cond.not'), server_state: t('csched.cond.server_state'), uptime: t('csched.cond.uptime'), resource_usage: t('csched.cond.resource_usage'), file_exists: t('csched.cond.file_exists'), variable_exists: t('csched.cond.variable_exists'), variable_equals: t('csched.cond.variable_equals'), variable_contains: t('csched.cond.variable_contains'), variable_starts_with: t('csched.cond.variable_starts_with'), variable_ends_with: t('csched.cond.variable_ends_with') };
+    return labels[type] || type;
   },
 
   conditiontypechanged(type) {
@@ -318,20 +328,20 @@ const calagopusschedules = {
   },
 
   comparatorhtml(value) {
-    return `<select class="form-input" id="calagopus-condition-comparator"><option value="smaller_than" ${value === 'smaller_than' ? 'selected' : ''}>Less than</option><option value="smaller_than_or_equals" ${value === 'smaller_than_or_equals' ? 'selected' : ''}>Less than or equal</option><option value="equal" ${value === 'equal' ? 'selected' : ''}>Equal</option><option value="greater_than" ${value === 'greater_than' ? 'selected' : ''}>Greater than</option><option value="greater_than_or_equals" ${value === 'greater_than_or_equals' ? 'selected' : ''}>Greater than or equal</option></select>`;
+    return `<select class="form-input" id="calagopus-condition-comparator"><option value="smaller_than" ${value === 'smaller_than' ? 'selected' : ''}>${t('csched.cmp.smaller_than')}</option><option value="smaller_than_or_equals" ${value === 'smaller_than_or_equals' ? 'selected' : ''}>${t('csched.cmp.smaller_than_or_equals')}</option><option value="equal" ${value === 'equal' ? 'selected' : ''}>${t('csched.cmp.equal')}</option><option value="greater_than" ${value === 'greater_than' ? 'selected' : ''}>${t('csched.cmp.greater_than')}</option><option value="greater_than_or_equals" ${value === 'greater_than_or_equals' ? 'selected' : ''}>${t('csched.cmp.greater_than_or_equals')}</option></select>`;
   },
 
   conditionfields(condition) {
-    if (condition.type === 'none') return '<p class="calagopus-action-description">This schedule has no precondition.</p>';
-    if (condition.type === 'and' || condition.type === 'or') return `<label class="form-group"><span class="form-label">Nested Conditions (JSON)</span><textarea class="form-input calagopus-action-json" id="calagopus-condition-json" rows="9">${this.safe(JSON.stringify(condition.conditions, null, 2))}</textarea><small>Enter an array of Calagopus condition objects. Nested AND, OR, and NOT groups are supported.</small></label>`;
-    if (condition.type === 'not') return `<label class="form-group"><span class="form-label">Nested Condition (JSON)</span><textarea class="form-input calagopus-action-json" id="calagopus-condition-json" rows="7">${this.safe(JSON.stringify(condition.condition, null, 2))}</textarea><small>Enter the Calagopus condition object that should be negated.</small></label>`;
-    if (condition.type === 'server_state') return `<label class="form-group"><span class="form-label">Server State</span><select class="form-input" id="calagopus-condition-state"><option value="running" ${condition.state === 'running' ? 'selected' : ''}>Running</option><option value="offline" ${condition.state === 'offline' ? 'selected' : ''}>Offline</option><option value="starting" ${condition.state === 'starting' ? 'selected' : ''}>Starting</option><option value="stopping" ${condition.state === 'stopping' ? 'selected' : ''}>Stopping</option></select></label>`;
-    if (condition.type === 'uptime') return `<div class="calagopus-trigger-grid"><label class="form-group"><span class="form-label">Comparator</span>${this.comparatorhtml(condition.comparator)}</label><label class="form-group"><span class="form-label">Seconds</span><input class="form-input" type="number" id="calagopus-condition-value" min="0" value="${Number(condition.value || 0)}"></label></div>`;
-    if (condition.type === 'resource_usage') return `<div class="calagopus-trigger-grid wide"><label class="form-group"><span class="form-label">Metric</span><select class="form-input" id="calagopus-condition-metric"><option value="cpu" ${condition.metric === 'cpu' ? 'selected' : ''}>CPU</option><option value="memory" ${condition.metric === 'memory' ? 'selected' : ''}>Memory</option><option value="disk" ${condition.metric === 'disk' ? 'selected' : ''}>Disk</option></select></label><label class="form-group"><span class="form-label">Comparator</span>${this.comparatorhtml(condition.comparator)}</label><label class="form-group"><span class="form-label">Value</span><input class="form-input" type="number" id="calagopus-condition-value" min="0" value="${Number(condition.value || 0)}"></label></div>`;
-    if (condition.type === 'file_exists') return `<label class="form-group"><span class="form-label">File Path</span><input class="form-input" id="calagopus-condition-file" value="${this.safe(condition.file || '')}"></label>`;
-    const fieldmap = { variable_equals: ['equals','Equals'], variable_contains: ['contains','Contains'], variable_starts_with: ['starts_with','Starts With'], variable_ends_with: ['ends_with','Ends With'] };
+    if (condition.type === 'none') return `<p class="calagopus-action-description">${t('csched.cond.empty')}</p>`;
+    if (condition.type === 'and' || condition.type === 'or') return `<label class="form-group"><span class="form-label">${t('csched.cond.nested')}</span><textarea class="form-input calagopus-action-json" id="calagopus-condition-json" rows="9">${this.safe(JSON.stringify(condition.conditions, null, 2))}</textarea><small>${t('csched.cond.nested.desc')}</small></label>`;
+    if (condition.type === 'not') return `<label class="form-group"><span class="form-label">${t('csched.cond.nestedone')}</span><textarea class="form-input calagopus-action-json" id="calagopus-condition-json" rows="7">${this.safe(JSON.stringify(condition.condition, null, 2))}</textarea><small>${t('csched.cond.nestedone.desc')}</small></label>`;
+    if (condition.type === 'server_state') return `<label class="form-group"><span class="form-label">${t('csched.field.server_state')}</span><select class="form-input" id="calagopus-condition-state"><option value="running" ${condition.state === 'running' ? 'selected' : ''}>${t('status.running')}</option><option value="offline" ${condition.state === 'offline' ? 'selected' : ''}>${t('status.offline')}</option><option value="starting" ${condition.state === 'starting' ? 'selected' : ''}>${t('status.starting')}</option><option value="stopping" ${condition.state === 'stopping' ? 'selected' : ''}>${t('status.stopping')}</option></select></label>`;
+    if (condition.type === 'uptime') return `<div class="calagopus-trigger-grid"><label class="form-group"><span class="form-label">${t('csched.field.comparator')}</span>${this.comparatorhtml(condition.comparator)}</label><label class="form-group"><span class="form-label">${t('csched.field.seconds')}</span><input class="form-input" type="number" id="calagopus-condition-value" min="0" value="${Number(condition.value || 0)}"></label></div>`;
+    if (condition.type === 'resource_usage') return `<div class="calagopus-trigger-grid wide"><label class="form-group"><span class="form-label">${t('csched.field.metric')}</span><select class="form-input" id="calagopus-condition-metric"><option value="cpu" ${condition.metric === 'cpu' ? 'selected' : ''}>${t('csched.metric.cpu')}</option><option value="memory" ${condition.metric === 'memory' ? 'selected' : ''}>${t('csched.metric.memory')}</option><option value="disk" ${condition.metric === 'disk' ? 'selected' : ''}>${t('csched.metric.disk')}</option></select></label><label class="form-group"><span class="form-label">${t('csched.field.comparator')}</span>${this.comparatorhtml(condition.comparator)}</label><label class="form-group"><span class="form-label">${t('csched.field.value')}</span><input class="form-input" type="number" id="calagopus-condition-value" min="0" value="${Number(condition.value || 0)}"></label></div>`;
+    if (condition.type === 'file_exists') return `<label class="form-group"><span class="form-label">${t('csched.field.filepath')}</span><input class="form-input" id="calagopus-condition-file" value="${this.safe(condition.file || '')}"></label>`;
+    const fieldmap = { variable_equals: ['equals', t('csched.field.equals')], variable_contains: ['contains', t('csched.field.contains')], variable_starts_with: ['starts_with', t('csched.field.starts_with')], variable_ends_with: ['ends_with', t('csched.field.ends_with')] };
     const extra = fieldmap[condition.type];
-    return `<div class="calagopus-trigger-grid"><label class="form-group"><span class="form-label">Variable</span><input class="form-input" id="calagopus-condition-variable" value="${this.safe(condition.variable?.variable || '')}"></label>${extra ? `<label class="form-group"><span class="form-label">${extra[1]}</span><input class="form-input" id="calagopus-condition-extra" value="${this.safe(condition[extra[0]] || '')}"></label>` : ''}</div>`;
+    return `<div class="calagopus-trigger-grid"><label class="form-group"><span class="form-label">${t('csched.field.variable')}</span><input class="form-input" id="calagopus-condition-variable" value="${this.safe(condition.variable?.variable || '')}"></label>${extra ? `<label class="form-group"><span class="form-label">${extra[1]}</span><input class="form-input" id="calagopus-condition-extra" value="${this.safe(condition[extra[0]] || '')}"></label>` : ''}</div>`;
   },
 
   async savecondition() {
@@ -341,7 +351,7 @@ const calagopusschedules = {
       if (type === 'and' || type === 'or') condition.conditions = JSON.parse(Utils.el('calagopus-condition-json').value);
       if (type === 'not') condition.condition = JSON.parse(Utils.el('calagopus-condition-json').value);
     } catch (error) {
-      Utils.el('calagopus-condition-error').innerHTML = `<div class="error-msg">Invalid JSON: ${this.safe(error.message)}</div>`;
+      Utils.el('calagopus-condition-error').innerHTML = `<div class="error-msg">${t('csched.invalidjson')}: ${this.safe(error.message)}</div>`;
       return;
     }
     if (type === 'server_state') condition.state = Utils.el('calagopus-condition-state').value;
@@ -357,7 +367,7 @@ const calagopusschedules = {
       await this.request(`/schedules/${this.selectedschedule.uuid}`, 'PATCH', { condition });
       this.condition = condition;
       this.selectedschedule.condition = condition;
-      this.toast('Condition saved');
+      this.toast(t('csched.condition.saved'));
     } catch (error) {
       Utils.el('calagopus-condition-error').innerHTML = `<div class="error-msg">${this.safe(error.message)}</div>`;
     }
@@ -366,23 +376,23 @@ const calagopusschedules = {
   triggershtml() {
     const triggers = this.selectedschedule?.triggers || [];
     const rows = triggers.map((trigger, index) => `<div class="calagopus-trigger-summary"><span>${index + 1}</span><div><strong>${this.safe(this.triggerlabel(trigger.type))}</strong><small>${this.safe(this.triggersummary(trigger))}</small></div></div>`).join('');
-    return `<div class="calagopus-schedule-section-head"><div><h3>Triggers</h3><p>Any configured trigger can start this schedule.</p></div><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.openeditdetail()">Edit Triggers</button></div><div class="calagopus-trigger-summary-list">${rows || '<div class="calagopus-schedule-panel-empty">No triggers have been configured.</div>'}</div>`;
+    return `<div class="calagopus-schedule-section-head"><div><h3>${t('csched.triggers')}</h3><p>${t('csched.triggers.desc')}</p></div><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.openeditdetail()">${t('csched.edittriggers')}</button></div><div class="calagopus-trigger-summary-list">${rows || `<div class="calagopus-schedule-panel-empty">${t('csched.triggers.empty')}</div>`}</div>`;
   },
 
   triggerlabel(type) {
-    const labels = { cron: 'Time Interval (Cron)', power_action: 'Power Action', server_state: 'Server State', backup_status: 'Backup Status', database_backup_status: 'Database Backup Status', schedule_completion: 'Schedule Completion', resource_usage: 'Resource Usage', console_line: 'Console Line', crash: 'Server Crash' };
+    const labels = { cron: t('csched.trigger.cron'), power_action: t('csched.trigger.power_action'), server_state: t('csched.trigger.server_state'), backup_status: t('csched.trigger.backup_status'), database_backup_status: t('csched.trigger.database_backup_status'), schedule_completion: t('csched.trigger.schedule_completion'), resource_usage: t('csched.trigger.resource_usage'), console_line: t('csched.trigger.console_line'), crash: t('csched.trigger.crash') };
     return labels[type] || type;
   },
 
   triggersummary(trigger) {
     if (trigger.type === 'cron') return trigger.schedule;
-    if (trigger.type === 'power_action') return trigger.action;
-    if (trigger.type === 'server_state') return trigger.state;
-    if (trigger.type === 'backup_status' || trigger.type === 'database_backup_status') return trigger.status;
-    if (trigger.type === 'schedule_completion') return `${trigger.successful ? 'Successful' : 'Failed'} schedule completion`;
-    if (trigger.type === 'resource_usage') return `${trigger.metric} ${trigger.comparator.replaceAll('_', ' ')} ${trigger.value} for ${trigger.for_seconds || 0} seconds`;
-    if (trigger.type === 'console_line') return `Console contains ${trigger.contains}`;
-    return 'Runs when the server crashes';
+    if (trigger.type === 'power_action') return { start: t('csched.power.start'), stop: t('csched.power.stop'), restart: t('csched.power.restart'), kill: t('csched.power.kill') }[trigger.action] || trigger.action;
+    if (trigger.type === 'server_state') return { running: t('status.running'), offline: t('status.offline'), starting: t('status.starting'), stopping: t('status.stopping') }[trigger.state] || trigger.state;
+    if (trigger.type === 'backup_status' || trigger.type === 'database_backup_status') return { starting: t('csched.bstatus.starting'), finished: t('csched.bstatus.finished'), failed: t('csched.bstatus.failed') }[trigger.status] || trigger.status;
+    if (trigger.type === 'schedule_completion') return trigger.successful ? t('csched.sum.successful') : t('csched.sum.failed');
+    if (trigger.type === 'resource_usage') return t('csched.sum.resource', { metric: { cpu: t('csched.metric.cpu'), memory: t('csched.metric.memory'), disk: t('csched.metric.disk') }[trigger.metric] || trigger.metric, comparator: { smaller_than: t('csched.cmp.smaller_than'), smaller_than_or_equals: t('csched.cmp.smaller_than_or_equals'), equal: t('csched.cmp.equal'), greater_than: t('csched.cmp.greater_than'), greater_than_or_equals: t('csched.cmp.greater_than_or_equals') }[trigger.comparator] || trigger.comparator, value: trigger.value, seconds: trigger.for_seconds || 0 });
+    if (trigger.type === 'console_line') return t('csched.sum.console', { text: trigger.contains });
+    return t('csched.sum.crash');
   },
 
   defaulttrigger(type = 'cron') {
@@ -414,23 +424,23 @@ const calagopusschedules = {
   },
 
   rendermodal(schedule) {
-    const title = this.editinguuid ? 'Edit Schedule' : 'Create Schedule';
+    const title = this.editinguuid ? t('csched.edit.title') : t('csched.create.title');
     const triggers = this.triggers.map((trigger, index) => this.triggerhtml(trigger, index)).join('');
     Modal.open(title, `<div class="calagopus-schedule-form">
-      <div class="form-group"><label class="form-label">Schedule Name *</label><input class="form-input" id="calagopus-schedule-name" maxlength="255" value="${this.safe(schedule?.name || '')}" placeholder="Daily backup"></div>
-      <label class="calagopus-schedule-toggle"><input type="checkbox" id="calagopus-schedule-enabled" ${schedule?.enabled === false ? '' : 'checked'}><span></span><strong id="calagopus-schedule-enabled-label">${schedule?.enabled === false ? 'Disabled' : 'Enabled'}</strong></label>
-      <div class="calagopus-trigger-title"><div><strong>Triggers</strong><span>${this.triggers.length} / ${this.triggerlimit}</span></div><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.addtrigger()" ${this.triggers.length >= this.triggerlimit ? 'disabled' : ''}>Add Trigger</button></div>
-      <div class="calagopus-trigger-list">${triggers || '<div class="calagopus-trigger-empty">No triggers added. Add one to decide when this schedule runs.</div>'}</div>
+      <div class="form-group"><label class="form-label">${t('csched.name')}</label><input class="form-input" id="calagopus-schedule-name" maxlength="255" value="${this.safe(schedule?.name || '')}" placeholder="${t('csched.name.placeholder')}"></div>
+      <label class="calagopus-schedule-toggle"><input type="checkbox" id="calagopus-schedule-enabled" ${schedule?.enabled === false ? '' : 'checked'}><span></span><strong id="calagopus-schedule-enabled-label">${schedule?.enabled === false ? t('csub.disabled') : t('csub.enabled')}</strong></label>
+      <div class="calagopus-trigger-title"><div><strong>${t('csched.triggers')}</strong><span>${this.triggers.length} / ${this.triggerlimit}</span></div><button class="btn btn-secondary btn-sm" onclick="calagopusschedules.addtrigger()" ${this.triggers.length >= this.triggerlimit ? 'disabled' : ''}>${t('csched.addtrigger')}</button></div>
+      <div class="calagopus-trigger-list">${triggers || `<div class="calagopus-trigger-empty">${t('csched.triggers.emptyadd')}</div>`}</div>
       <div id="calagopus-schedule-error"></div>
-      <div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button class="btn btn-primary" onclick="calagopusschedules.save('${this.editinguuid}')">${this.editinguuid ? 'Save Changes' : 'Create Schedule'}</button></div>
+      <div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('csub.cancel')}</button><button class="btn btn-primary" onclick="calagopusschedules.save('${this.editinguuid}')">${this.editinguuid ? t('csched.savechanges') : t('csched.create.title')}</button></div>
     </div>`);
     const toggle = Utils.el('calagopus-schedule-enabled');
-    toggle?.addEventListener('change', () => { Utils.el('calagopus-schedule-enabled-label').textContent = toggle.checked ? 'Enabled' : 'Disabled'; });
+    toggle?.addEventListener('change', () => { Utils.el('calagopus-schedule-enabled-label').textContent = toggle.checked ? t('csub.enabled') : t('csub.disabled'); });
   },
 
   triggerhtml(trigger, index) {
-    const options = [['cron','Time Interval (Cron)'],['power_action','Power Action'],['server_state','Server State'],['backup_status','Backup Status'],['database_backup_status','Database Backup Status'],['schedule_completion','Schedule Completion'],['resource_usage','Resource Usage'],['console_line','Console Line'],['crash','Server Crash']].map(item => `<option value="${item[0]}" ${trigger.type === item[0] ? 'selected' : ''}>${item[1]}</option>`).join('');
-    return `<div class="calagopus-trigger-card"><div class="calagopus-trigger-head"><label class="form-group"><span class="form-label">Trigger ${index + 1}</span><select class="form-input" onchange="calagopusschedules.changetype(${index},this.value)">${options}</select></label><button class="calagopus-trigger-remove" title="Remove trigger" onclick="calagopusschedules.removetrigger(${index})">&times;</button></div>${this.triggerfields(trigger, index)}</div>`;
+    const options = ['cron', 'power_action', 'server_state', 'backup_status', 'database_backup_status', 'schedule_completion', 'resource_usage', 'console_line', 'crash'].map(type => `<option value="${type}" ${trigger.type === type ? 'selected' : ''}>${this.triggerlabel(type)}</option>`).join('');
+    return `<div class="calagopus-trigger-card"><div class="calagopus-trigger-head"><label class="form-group"><span class="form-label">${t('csched.trigger.n', { n: index + 1 })}</span><select class="form-input" onchange="calagopusschedules.changetype(${index},this.value)">${options}</select></label><button class="calagopus-trigger-remove" title="${t('csched.removetrigger')}" onclick="calagopusschedules.removetrigger(${index})">&times;</button></div>${this.triggerfields(trigger, index)}</div>`;
   },
 
   selectfield(index, key, label, choices, value) {
@@ -444,28 +454,28 @@ const calagopusschedules = {
 
   triggerfields(trigger, index) {
     if (trigger.type === 'cron') return this.cronfields(trigger, index);
-    if (trigger.type === 'power_action') return this.selectfield(index, 'action', 'Action', [['start','Start'],['stop','Stop'],['restart','Restart'],['kill','Kill']], trigger.action);
-    if (trigger.type === 'server_state') return this.selectfield(index, 'state', 'State', [['offline','Offline'],['starting','Starting'],['stopping','Stopping'],['running','Running']], trigger.state);
-    if (trigger.type === 'backup_status' || trigger.type === 'database_backup_status') return this.selectfield(index, 'status', 'Status', [['starting','Starting'],['finished','Finished'],['failed','Failed']], trigger.status);
+    if (trigger.type === 'power_action') return this.selectfield(index, 'action', t('csched.field.action'), [['start', t('csched.power.start')], ['stop', t('csched.power.stop')], ['restart', t('csched.power.restart')], ['kill', t('csched.power.kill')]], trigger.action);
+    if (trigger.type === 'server_state') return this.selectfield(index, 'state', t('csched.field.state'), [['offline', t('status.offline')], ['starting', t('status.starting')], ['stopping', t('status.stopping')], ['running', t('status.running')]], trigger.state);
+    if (trigger.type === 'backup_status' || trigger.type === 'database_backup_status') return this.selectfield(index, 'status', t('csched.field.status'), [['starting', t('csched.bstatus.starting')], ['finished', t('csched.bstatus.finished')], ['failed', t('csched.bstatus.failed')]], trigger.status);
     if (trigger.type === 'schedule_completion') {
       const schedules = this.schedules.map(schedule => [schedule.uuid, schedule.name]);
-      return `<div class="calagopus-trigger-grid">${this.selectfield(index, 'schedule', 'Schedule', [['','Select a schedule'], ...schedules], trigger.schedule)}${this.selectfield(index, 'successful', 'Result', [['true','Successful'],['false','Failed']], String(trigger.successful))}</div>`;
+      return `<div class="calagopus-trigger-grid">${this.selectfield(index, 'schedule', t('csched.field.schedule'), [['', t('csched.field.selectschedule')], ...schedules], trigger.schedule)}${this.selectfield(index, 'successful', t('csched.field.result'), [['true', t('csched.sum.successful')], ['false', t('csched.sum.failed')]], String(trigger.successful))}</div>`;
     }
-    if (trigger.type === 'resource_usage') return `<div class="calagopus-trigger-grid wide">${this.selectfield(index, 'metric', 'Metric', [['cpu','CPU'],['memory','Memory'],['disk','Disk']], trigger.metric)}${this.selectfield(index, 'comparator', 'Comparison', [['smaller_than','Less than'],['smaller_than_or_equals','Less than or equal'],['equal','Equal'],['greater_than','Greater than'],['greater_than_or_equals','Greater than or equal']], trigger.comparator)}${this.inputfield(index, 'value', 'Value', trigger.value, 'number', 'min="0"')}${this.inputfield(index, 'for_seconds', 'For seconds', trigger.for_seconds, 'number', 'min="0" max="86400"')}</div>`;
-    if (trigger.type === 'console_line') return `<div class="calagopus-trigger-grid">${this.inputfield(index, 'contains', 'Line contains', trigger.contains)}${this.inputfield(index, 'variable', 'Output variable (optional)', trigger.variable)}</div><label class="calagopus-trigger-check"><input type="checkbox" ${trigger.case_insensitive ? 'checked' : ''} onchange="calagopusschedules.settrigger(${index},'case_insensitive',this.checked)">Case insensitive</label>`;
-    return '<div class="calagopus-trigger-note">Runs when the server process crashes.</div>';
+    if (trigger.type === 'resource_usage') return `<div class="calagopus-trigger-grid wide">${this.selectfield(index, 'metric', t('csched.field.metric'), [['cpu', t('csched.metric.cpu')], ['memory', t('csched.metric.memory')], ['disk', t('csched.metric.disk')]], trigger.metric)}${this.selectfield(index, 'comparator', t('csched.field.comparison'), [['smaller_than', t('csched.cmp.smaller_than')], ['smaller_than_or_equals', t('csched.cmp.smaller_than_or_equals')], ['equal', t('csched.cmp.equal')], ['greater_than', t('csched.cmp.greater_than')], ['greater_than_or_equals', t('csched.cmp.greater_than_or_equals')]], trigger.comparator)}${this.inputfield(index, 'value', t('csched.field.value'), trigger.value, 'number', 'min="0"')}${this.inputfield(index, 'for_seconds', t('csched.field.forseconds'), trigger.for_seconds, 'number', 'min="0" max="86400"')}</div>`;
+    if (trigger.type === 'console_line') return `<div class="calagopus-trigger-grid">${this.inputfield(index, 'contains', t('csched.field.linecontains'), trigger.contains)}${this.inputfield(index, 'variable', t('csched.field.outputvariable'), trigger.variable)}</div><label class="calagopus-trigger-check"><input type="checkbox" ${trigger.case_insensitive ? 'checked' : ''} onchange="calagopusschedules.settrigger(${index},'case_insensitive',this.checked)">${t('csched.field.caseinsensitive')}</label>`;
+    return `<div class="calagopus-trigger-note">${t('csched.trigger.crash.desc')}</div>`;
   },
 
   cronfields(trigger, index) {
-    if (trigger.advanced) return `${this.inputfield(index, 'schedule', 'Cron Schedule *', trigger.schedule)}<label class="calagopus-trigger-check"><input type="checkbox" checked onchange="calagopusschedules.setadvanced(${index},this.checked)">Edit as cron expression</label>`;
-    const runs = this.selectfield(index, 'frequency', 'Runs', [['everyminutes','Every few minutes'],['everyhours','Every few hours'],['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']], trigger.frequency);
+    if (trigger.advanced) return `${this.inputfield(index, 'schedule', t('csched.field.cronschedule'), trigger.schedule)}<label class="calagopus-trigger-check"><input type="checkbox" checked onchange="calagopusschedules.setadvanced(${index},this.checked)">${t('csched.field.editascron')}</label>`;
+    const runs = this.selectfield(index, 'frequency', t('csched.field.runs'), [['everyminutes', t('csched.freq.everyminutes')], ['everyhours', t('csched.freq.everyhours')], ['daily', t('csched.freq.daily')], ['weekly', t('csched.freq.weekly')], ['monthly', t('csched.freq.monthly')]], trigger.frequency);
     let extra = '';
-    if (trigger.frequency === 'everyminutes') extra = this.inputfield(index, 'interval', 'Every minutes', trigger.interval, 'number', 'min="1" max="59"');
-    if (trigger.frequency === 'everyhours') extra = this.inputfield(index, 'interval', 'Every hours', trigger.interval, 'number', 'min="1" max="23"');
-    if (trigger.frequency === 'weekly') extra = this.selectfield(index, 'weekday', 'Weekday', [['0','Sunday'],['1','Monday'],['2','Tuesday'],['3','Wednesday'],['4','Thursday'],['5','Friday'],['6','Saturday']], trigger.weekday);
-    if (trigger.frequency === 'monthly') extra = this.inputfield(index, 'day', 'Day of month', trigger.day, 'number', 'min="1" max="31"');
-    const time = ['daily','weekly','monthly'].includes(trigger.frequency) ? this.inputfield(index, 'time', 'At', trigger.time, 'time') : '';
-    return `<div class="calagopus-trigger-grid">${runs}${extra}${time}</div><label class="calagopus-trigger-check"><input type="checkbox" onchange="calagopusschedules.setadvanced(${index},this.checked)">Edit as cron expression</label>`;
+    if (trigger.frequency === 'everyminutes') extra = this.inputfield(index, 'interval', t('csched.field.everyminutes'), trigger.interval, 'number', 'min="1" max="59"');
+    if (trigger.frequency === 'everyhours') extra = this.inputfield(index, 'interval', t('csched.field.everyhours'), trigger.interval, 'number', 'min="1" max="23"');
+    if (trigger.frequency === 'weekly') extra = this.selectfield(index, 'weekday', t('csched.field.weekday'), [['0', t('csched.weekday.0')], ['1', t('csched.weekday.1')], ['2', t('csched.weekday.2')], ['3', t('csched.weekday.3')], ['4', t('csched.weekday.4')], ['5', t('csched.weekday.5')], ['6', t('csched.weekday.6')]], trigger.weekday);
+    if (trigger.frequency === 'monthly') extra = this.inputfield(index, 'day', t('csched.field.dayofmonth'), trigger.day, 'number', 'min="1" max="31"');
+    const time = ['daily', 'weekly', 'monthly'].includes(trigger.frequency) ? this.inputfield(index, 'time', t('csched.field.at'), trigger.time, 'time') : '';
+    return `<div class="calagopus-trigger-grid">${runs}${extra}${time}</div><label class="calagopus-trigger-check"><input type="checkbox" onchange="calagopusschedules.setadvanced(${index},this.checked)">${t('csched.field.editascron')}</label>`;
   },
 
   settrigger(index, key, value) {
@@ -553,17 +563,17 @@ const calagopusschedules = {
     const data = this.payload();
     const errorbox = Utils.el('calagopus-schedule-error');
     if (!data.name) {
-      errorbox.innerHTML = '<div class="error-msg">Enter a schedule name.</div>';
+      errorbox.innerHTML = `<div class="error-msg">${t('csched.error.name')}</div>`;
       return;
     }
     if (!data.triggers.length) {
-      errorbox.innerHTML = '<div class="error-msg">Add at least one trigger.</div>';
+      errorbox.innerHTML = `<div class="error-msg">${t('csched.error.triggers')}</div>`;
       return;
     }
     try {
       await this.request(uuid ? `/schedules/${uuid}` : '/schedules', uuid ? 'PATCH' : 'POST', data);
       Modal.close();
-      this.toast(uuid ? 'Schedule updated' : 'Schedule created');
+      this.toast(uuid ? t('csched.updated') : t('csched.created'));
       this.load();
     } catch (error) {
       errorbox.innerHTML = `<div class="error-msg">${this.safe(error.message)}</div>`;
@@ -573,7 +583,7 @@ const calagopusschedules = {
   async run(index) {
     try {
       await this.request(`/schedules/${this.schedules[index].uuid}/trigger`, 'POST', { skip_condition: false });
-      this.toast('Schedule started');
+      this.toast(t('csched.started'));
     } catch (error) {
       this.toast(error.message, 'error');
     }
@@ -581,11 +591,11 @@ const calagopusschedules = {
 
   remove(index) {
     const schedule = this.schedules[index];
-    Modal.confirm('Delete Schedule', `Delete ${this.safe(schedule.name)}?`, async () => {
+    Modal.confirm(t('csched.deleteschedule'), t('csched.deleteschedule.confirm', { name: this.safe(schedule.name) }), async () => {
       try {
         await this.request(`/schedules/${schedule.uuid}`, 'DELETE');
         Modal.close();
-        this.toast('Schedule deleted');
+        this.toast(t('csched.deleted'));
         this.load();
       } catch (error) {
         this.toast(error.message, 'error');
@@ -594,7 +604,7 @@ const calagopusschedules = {
   },
 
   openimport() {
-    Modal.open('Import Schedule', '<div class="calagopus-schedule-import"><p>Select a Calagopus schedule export in JSON format.</p><input class="form-input" type="file" id="calagopus-schedule-import" accept=".json,application/json"><div id="calagopus-schedule-import-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">Cancel</button><button class="btn btn-primary" onclick="calagopusschedules.importfile()">Import</button></div></div>');
+    Modal.open(t('csched.import.title'), `<div class="calagopus-schedule-import"><p>${t('csched.import.desc')}</p><input class="form-input" type="file" id="calagopus-schedule-import" accept=".json,application/json"><div id="calagopus-schedule-import-error"></div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('csub.cancel')}</button><button class="btn btn-primary" onclick="calagopusschedules.importfile()">${t('csched.import')}</button></div></div>`);
   },
 
   async importfile() {
@@ -605,7 +615,7 @@ const calagopusschedules = {
       const data = JSON.parse(await file.text());
       await this.request('/schedules/import', 'POST', data);
       Modal.close();
-      this.toast('Schedule imported');
+      this.toast(t('csched.imported'));
       this.load();
     } catch (error) {
       errorbox.innerHTML = `<div class="error-msg">${this.safe(error.message)}</div>`;

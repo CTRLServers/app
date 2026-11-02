@@ -32,7 +32,7 @@ const LockScreen = {
 
     const pass = input.value;
     if (!pass) {
-      if (error) error.textContent = 'Please enter a passcode.';
+      if (error) error.textContent = t('lock.empty');
       return;
     }
 
@@ -47,7 +47,7 @@ const LockScreen = {
       if (this._resolve) this._resolve(true);
       this._resolve = null;
     } else {
-      if (error) error.textContent = 'Incorrect passcode. Try again.';
+      if (error) error.textContent = t('lock.incorrect');
       if (btn) btn.disabled = false;
       input.value = '';
       input.focus();

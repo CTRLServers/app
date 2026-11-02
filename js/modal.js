@@ -27,8 +27,8 @@ const Modal = {
     this.open(title, `
       <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;">${message}</p>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="modalCancelBtn">Cancel</button>
-        <button class="btn btn-danger" id="modalConfirmBtn">Confirm</button>
+        <button class="btn btn-secondary" id="modalCancelBtn">${t('modal.cancel')}</button>
+        <button class="btn btn-danger" id="modalConfirmBtn">${t('modal.confirm')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -36,7 +36,7 @@ const Modal = {
       Utils.el('modalConfirmBtn').addEventListener('click', async () => {
         const btn = Utils.el('modalConfirmBtn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-sm"></span> Processing...';
+        btn.innerHTML = `<span class="spinner-sm"></span> ${t('modal.processing')}`;
         try {
           await onConfirm();
           this.close();
@@ -51,7 +51,7 @@ const Modal = {
     this.open(title, `
       <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;">${message}</p>
       <div class="modal-actions">
-        <button class="btn btn-primary" id="modalAlertBtn">OK</button>
+        <button class="btn btn-primary" id="modalAlertBtn">${t('modal.ok')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -64,8 +64,8 @@ const Modal = {
       <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">${message}</p>
       <input type="text" id="modalPromptInput" class="input-field" value="${Utils.escape(defaultValue || '')}" style="width:100%;margin-bottom:24px;">
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="modalPromptCancel">Cancel</button>
-        <button class="btn btn-primary" id="modalPromptOk">OK</button>
+        <button class="btn btn-secondary" id="modalPromptCancel">${t('modal.cancel')}</button>
+        <button class="btn btn-primary" id="modalPromptOk">${t('modal.ok')}</button>
       </div>
     `);
     setTimeout(() => {

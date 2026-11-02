@@ -43,7 +43,7 @@ const SelfHost = {
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(this.API_URL + path, opts);
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) throw new Error(data.error || t('selfhost.err.requestfailed'));
     return data;
   },
 
@@ -112,7 +112,7 @@ const SelfHost = {
   },
 
   logout() {
-    Modal.confirm('Sign Out', 'Are you sure you want to sign out of Self-Host?', () => {
+    Modal.confirm(t('selfhost.signout.title'), t('selfhost.signout.text'), () => {
       this.clearauth();
       this.render();
     });
@@ -182,10 +182,10 @@ const SelfHost = {
               <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
             </svg>
           </div>
-          <h2 class="cloud-auth-title">Monitoring</h2>
-          <p class="cloud-auth-sub">Login with your CTRLServers account to monitor self-hosted servers.</p>
+          <h2 class="cloud-auth-title">${t('selfhost.title')}</h2>
+          <p class="cloud-auth-sub">${t('selfhost.auth.sub')}</p>
           <div class="cloud-auth-form">
-            <button class="btn btn-primary cloud-auth-btn" onclick="SelfHost.openauth()">Go to Web</button>
+            <button class="btn btn-primary cloud-auth-btn" onclick="SelfHost.openauth()">${t('selfhost.auth.goweb')}</button>
           </div>
         </div>
       </div>`;
@@ -198,15 +198,15 @@ const SelfHost = {
     if (this.selectedHosting) {
       const h = this.selectedHosting;
       const serverTabs = [
-        { id: 'connections', label: 'Connections', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' },
-        { id: 'rules', label: 'Rules', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
-        { id: 'logs', label: 'Recent Logs', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' },
-        { id: 'servers', label: 'Servers', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/></svg>' },
-        { id: 'script', label: 'Script', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
-        { id: 'settings', label: 'Settings', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
+        { id: 'connections', label: t('selfhost.tab.connections'), icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' },
+        { id: 'rules', label: t('selfhost.tab.rules'), icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
+        { id: 'logs', label: t('selfhost.tab.logs'), icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' },
+        { id: 'servers', label: t('selfhost.tab.servers'), icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/></svg>' },
+        { id: 'script', label: t('selfhost.tab.script'), icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
+        { id: 'settings', label: t('selfhost.tab.settings'), icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
       ];
-      const tabsHtml = serverTabs.map((t) =>
-        `<button class="sh-tab ${this.tab === t.id ? 'sh-tab-active' : ''}" onclick="SelfHost.switchtab('${t.id}')">${t.icon}<span>${t.label}</span></button>`
+      const tabsHtml = serverTabs.map((tab) =>
+        `<button class="sh-tab ${this.tab === tab.id ? 'sh-tab-active' : ''}" onclick="SelfHost.switchtab('${tab.id}')">${tab.icon}<span>${tab.label}</span></button>`
       ).join('');
 
       let contentHtml = '';
@@ -218,7 +218,7 @@ const SelfHost = {
       else if (this.tab === 'settings') contentHtml = this.rendersettingstab();
 
       const statusClass = h.status === 'online' ? 'sh-status-online' : h.status === 'offline' ? 'sh-status-offline' : 'sh-status-unknown';
-      const statusText = h.status === 'online' ? 'Online' : h.status === 'offline' ? 'Offline' : 'Unknown';
+      const statusText = h.status === 'online' ? t('status.online') : h.status === 'offline' ? t('status.offline') : t('selfhost.unknown');
 
       bodyHtml = `
         <div class="sh-section-header">
@@ -239,7 +239,7 @@ const SelfHost = {
       let hostingHtml = '';
       for (const h of this.hostingServers) {
         const statusClass = h.status === 'online' ? 'sh-status-online' : h.status === 'offline' ? 'sh-status-offline' : 'sh-status-unknown';
-        const statusText = h.status === 'online' ? 'Online' : h.status === 'offline' ? 'Offline' : 'Unknown';
+        const statusText = h.status === 'online' ? t('status.online') : h.status === 'offline' ? t('status.offline') : t('selfhost.unknown');
         hostingHtml += `
           <div class="sh-server-card" style="cursor:pointer;" onclick="SelfHost.selecthosting(${h.id})">
             <div class="sh-server-header">
@@ -247,41 +247,41 @@ const SelfHost = {
               <div class="sh-server-actions">
                 <span class="sh-status-dot ${statusClass}"></span>
                 <span class="sh-status-text">${statusText}</span>
-                <button class="sh-action-btn sh-action-danger" onclick="event.stopPropagation();SelfHost.deletehosting(${h.id})" title="Delete">Delete</button>
+                <button class="sh-action-btn sh-action-danger" onclick="event.stopPropagation();SelfHost.deletehosting(${h.id})" title="${t('selfhost.delete')}">${t('selfhost.delete')}</button>
               </div>
             </div>
             <div class="sh-server-info">
               <span class="sh-server-ip">${this.escape(h.ip)}:6055</span>
-              <span class="sh-muted">Cooldown: ${h.cooldown}s</span>
+              <span class="sh-muted">${t('selfhost.cooldown', { s: h.cooldown })}</span>
             </div>
           </div>`;
       }
 
       bodyHtml = `
         <div class="sh-section-header">
-          <h3>Hosting Servers (${this.hostingServers.length})</h3>
-          <button class="btn btn-primary btn-sm" onclick="document.getElementById('shCreateForm').style.display=document.getElementById('shCreateForm').style.display==='none'?'':'none'">+ Add Hosting Server</button>
+          <h3>${t('selfhost.hosting.heading', { n: this.hostingServers.length })}</h3>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('shCreateForm').style.display=document.getElementById('shCreateForm').style.display==='none'?'':'none'">${t('selfhost.hosting.add')}</button>
         </div>
         <div class="sh-warning" style="background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#ffb300;">
-          Warning! Self-Host agent consumes high CPU when checking servers. We recommend setting the checking interval to 10s, 15s, 20s or more.
+          ${t('selfhost.hosting.warning')}
         </div>
         <div id="shCreateForm" style="display:none;">
           <div class="sh-create-form">
             <div class="sh-form-group">
-              <label>Server Name</label>
-              <input type="text" id="shNewName" class="sh-input" placeholder="My Monitoring Server">
+              <label>${t('selfhost.form.name')}</label>
+              <input type="text" id="shNewName" class="sh-input" placeholder="${t('selfhost.form.name.ph')}">
             </div>
             <div class="sh-form-group">
-              <label>Server IP</label>
+              <label>${t('selfhost.form.ip')}</label>
               <input type="text" id="shNewIp" class="sh-input" placeholder="192.168.1.100">
             </div>
             <div class="sh-form-actions">
-              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shCreateForm').style.display='none'">Cancel</button>
-              <button class="btn btn-primary btn-sm" onclick="SelfHost.addhosting()" ${this.loading ? 'disabled' : ''}>Add Server</button>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shCreateForm').style.display='none'">${t('selfhost.cancel')}</button>
+              <button class="btn btn-primary btn-sm" onclick="SelfHost.addhosting()" ${this.loading ? 'disabled' : ''}>${t('selfhost.hosting.addserver')}</button>
             </div>
           </div>
         </div>
-        <div class="sh-servers-grid">${hostingHtml || '<div class="sh-empty"><p>No hosting servers yet. Add a VPS server to start monitoring.</p></div>'}</div>`;
+        <div class="sh-servers-grid">${hostingHtml || `<div class="sh-empty"><p>${t('selfhost.hosting.empty')}</p></div>`}</div>`;
     }
 
     el.innerHTML = `
@@ -295,7 +295,7 @@ const SelfHost = {
             </div>
           </div>
           <div class="sh-header-actions">
-            ${this.selectedHosting ? '' : '<button class="btn btn-secondary btn-sm" onclick="SelfHost.logout()">Sign Out</button>'}
+            ${this.selectedHosting ? '' : `<button class="btn btn-secondary btn-sm" onclick="SelfHost.logout()">${t('selfhost.signout')}</button>`}
           </div>
         </div>
         ${bodyHtml}
@@ -352,7 +352,7 @@ const SelfHost = {
     const name = document.getElementById('shNewName')?.value?.trim();
     const ip = document.getElementById('shNewIp')?.value?.trim();
     if (!name || !ip) {
-      this.showtoast('Please fill in all fields', 'error');
+      this.showtoast(t('selfhost.err.fillfields'), 'error');
       return;
     }
     this.loading = true;
@@ -360,9 +360,9 @@ const SelfHost = {
     try {
       const data = await this.api('POST', '/api/hosting', { name, ip });
       this.hostingServers.push(data.server);
-      this.showtoast('Hosting server added!');
+      this.showtoast(t('selfhost.hosting.added'));
     } catch (e) {
-      this.showtoast(e.message || 'Failed to add server', 'error');
+      this.showtoast(e.message || t('selfhost.err.addserver'), 'error');
     } finally {
       this.loading = false;
       this.render();
@@ -370,14 +370,14 @@ const SelfHost = {
   },
 
   async deletehosting(id) {
-    Modal.confirm('Delete Hosting Server', 'Are you sure? This will delete all connections, rules, and monitored servers for this hosting server.', async () => {
+    Modal.confirm(t('selfhost.hosting.delete.title'), t('selfhost.hosting.delete.text'), async () => {
       try {
         await this.api('DELETE', `/api/hosting/${id}`);
         this.hostingServers = this.hostingServers.filter((h) => h.id !== id);
-        this.showtoast('Hosting server deleted!');
+        this.showtoast(t('selfhost.hosting.deleted'));
         this.render();
       } catch (e) {
-        this.showtoast(e.message || 'Delete failed', 'error');
+        this.showtoast(e.message || t('selfhost.err.deletefailed'), 'error');
       }
     });
   },
@@ -395,47 +395,47 @@ const SelfHost = {
             <div class="sh-conn-type">${c.type}</div>
           </div>
           <div class="sh-conn-actions">
-            <span class="sh-conn-status ${c.enabled ? 'sh-conn-enabled' : 'sh-conn-disabled'}">${c.enabled ? 'Active' : 'Disabled'}</span>
-            <button class="sh-action-btn" onclick="SelfHost.openembededitor(${c.id})">Embeds</button>
-            <button class="sh-action-btn sh-action-danger" onclick="SelfHost.deleteconnection(${c.id})">Delete</button>
+            <span class="sh-conn-status ${c.enabled ? 'sh-conn-enabled' : 'sh-conn-disabled'}">${c.enabled ? t('selfhost.conn.active') : t('selfhost.conn.disabled')}</span>
+            <button class="sh-action-btn" onclick="SelfHost.openembededitor(${c.id})">${t('selfhost.conn.embeds')}</button>
+            <button class="sh-action-btn sh-action-danger" onclick="SelfHost.deleteconnection(${c.id})">${t('selfhost.delete')}</button>
           </div>
         </div>`;
     }
     return `
       <div class="sh-connections">
         <div class="sh-section-header">
-          <h3>Discord Connections (${this.connections.length})</h3>
-          <button class="btn btn-primary btn-sm" onclick="document.getElementById('shConnForm').style.display=document.getElementById('shConnForm').style.display==='none'?'':'none'">+ Add Connection</button>
+          <h3>${t('selfhost.conn.heading', { n: this.connections.length })}</h3>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('shConnForm').style.display=document.getElementById('shConnForm').style.display==='none'?'':'none'">${t('selfhost.conn.add')}</button>
         </div>
         <div id="shConnForm" style="display:none;">
           <div class="sh-create-form">
             <div class="sh-form-group">
-              <label>Connection Name</label>
-              <input type="text" id="shConnName" class="sh-input" placeholder="My Discord">
+              <label>${t('selfhost.conn.name')}</label>
+              <input type="text" id="shConnName" class="sh-input" placeholder="${t('selfhost.conn.name.ph')}">
             </div>
             <div class="sh-form-group">
-              <label>Discord Webhook URL</label>
+              <label>${t('selfhost.conn.webhook')}</label>
               <input type="text" id="shConnWebhook" class="sh-input" placeholder="https://discord.com/api/webhooks/...">
             </div>
             <div class="sh-form-actions">
-              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shConnForm').style.display='none'">Cancel</button>
-              <button class="btn btn-primary btn-sm" onclick="SelfHost.addconnection()" ${this.loading ? 'disabled' : ''}>Add Connection</button>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shConnForm').style.display='none'">${t('selfhost.cancel')}</button>
+              <button class="btn btn-primary btn-sm" onclick="SelfHost.addconnection()" ${this.loading ? 'disabled' : ''}>${t('selfhost.conn.addbtn')}</button>
             </div>
           </div>
         </div>
         <div id="shEmbedEditor" style="display:none;"></div>
-        <div class="sh-conn-list">${connsHtml || '<div class="sh-empty"><p>No connections yet. Add a Discord webhook to receive notifications.</p></div>'}</div>
+        <div class="sh-conn-list">${connsHtml || `<div class="sh-empty"><p>${t('selfhost.conn.empty')}</p></div>`}</div>
       </div>`;
   },
 
   _defaultEmbedTemplates() {
     return {
-      offline: { title: 'Server OFFLINE', description: '**{name}** is now OFFLINE.', color: 16734264 },
-      online: { title: 'Server ONLINE', description: '**{name}** is now ONLINE.', color: 65280 },
-      starting: { title: 'Server STARTING', description: '**{name}** is now STARTING.', color: 16776960 },
-      ram: { title: 'RAM Alert', description: '**{name}**: RAM at {ram_pct}% (threshold: {thr}%).', color: 16734264 },
-      cpu: { title: 'CPU Alert', description: '**{name}**: CPU at {cpu_load}% (threshold: {thr}%).', color: 16734264 },
-      disk: { title: 'Disk Alert', description: '**{name}**: Disk at {disk_pct}% (threshold: {thr}%).', color: 16734264 },
+      offline: { title: t('selfhost.embed.default.offline.title'), description: t('selfhost.embed.default.offline.desc'), color: 16734264 },
+      online: { title: t('selfhost.embed.default.online.title'), description: t('selfhost.embed.default.online.desc'), color: 65280 },
+      starting: { title: t('selfhost.embed.default.starting.title'), description: t('selfhost.embed.default.starting.desc'), color: 16776960 },
+      ram: { title: t('selfhost.embed.default.ram.title'), description: t('selfhost.embed.default.ram.desc'), color: 16734264 },
+      cpu: { title: t('selfhost.embed.default.cpu.title'), description: t('selfhost.embed.default.cpu.desc'), color: 16734264 },
+      disk: { title: t('selfhost.embed.default.disk.title'), description: t('selfhost.embed.default.disk.desc'), color: 16734264 },
     };
   },
 
@@ -451,28 +451,28 @@ const SelfHost = {
     let html = `
       <div class="sh-create-form" style="margin-bottom:16px;">
         <div class="sh-form-group">
-          <label style="font-weight:600;font-size:14px;">Edit Embed Messages - ${this.escape(conn.name)}</label>
-          <div class="sh-muted" style="font-size:12px;margin-bottom:12px;">Available variables: <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:11px;">${vars}</code></div>
+          <label style="font-weight:600;font-size:14px;">${t('selfhost.embed.heading', { name: this.escape(conn.name) })}</label>
+          <div class="sh-muted" style="font-size:12px;margin-bottom:12px;">${t('selfhost.embed.varslabel')}: <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:11px;">${vars}</code></div>
         </div>`;
 
     for (const ev of events) {
-      const t = templates[ev] || defaults[ev];
-      const colorHex = '#' + (t.color || 16734264).toString(16).padStart(6, '0');
+      const tpl = templates[ev] || defaults[ev];
+      const colorHex = '#' + (tpl.color || 16734264).toString(16).padStart(6, '0');
       html += `
         <div class="sh-form-group" style="border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px;margin-bottom:12px;">
-          <label style="font-weight:500;text-transform:capitalize;">${ev} Embed</label>
+          <label style="font-weight:500;text-transform:capitalize;">${t('selfhost.embed.event.' + ev)}</label>
           <div style="display:flex;gap:8px;margin-top:6px;">
-            <input type="text" class="sh-input sh-embed-title" data-event="${ev}" value="${this.escape(t.title || '')}" placeholder="Title" style="flex:1;">
+            <input type="text" class="sh-input sh-embed-title" data-event="${ev}" value="${this.escape(tpl.title || '')}" placeholder="${t('selfhost.embed.title.ph')}" style="flex:1;">
             <input type="color" class="sh-embed-color" data-event="${ev}" value="${colorHex}" style="width:40px;height:34px;padding:2px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);border-radius:6px;background:transparent;">
           </div>
-          <textarea class="sh-input sh-embed-desc" data-event="${ev}" rows="2" placeholder="Description" style="margin-top:6px;width:100%;resize:vertical;">${this.escape(t.description || '')}</textarea>
+          <textarea class="sh-input sh-embed-desc" data-event="${ev}" rows="2" placeholder="${t('selfhost.embed.desc.ph')}" style="margin-top:6px;width:100%;resize:vertical;">${this.escape(tpl.description || '')}</textarea>
         </div>`;
     }
 
     html += `
         <div class="sh-form-actions">
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shEmbedEditor').style.display='none'">Cancel</button>
-          <button class="btn btn-primary btn-sm" onclick="SelfHost.saveembedtemplates(${connId})">Save</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shEmbedEditor').style.display='none'">${t('selfhost.cancel')}</button>
+          <button class="btn btn-primary btn-sm" onclick="SelfHost.saveembedtemplates(${connId})">${t('selfhost.save')}</button>
         </div>
       </div>`;
 
@@ -498,9 +498,9 @@ const SelfHost = {
       const idx = this.connections.findIndex((c) => c.id === connId);
       if (idx >= 0) this.connections[idx] = data.connection;
       document.getElementById('shEmbedEditor').style.display = 'none';
-      this.showtoast('Embed templates saved!');
+      this.showtoast(t('selfhost.embed.saved'));
     } catch (e) {
-      this.showtoast(e.message || 'Failed to save', 'error');
+      this.showtoast(e.message || t('selfhost.err.savefailed'), 'error');
     }
   },
 
@@ -508,7 +508,7 @@ const SelfHost = {
     const name = document.getElementById('shConnName')?.value?.trim();
     const webhook = document.getElementById('shConnWebhook')?.value?.trim();
     if (!name || !webhook) {
-      this.showtoast('Please fill in all fields', 'error');
+      this.showtoast(t('selfhost.err.fillfields'), 'error');
       return;
     }
     this.loading = true;
@@ -519,9 +519,9 @@ const SelfHost = {
         webhook_url: webhook,
       });
       this.connections.push(data.connection);
-      this.showtoast('Connection added!');
+      this.showtoast(t('selfhost.conn.added'));
     } catch (e) {
-      this.showtoast(e.message || 'Failed to add connection', 'error');
+      this.showtoast(e.message || t('selfhost.err.addconnection'), 'error');
     } finally {
       this.loading = false;
       this.render();
@@ -529,7 +529,7 @@ const SelfHost = {
   },
 
   async deleteconnection(id) {
-    Modal.confirm('Delete Connection', 'Are you sure?', async () => {
+    Modal.confirm(t('selfhost.conn.delete.title'), t('selfhost.confirm.areyousure'), async () => {
       try {
         await this.api('DELETE', `/api/hosting/${this.selectedHosting.id}/connections/${id}`);
         this.connections = this.connections.filter((c) => c.id !== id);
@@ -537,10 +537,10 @@ const SelfHost = {
           const ids = String(r.connection_ids || '').split(',').map(Number);
           return !ids.includes(id);
         });
-        this.showtoast('Connection deleted!');
+        this.showtoast(t('selfhost.conn.deleted'));
         this.render();
       } catch (e) {
-        this.showtoast(e.message || 'Delete failed', 'error');
+        this.showtoast(e.message || t('selfhost.err.deletefailed'), 'error');
       }
     });
   },
@@ -555,11 +555,11 @@ const SelfHost = {
     if (start) start.style.display = (type === 'starting') ? 'none' : '';
     if (desc) {
       if (type === 'offline') {
-        desc.textContent = 'When on, notifies when server goes offline from Starting state (e.g. server tried to start but failed). When off, only notifies when going offline from Online.';
+        desc.textContent = t('selfhost.rule.desc.offline');
       } else if (type === 'online') {
-        desc.textContent = 'When on, notifies when server comes online from Starting state. When off, only notifies when coming online from Offline.';
+        desc.textContent = t('selfhost.rule.desc.online');
       } else {
-        desc.textContent = 'When off, RAM/CPU/Disk alerts are skipped while a Pterodactyl server is starting.';
+        desc.textContent = t('selfhost.rule.desc.metric');
       }
     }
   },
@@ -568,25 +568,25 @@ const SelfHost = {
     let rulesHtml = '';
     for (const r of this.rules) {
       const monServer = this.monitoredServers.find((s) => s.id === r.monitored_server_id);
-      const serverName = monServer ? monServer.server_name : 'All Servers';
+      const serverName = monServer ? monServer.server_name : t('selfhost.rule.allservers');
       const connNames = String(r.connection_ids || '').split(',').map((id) => {
         const conn = this.connections.find((c) => c.id === parseInt(id, 10));
-        return conn ? conn.name : 'Unknown';
+        return conn ? conn.name : t('selfhost.unknown');
       }).join(', ');
       const metric = r.rule_type === 'ram' || r.rule_type === 'cpu' || r.rule_type === 'disk';
       const statusRule = r.rule_type === 'offline' || r.rule_type === 'online';
       const thrText = (r.rule_type === 'offline' || r.rule_type === 'online' || r.rule_type === 'starting')
-        ? 'No threshold'
-        : 'Threshold: ' + r.threshold;
-      const startText = (metric || statusRule) ? (r.on_starting ? ' | Starting: on' : ' | Starting: off') : '';
+        ? t('selfhost.rule.nothreshold')
+        : t('selfhost.rule.threshold', { value: r.threshold });
+      const startText = (metric || statusRule) ? (r.on_starting ? t('selfhost.rule.starting.on') : t('selfhost.rule.starting.off')) : '';
       rulesHtml += `
         <div class="sh-rule-card">
           <div class="sh-rule-info">
             <div class="sh-rule-type">${r.rule_type.toUpperCase()}</div>
-            <div class="sh-rule-desc">${thrText}${startText} | Server: ${this.escape(serverName)}</div>
-            <div class="sh-rule-conns">Notifications: ${this.escape(connNames)}</div>
+            <div class="sh-rule-desc">${thrText}${startText}${t('selfhost.rule.server', { name: this.escape(serverName) })}</div>
+            <div class="sh-rule-conns">${t('selfhost.rule.notifications', { names: this.escape(connNames) })}</div>
           </div>
-          <button class="sh-action-btn sh-action-danger" onclick="SelfHost.deleterule(${r.id})">Delete</button>
+          <button class="sh-action-btn sh-action-danger" onclick="SelfHost.deleterule(${r.id})">${t('selfhost.delete')}</button>
         </div>`;
     }
 
@@ -600,52 +600,52 @@ const SelfHost = {
     return `
       <div class="sh-rules">
         <div class="sh-section-header">
-          <h3>Alert Rules (${this.rules.length})</h3>
-          <button class="btn btn-primary btn-sm" onclick="document.getElementById('shRuleForm').style.display=document.getElementById('shRuleForm').style.display==='none'?'':'none'">+ Add Rule</button>
+          <h3>${t('selfhost.rule.heading', { n: this.rules.length })}</h3>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('shRuleForm').style.display=document.getElementById('shRuleForm').style.display==='none'?'':'none'">${t('selfhost.rule.add')}</button>
         </div>
         <div id="shRuleForm" style="display:none;">
           <div class="sh-create-form">
             <div class="sh-form-row">
               <div class="sh-form-group">
-                <label>Server</label>
+                <label>${t('selfhost.rule.serverlabel')}</label>
                 <select id="shRuleServer" class="sh-input">
-                  <option value="">All Servers</option>
+                  <option value="">${t('selfhost.rule.allservers')}</option>
                   ${serverOptions}
                 </select>
               </div>
               <div class="sh-form-group">
-                <label>Rule Type</label>
+                <label>${t('selfhost.rule.type')}</label>
                 <select id="shRuleType" class="sh-input" onchange="SelfHost.onruletypechange()">
-                  <option value="ram">RAM Usage (%)</option>
-                  <option value="cpu">CPU Load</option>
-                  <option value="disk">Disk Usage (%)</option>
-                  <option value="offline">Went Offline</option>
-                  <option value="online">Went Online</option>
-                  <option value="starting">Went Starting</option>
+                  <option value="ram">${t('selfhost.rule.type.ram')}</option>
+                  <option value="cpu">${t('selfhost.rule.type.cpu')}</option>
+                  <option value="disk">${t('selfhost.rule.type.disk')}</option>
+                  <option value="offline">${t('selfhost.rule.type.offline')}</option>
+                  <option value="online">${t('selfhost.rule.type.online')}</option>
+                  <option value="starting">${t('selfhost.rule.type.starting')}</option>
                 </select>
               </div>
               <div class="sh-form-group" id="shRuleThresholdGroup">
-                <label>Threshold</label>
+                <label>${t('selfhost.rule.thresholdlabel')}</label>
                 <input type="number" id="shRuleThreshold" class="sh-input" placeholder="90" min="0" max="100">
               </div>
             </div>
             <div class="sh-form-group" id="shRuleStartingGroup">
               <label class="sh-checkbox">
-                <input type="checkbox" id="shRuleOnStarting"> Working on Starting state
+                <input type="checkbox" id="shRuleOnStarting"> ${t('selfhost.rule.onstarting')}
               </label>
-              <div class="sh-muted" style="margin-top:6px;font-size:12px;" id="shRuleStartingDesc">When on, RAM/CPU/Disk alerts are skipped while a Pterodactyl server is starting.</div>
+              <div class="sh-muted" style="margin-top:6px;font-size:12px;" id="shRuleStartingDesc">${t('selfhost.rule.desc.metric')}</div>
             </div>
             <div class="sh-form-group">
-              <label>Send notifications to:</label>
-              <div class="sh-checkbox-group">${connCheckboxes || '<span class="sh-muted">No connections available</span>'}</div>
+              <label>${t('selfhost.rule.sendto')}</label>
+              <div class="sh-checkbox-group">${connCheckboxes || `<span class="sh-muted">${t('selfhost.rule.noconns')}</span>`}</div>
             </div>
             <div class="sh-form-actions">
-              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shRuleForm').style.display='none'">Cancel</button>
-              <button class="btn btn-primary btn-sm" onclick="SelfHost.addrule()" ${this.loading ? 'disabled' : ''}>Add Rule</button>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shRuleForm').style.display='none'">${t('selfhost.cancel')}</button>
+              <button class="btn btn-primary btn-sm" onclick="SelfHost.addrule()" ${this.loading ? 'disabled' : ''}>${t('selfhost.rule.addbtn')}</button>
             </div>
           </div>
         </div>
-        <div class="sh-rules-list">${rulesHtml || '<div class="sh-empty"><p>No rules yet. Add a rule to get notifications when thresholds are exceeded.</p></div>'}</div>
+        <div class="sh-rules-list">${rulesHtml || `<div class="sh-empty"><p>${t('selfhost.rule.empty')}</p></div>`}</div>
       </div>`;
   },
 
@@ -656,12 +656,12 @@ const SelfHost = {
     const onStarting = !!document.getElementById('shRuleOnStarting')?.checked;
     const connIds = Array.from(document.querySelectorAll('.sh-rule-conn:checked')).map((c) => c.value);
     if (!ruleType || connIds.length === 0) {
-      this.showtoast('Please fill in all fields and select at least one connection', 'error');
+      this.showtoast(t('selfhost.err.rulefields'), 'error');
       return;
     }
     const needsThreshold = ruleType !== 'offline' && ruleType !== 'online' && ruleType !== 'starting';
     if (needsThreshold && !threshold) {
-      this.showtoast('Threshold is required for this rule type', 'error');
+      this.showtoast(t('selfhost.err.thresholdrequired'), 'error');
       return;
     }
     this.loading = true;
@@ -675,9 +675,9 @@ const SelfHost = {
         on_starting: onStarting,
       });
       this.rules.push(data.rule);
-      this.showtoast('Rule added!');
+      this.showtoast(t('selfhost.rule.added'));
     } catch (e) {
-      this.showtoast(e.message || 'Failed to add rule', 'error');
+      this.showtoast(e.message || t('selfhost.err.addrule'), 'error');
     } finally {
       this.loading = false;
       this.render();
@@ -685,14 +685,14 @@ const SelfHost = {
   },
 
   async deleterule(id) {
-    Modal.confirm('Delete Rule', 'Are you sure?', async () => {
+    Modal.confirm(t('selfhost.rule.delete.title'), t('selfhost.confirm.areyousure'), async () => {
       try {
         await this.api('DELETE', `/api/hosting/${this.selectedHosting.id}/rules/${id}`);
         this.rules = this.rules.filter((r) => r.id !== id);
-        this.showtoast('Rule deleted!');
+        this.showtoast(t('selfhost.rule.deleted'));
         this.render();
       } catch (e) {
-        this.showtoast(e.message || 'Delete failed', 'error');
+        this.showtoast(e.message || t('selfhost.err.deletefailed'), 'error');
       }
     });
   },
@@ -706,15 +706,15 @@ const SelfHost = {
 
   _logeventname(event) {
     const map = {
-      'server_online': 'Server Online',
-      'server_offline': 'Server Offline',
-      'alert_triggered': 'Alert Triggered',
-      'rule_added': 'Rule Added',
-      'server_added': 'Server Added',
-      'hosting_added': 'Hosting Added',
-      'hosting_removed': 'Hosting Removed',
-      'server_removed': 'Server Removed',
-      'rule_removed': 'Rule Removed',
+      'server_online': t('selfhost.log.serveronline'),
+      'server_offline': t('selfhost.log.serveroffline'),
+      'alert_triggered': t('selfhost.log.alerttriggered'),
+      'rule_added': t('selfhost.log.ruleadded'),
+      'server_added': t('selfhost.log.serveradded'),
+      'hosting_added': t('selfhost.log.hostingadded'),
+      'hosting_removed': t('selfhost.log.hostingremoved'),
+      'server_removed': t('selfhost.log.serverremoved'),
+      'rule_removed': t('selfhost.log.ruleremoved'),
     };
     return map[event] || event.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   },
@@ -726,20 +726,20 @@ const SelfHost = {
         <div class="sh-log-item">
           ${this._logicon(l.event)}
           <div class="sh-log-info">
-            <div class="sh-log-title">${this.escape(l.server_name || 'System')} &mdash; ${this._logeventname(l.event)}</div>
+            <div class="sh-log-title">${this.escape(l.server_name || t('selfhost.log.system'))} &mdash; ${this._logeventname(l.event)}</div>
             <div class="sh-log-details">${this.escape(l.details || '')}</div>
           </div>
           <div class="sh-log-time">${this.escape(l.created_at || '')}</div>
         </div>`;
     }
-    return logsHtml || '<div class="sh-empty"><p>No logs yet.</p></div>';
+    return logsHtml || `<div class="sh-empty"><p>${t('selfhost.log.empty')}</p></div>`;
   },
 
   renderlogstab() {
     return `
       <div class="sh-logs">
         <div class="sh-section-header">
-          <h3>Recent Logs (${this.logs.length})</h3>
+          <h3>${t('selfhost.log.heading', { n: this.logs.length })}</h3>
         </div>
         <div class="sh-logs-list" id="shLogsList">${this._logitemshtml()}</div>
       </div>`;
@@ -756,7 +756,7 @@ const SelfHost = {
     let monitoredHtml = '';
     for (const m of this.monitoredServers) {
       const statusClass = m.status === 'online' ? 'sh-status-online' : m.status === 'offline' ? 'sh-status-offline' : 'sh-status-unknown';
-      const statusText = m.status === 'online' ? 'Online' : m.status === 'offline' ? 'Offline' : 'Unknown';
+      const statusText = m.status === 'online' ? t('status.online') : m.status === 'offline' ? t('status.offline') : t('selfhost.unknown');
       const ramPct = m.ram_total > 0 ? Math.round((m.ram_used / m.ram_total) * 100) : 0;
       const diskPct = m.disk_total > 0 ? Math.round((m.disk_used / m.disk_total) * 100) : 0;
       const cpuVal = Math.round(Number(m.cpu_load) || 0);
@@ -767,14 +767,14 @@ const SelfHost = {
             <div class="sh-server-actions">
               <span class="sh-status-dot ${statusClass}"></span>
               <span class="sh-status-text">${statusText}</span>
-              <button class="sh-action-btn sh-action-danger" onclick="SelfHost.removeserver(${m.id})">Remove</button>
+              <button class="sh-action-btn sh-action-danger" onclick="SelfHost.removeserver(${m.id})">${t('selfhost.remove')}</button>
             </div>
           </div>
           <div class="sh-server-info">
             <span class="sh-server-ip">${this.escape(m.server_ip || '')}:${m.server_port || ''}</span>
-            <span class="sh-server-ram">RAM: ${ramPct}%</span>
-            <span class="sh-server-cpu">CPU: ${cpuVal}%</span>
-            <span class="sh-server-disk">Disk: ${diskPct}%</span>
+            <span class="sh-server-ram">${t('selfhost.server.ram', { pct: ramPct })}</span>
+            <span class="sh-server-cpu">${t('selfhost.server.cpu', { pct: cpuVal })}</span>
+            <span class="sh-server-disk">${t('selfhost.server.disk', { pct: diskPct })}</span>
           </div>
         </div>`;
     }
@@ -784,34 +784,34 @@ const SelfHost = {
     );
     const optionsHtml = unmonitored.map((ds) => {
       const idx = dashServers.indexOf(ds);
-      return `<option value="${idx}">${this.escape(ds.name || ds.host || 'Server ' + (idx + 1))}</option>`;
+      return `<option value="${idx}">${this.escape(ds.name || ds.host || t('selfhost.server.fallback', { n: idx + 1 }))}</option>`;
     }).join('');
 
     return `
       <div class="sh-servers">
         <div class="sh-section-header">
-          <h3>Monitored Servers (${this.monitoredServers.length})</h3>
+          <h3>${t('selfhost.servers.heading', { n: this.monitoredServers.length })}</h3>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary btn-sm" onclick="SelfHost.fetchhostingdata(${this.selectedHosting.id}).then(()=>SelfHost.render())">Refresh</button>
+            <button class="btn btn-secondary btn-sm" onclick="SelfHost.fetchhostingdata(${this.selectedHosting.id}).then(()=>SelfHost.render())">${t('selfhost.refresh')}</button>
           </div>
         </div>
         <div id="shAddServerForm" style="display:none;margin-bottom:16px;">
           <div class="sh-create-form">
             <div class="sh-form-row">
               <div class="sh-form-group">
-                <label>Select Dashboard Server</label>
-                <select id="shAddServerIdx" class="sh-input">${optionsHtml || '<option value="">No servers available</option>'}</select>
+                <label>${t('selfhost.servers.select')}</label>
+                <select id="shAddServerIdx" class="sh-input">${optionsHtml || `<option value="">${t('selfhost.servers.none')}</option>`}</select>
               </div>
               <div class="sh-form-group" style="display:flex;align-items:flex-end;">
-                <button class="btn btn-primary btn-sm" onclick="SelfHost.addserver()" ${this.loading ? 'disabled' : ''}>Add</button>
+                <button class="btn btn-primary btn-sm" onclick="SelfHost.addserver()" ${this.loading ? 'disabled' : ''}>${t('selfhost.add')}</button>
               </div>
             </div>
           </div>
         </div>
-        <div class="sh-servers-grid">${monitoredHtml || '<div class="sh-empty"><p>No servers being monitored. Click "Add Server" to start.</p></div>'}</div>
+        <div class="sh-servers-grid">${monitoredHtml || `<div class="sh-empty"><p>${t('selfhost.servers.empty')}</p></div>`}</div>
         <div style="margin-top:12px;display:flex;gap:8px;">
-          ${unmonitored.length > 0 ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('shAddServerForm').style.display=document.getElementById('shAddServerForm').style.display==='none'?'':'none'">+ Add Server</button>` : ''}
-          ${unmonitored.length > 0 ? `<button class="btn btn-secondary btn-sm" onclick="SelfHost.addallservers()">Add All</button>` : ''}
+          ${unmonitored.length > 0 ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('shAddServerForm').style.display=document.getElementById('shAddServerForm').style.display==='none'?'':'none'">${t('selfhost.servers.add')}</button>` : ''}
+          ${unmonitored.length > 0 ? `<button class="btn btn-secondary btn-sm" onclick="SelfHost.addallservers()">${t('selfhost.servers.addall')}</button>` : ''}
         </div>
       </div>`;
   },
@@ -819,13 +819,13 @@ const SelfHost = {
   async addserver() {
     const idx = parseInt(document.getElementById('shAddServerIdx')?.value, 10);
     if (isNaN(idx)) {
-      this.showtoast('Select a server', 'error');
+      this.showtoast(t('selfhost.err.selectserver'), 'error');
       return;
     }
     const dashServers = (typeof Servers !== 'undefined' && Servers.list) ? Servers.list : [];
     const ds = dashServers[idx];
     if (!ds) {
-      this.showtoast('Server not found', 'error');
+      this.showtoast(t('selfhost.err.servernotfound'), 'error');
       return;
     }
     this.loading = true;
@@ -834,9 +834,9 @@ const SelfHost = {
       const payload = await this.buildserverpayload(ds, idx);
       const data = await this.api('POST', `/api/hosting/${this.selectedHosting.id}/servers`, payload);
       this.monitoredServers.push(data.server);
-      this.showtoast('Server added to monitoring!');
+      this.showtoast(t('selfhost.server.added'));
     } catch (e) {
-      this.showtoast(e.message || 'Failed to add server', 'error');
+      this.showtoast(e.message || t('selfhost.err.addserver'), 'error');
     } finally {
       this.loading = false;
       this.render();
@@ -849,7 +849,7 @@ const SelfHost = {
       .map((ds, i) => ({ ds, i }))
       .filter((x) => !this.monitoredServers.some((m) => m.dashboard_idx === x.i));
     if (unmonitored.length === 0) {
-      this.showtoast('No new servers to add', 'error');
+      this.showtoast(t('selfhost.err.nonewservers'), 'error');
       return;
     }
     this.loading = true;
@@ -860,10 +860,10 @@ const SelfHost = {
         payload.push(await this.buildserverpayload(x.ds, x.i));
       }
       const data = await this.api('POST', `/api/hosting/${this.selectedHosting.id}/servers/add-all`, { servers: payload });
-      this.showtoast(`${data.added} servers added!`);
+      this.showtoast(t('selfhost.servers.added', { n: data.added }));
       await this.fetchhostingdata(this.selectedHosting.id);
     } catch (e) {
-      this.showtoast(e.message || 'Failed to add servers', 'error');
+      this.showtoast(e.message || t('selfhost.err.addservers'), 'error');
     } finally {
       this.loading = false;
       this.render();
@@ -871,15 +871,15 @@ const SelfHost = {
   },
 
   async removeserver(id) {
-    Modal.confirm('Remove Server', 'Remove this server from monitoring?', async () => {
+    Modal.confirm(t('selfhost.server.remove.title'), t('selfhost.server.remove.text'), async () => {
       try {
         await this.api('DELETE', `/api/hosting/${this.selectedHosting.id}/servers/${id}`);
         this.monitoredServers = this.monitoredServers.filter((m) => m.id !== id);
         this.rules = this.rules.filter((r) => r.monitored_server_id !== id);
-        this.showtoast('Server removed!');
+        this.showtoast(t('selfhost.server.removed'));
         this.render();
       } catch (e) {
-        this.showtoast(e.message || 'Remove failed', 'error');
+        this.showtoast(e.message || t('selfhost.err.removefailed'), 'error');
       }
     });
   },
@@ -889,13 +889,13 @@ const SelfHost = {
     return `
       <div class="sh-script">
         <div class="sh-section-header">
-          <h3>Installation Script</h3>
+          <h3>${t('selfhost.script.heading')}</h3>
         </div>
         <div class="sh-script-card">
-          <p class="sh-muted">Generate an installation command for your VPS. The agent listens on port 6055 for live config pushes and keeps one SSH session open per monitored VPS.</p>
+          <p class="sh-muted">${t('selfhost.script.desc')}</p>
           <div class="sh-form-row">
             <div class="sh-form-group">
-              <label>Report Cooldown (seconds)</label>
+              <label>${t('selfhost.script.cooldown')}</label>
               <select id="shCooldown" class="sh-input" onchange="document.getElementById('shCustomCooldown').style.display=this.value==='custom'?'':'none'">
                 <option value="5">5s</option>
                 <option value="10">10s</option>
@@ -909,31 +909,31 @@ const SelfHost = {
                 <option value="50">50s</option>
                 <option value="55">55s</option>
                 <option value="60">60s</option>
-                <option value="custom">Custom (5-300s)</option>
+                <option value="custom">${t('selfhost.script.custom')}</option>
               </select>
             </div>
             <div class="sh-form-group" id="shCustomCooldown" style="display:none;">
-              <label>Custom Cooldown (5-300s)</label>
+              <label>${t('selfhost.script.customlabel')}</label>
               <input type="number" id="shCustomCooldownInput" class="sh-input" placeholder="${hosting.cooldown}" min="5" max="300" value="${hosting.cooldown}">
             </div>
           </div>
-          <button class="btn btn-primary" onclick="SelfHost.generatescript()">Generate Script</button>
+          <button class="btn btn-primary" onclick="SelfHost.generatescript()">${t('selfhost.script.generate')}</button>
         </div>
         ${this.scriptData ? `
           <div class="sh-script-result">
             <div class="sh-script-section">
-              <h4>API Key</h4>
+              <h4>${t('selfhost.script.apikey')}</h4>
               <div class="sh-cmd">
                 <span>${this.escape(this.scriptData.api_key)}</span>
-                <button class="sh-copy-btn" onclick="SelfHost.copytoclipboard(SelfHost.scriptData.api_key)">Copy</button>
+                <button class="sh-copy-btn" onclick="SelfHost.copytoclipboard(SelfHost.scriptData.api_key)">${t('common.copy')}</button>
               </div>
             </div>
             <div class="sh-script-section">
-              <h4>Install Command</h4>
-              <p class="sh-muted">Run as root. Allow inbound TCP 6055 so nsrv.ctrlservers.xyz can push new servers/rules instantly.</p>
+              <h4>${t('selfhost.script.install')}</h4>
+              <p class="sh-muted">${t('selfhost.script.install.desc')}</p>
               <div class="sh-cmd">
                 <span>${this.escape(this.scriptData.install_command)}</span>
-                <button class="sh-copy-btn" onclick="SelfHost.copytoclipboard(SelfHost.scriptData.install_command)">Copy</button>
+                <button class="sh-copy-btn" onclick="SelfHost.copytoclipboard(SelfHost.scriptData.install_command)">${t('common.copy')}</button>
               </div>
             </div>
           </div>
@@ -953,9 +953,9 @@ const SelfHost = {
       await this.api('POST', `/api/hosting/${this.selectedHosting.id}/cooldown`, { cooldown });
       this.selectedHosting.cooldown = cooldown;
       this.scriptData = await this.api('GET', `/api/hosting/${this.selectedHosting.id}/script`);
-      this.showtoast('Script generated!');
+      this.showtoast(t('selfhost.script.generated'));
     } catch (e) {
-      this.showtoast(e.message || 'Failed to generate script', 'error');
+      this.showtoast(e.message || t('selfhost.err.generatescript'), 'error');
     } finally {
       this.loading = false;
       this.render();
@@ -964,21 +964,21 @@ const SelfHost = {
 
   copytoclipboard(text) {
     navigator.clipboard.writeText(text)
-      .then(() => this.showtoast('Copied to clipboard!'))
-      .catch(() => this.showtoast('Copy failed', 'error'));
+      .then(() => this.showtoast(t('selfhost.copied')))
+      .catch(() => this.showtoast(t('selfhost.err.copyfailed'), 'error'));
   },
 
   rendersettingstab() {
     return `
       <div class="sh-settings">
         <div class="sh-section-header">
-          <h3>Settings</h3>
+          <h3>${t('selfhost.settings.heading')}</h3>
         </div>
         <div class="sh-settings-card">
           <div class="sh-setting-item">
             <div class="sh-setting-info">
-              <div class="sh-setting-title">Auto-sync servers when added locally</div>
-              <div class="sh-setting-desc">When enabled, adding a server in the dashboard will automatically register it with the monitoring system.</div>
+              <div class="sh-setting-title">${t('selfhost.settings.autosync')}</div>
+              <div class="sh-setting-desc">${t('selfhost.settings.autosync.desc')}</div>
             </div>
             <button class="sh-toggle ${this.autoSync ? 'sh-toggle-on' : ''}" id="shAutoSync" onclick="SelfHost.togglesettings()">
               <div class="sh-toggle-knob"></div>
@@ -992,11 +992,11 @@ const SelfHost = {
     try {
       this.autoSync = !this.autoSync;
       await this.api('POST', '/api/settings', { auto_sync: this.autoSync });
-      this.showtoast('Settings updated!');
+      this.showtoast(t('selfhost.settings.updated'));
       this.render();
     } catch (e) {
       this.autoSync = !this.autoSync;
-      this.showtoast('Failed to update settings', 'error');
+      this.showtoast(t('selfhost.err.updatesettings'), 'error');
     }
   },
 };

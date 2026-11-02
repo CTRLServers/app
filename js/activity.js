@@ -8,18 +8,18 @@ const ServerActivity = {
   _exporting: false,
 
   CATEGORIES: [
-    { key: 'all', label: 'All actions', icon: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>', events: [] },
-    { key: 'console', label: 'Console', icon: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>', events: ['server:console.command'] },
-    { key: 'file', label: 'Files', icon: '<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>', events: ['server:file.uploaded', 'server:file.read', 'server:file.write', 'server:file.download', 'server:file.delete', 'server:file.create-directory', 'server:file.rename', 'server:file.compress', 'server:file.decompress', 'server:file.copy'] },
-    { key: 'power', label: 'Power', icon: '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>', events: ['server:power.start', 'server:power.stop', 'server:power.restart', 'server:power.kill'] },
-    { key: 'database', label: 'Databases', icon: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', events: ['server:database.create', 'server:database.delete', 'server:database.rotate-password'] },
-    { key: 'schedule', label: 'Schedules', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', events: ['server:schedule.create', 'server:schedule.update', 'server:schedule.delete', 'server:schedule.execute'] },
-    { key: 'task', label: 'Tasks', icon: '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>', events: ['server:task.create', 'server:task.update', 'server:task.delete'] },
-    { key: 'subuser', label: 'SubUsers', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>', events: ['server:subuser.create', 'server:subuser.update', 'server:subuser.delete'] },
-    { key: 'user', label: 'Users', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', events: ['user:user.create'] },
-    { key: 'backup', label: 'Backups', icon: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>', events: ['server:backup.start', 'server:backup.complete', 'server:backup.delete', 'server:backup.restore', 'server:backup.restore-complete'] },
-    { key: 'allocation', label: 'Allocation', icon: '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>', events: ['server:allocation.create', 'server:allocation.delete'] },
-    { key: 'startup', label: 'Startup', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>', events: ['server:startup.edit'] },
+    { key: 'all', label: 'act.cat.all', icon: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>', events: [] },
+    { key: 'console', label: 'act.cat.console', icon: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>', events: ['server:console.command'] },
+    { key: 'file', label: 'act.cat.file', icon: '<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>', events: ['server:file.uploaded', 'server:file.read', 'server:file.write', 'server:file.download', 'server:file.delete', 'server:file.create-directory', 'server:file.rename', 'server:file.compress', 'server:file.decompress', 'server:file.copy'] },
+    { key: 'power', label: 'act.cat.power', icon: '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>', events: ['server:power.start', 'server:power.stop', 'server:power.restart', 'server:power.kill'] },
+    { key: 'database', label: 'act.cat.database', icon: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', events: ['server:database.create', 'server:database.delete', 'server:database.rotate-password'] },
+    { key: 'schedule', label: 'act.cat.schedule', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', events: ['server:schedule.create', 'server:schedule.update', 'server:schedule.delete', 'server:schedule.execute'] },
+    { key: 'task', label: 'act.cat.task', icon: '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>', events: ['server:task.create', 'server:task.update', 'server:task.delete'] },
+    { key: 'subuser', label: 'act.cat.subuser', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>', events: ['server:subuser.create', 'server:subuser.update', 'server:subuser.delete'] },
+    { key: 'user', label: 'act.cat.user', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', events: ['user:user.create'] },
+    { key: 'backup', label: 'act.cat.backup', icon: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>', events: ['server:backup.start', 'server:backup.complete', 'server:backup.delete', 'server:backup.restore', 'server:backup.restore-complete'] },
+    { key: 'allocation', label: 'act.cat.allocation', icon: '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>', events: ['server:allocation.create', 'server:allocation.delete'] },
+    { key: 'startup', label: 'act.cat.startup', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>', events: ['server:startup.edit'] },
   ],
 
   MAINCATS: ['all', 'console', 'file', 'power', 'database', 'schedule'],
@@ -88,92 +88,92 @@ const ServerActivity = {
       case 'server:file.read':
       case 'server:file.write':
       case 'server:file.download':
-        return `${base} ${properties?.file || properties?.name || ''}`.trim();
+        return t('act.ev.' + base, { name: properties?.file || properties?.name || '' }).trim();
       case 'server:file.delete':
-        return `Deleted ${properties?.count || ''} files in ${properties?.directory || ''}`.trim();
+        return t('act.ev.delfiles', { n: properties?.count || '', dir: properties?.directory || '' }).trim();
       case 'server:file.create-directory':
-        return `Created directory ${properties?.directory || ''}`.trim();
+        return t('act.ev.mkdir', { dir: properties?.directory || '' }).trim();
       case 'server:console.command':
-        return `Executed "${properties?.command || ''}" on the server`.trim();
+        return t('act.ev.command', { cmd: properties?.command || '' }).trim();
       case 'server:file.rename': {
         const rename = (properties?.files && properties.files[0]) || {};
-        return `Renamed ${rename.from || ''} to ${rename.to || ''}`.trim();
+        return t('act.ev.rename', { from: rename.from || '', to: rename.to || '' }).trim();
       }
       case 'server:file.compress':
-        return `Compressed ${properties?.count || ''} files in ${properties?.directory || ''}`.trim();
+        return t('act.ev.compress', { n: properties?.count || '', dir: properties?.directory || '' }).trim();
       case 'server:file.decompress':
-        return `Decompressed ${properties?.files || ''} in ${properties?.directory || ''}`.trim();
+        return t('act.ev.decompress', { files: properties?.files || '', dir: properties?.directory || '' }).trim();
       case 'server:file.copy':
-        return `Created a copy of ${properties?.file || ''}`.trim();
+        return t('act.ev.copy', { file: properties?.file || '' }).trim();
       case 'server:database.create':
-        return `Created new database ${properties?.database || properties?.name || ''}`.trim();
+        return t('act.ev.dbcreate', { name: properties?.database || properties?.name || '' }).trim();
       case 'server:database.delete':
       case 'server:database.rotate-password':
-        return `${base} ${properties?.database || properties?.name || ''}`.trim();
+        return t('act.ev.' + base, { name: properties?.database || properties?.name || '' }).trim();
       case 'server:schedule.create':
       case 'server:schedule.delete':
-        return `${base} ${properties?.name || ''}`.trim();
+        return t('act.ev.' + base, { name: properties?.name || '' }).trim();
       case 'server:schedule.update':
-        return `Updated the ${properties?.name || ''} schedule`.trim();
+        return t('act.ev.schedupdate', { name: properties?.name || '' }).trim();
       case 'server:task.create':
-        return `Created a new "${properties?.action || ''}" task for the ${properties?.name || ''} schedule`.trim();
+        return t('act.ev.taskcreate', { action: properties?.action || '', name: properties?.name || '' }).trim();
       case 'server:task.delete':
       case 'server:task.update':
-        return `${base} ${properties?.name || ''}`.trim();
+        return t('act.ev.' + base, { name: properties?.name || '' }).trim();
       case 'server:schedule.execute':
-        return `Manually executed the ${properties?.name || ''} schedule`.trim();
+        return t('act.ev.schedexec', { name: properties?.name || '' }).trim();
       case 'server:subuser.create':
-        return `Added ${properties?.email || ''} as a subuser`.trim();
+        return t('act.ev.subcreate', { name: properties?.email || '' }).trim();
       case 'server:subuser.update':
-        return `${base} ${properties?.email || ''}`.trim();
+        return t('act.ev.' + base, { name: properties?.email || '' }).trim();
       case 'server:subuser.delete':
-        return `Removed ${properties?.email || ''} as a subuser`.trim();
+        return t('act.ev.subdelete', { name: properties?.email || '' }).trim();
       case 'user:user.create':
-        return `Created a new user ${properties?.email || ''}`.trim();
+        return t('act.ev.usercreate', { name: properties?.email || '' }).trim();
       case 'server:backup.start':
-        return `Started a new ${properties?.name || ''} backup`.trim();
+        return t('act.ev.bstart', { name: properties?.name || '' }).trim();
       case 'server:backup.complete':
-        return `Marked the ${properties?.name || ''} backup as complete`.trim();
+        return t('act.ev.bcomplete', { name: properties?.name || '' }).trim();
       case 'server:backup.delete':
-        return `Deleted the ${properties?.name || ''} backup`.trim();
+        return t('act.ev.bdelete', { name: properties?.name || '' }).trim();
       case 'server:backup.restore':
-        return `Restored the ${properties?.name || ''} backup`.trim();
+        return t('act.ev.brestore', { name: properties?.name || '' }).trim();
       case 'server:backup.restore-complete':
-        return `Completed restoration of the ${properties?.name || ''} backup`.trim();
+        return t('act.ev.brestorecomplete', { name: properties?.name || '' }).trim();
       case 'server:allocation.create':
-        return `Added ${properties?.allocation || ''} to the server`.trim();
+        return t('act.ev.allocadd', { alloc: properties?.allocation || '' }).trim();
       case 'server:allocation.delete':
-        return `Deleted the ${properties?.allocation || ''} allocation`.trim();
+        return t('act.ev.allocdel', { alloc: properties?.allocation || '' }).trim();
       case 'server:allocation.notes':
-        return `Updated the notes for ${properties?.allocation || ''} from ${properties?.old} to ${properties?.new}`;
+        return t('act.ev.allocnotes', { alloc: properties?.allocation || '', old: properties?.old, new: properties?.new });
       case 'server:startup.edit':
-        return `Changed the ${properties?.variable || ''} variable from "${properties?.old || ''}" to "${properties?.new || ''}"`.trim();
+        return t('act.ev.stedit', { variable: properties?.variable || '', old: properties?.old || '', new: properties?.new || '' }).trim();
       case 'server:power.start':
-        return 'Started the server';
+        return t('act.ev.pstart');
       case 'server:power.stop':
-        return 'Stopped the server';
+        return t('act.ev.pstop');
       case 'server:power.restart':
-        return 'Restarted the server';
+        return t('act.ev.prestart');
       case 'server:power.kill':
-        return 'Killed the server process';
+        return t('act.ev.pkill');
       case 'server:startup.image':
-        return `Updated the docker image for the server from ${properties?.old} to ${properties?.new}`;
+        return t('act.ev.stimage', { old: properties?.old, new: properties?.new });
       case 'server:sftp.create':
-        return `Created ${properties?.files}`;
+        return t('act.ev.sftpcreate', { files: properties?.files });
       case 'server:sftp.delete':
-        return `Deleted ${properties?.files}`;
+        return t('act.ev.sftpdelete', { files: properties?.files });
       case 'server:allocation.primary':
-        return `Set ${properties?.allocation} as primary allocation.`;
+        return t('act.ev.allocprimary', { alloc: properties?.allocation });
       case 'server:backup.unlock':
-        return `Unlocked ${properties?.name} backup.`;
+        return t('act.ev.bunlock', { name: properties?.name });
       case 'server:settings.rename':
-        return `Renamed the server from ${properties?.old} to ${properties?.new}`;
+        return t('act.ev.setrename', { old: properties?.old, new: properties?.new });
       case 'server:settings.description':
-        return `Changed the server description from ${properties?.old} to ${properties?.new}`;
+        return t('act.ev.setdesc', { old: properties?.old, new: properties?.new });
       case 'server:backup.lock':
-        return `Locked the ${properties?.name} backup.`;
+        return t('act.ev.block', { name: properties?.name });
       case 'server:backup.download':
-        return `Downloaded the ${properties?.name} backup`;
+        return t('act.ev.bdownload', { name: properties?.name });
       default:
         return base;
     }
@@ -184,10 +184,10 @@ const ServerActivity = {
     const d = new Date(ts);
     const now = new Date();
     const diff = (now - d) / 1000;
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    if (diff < 60) return t('time.justnow');
+    if (diff < 3600) return t('time.mago', { n: Math.floor(diff / 60) });
+    if (diff < 86400) return t('time.hago', { n: Math.floor(diff / 3600) });
+    if (diff < 604800) return t('time.dago', { n: Math.floor(diff / 86400) });
     return d.toLocaleDateString();
   },
 
@@ -228,13 +228,13 @@ const ServerActivity = {
 
     if (scope === 'all') {
       this._exporting = true;
-      Modal.open('Exporting Activity', `
+      Modal.open(t('act.export.title'), `
         <div style="text-align:center;padding:20px 0;">
           <div class="export-progress-ring">
             <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" stroke-width="4"/><circle id="exportRing" cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="125.6" stroke-dashoffset="125.6" transform="rotate(-90 24 24)"/></svg>
           </div>
-          <h3 style="margin:16px 0 4px;color:var(--text-primary);">Your file is being prepared, please wait</h3>
-          <p id="exportProgress" style="color:var(--text-muted);font-size:13px;">Status: Starting...</p>
+          <h3 style="margin:16px 0 4px;color:var(--text-primary);">${t('act.preparing')}</h3>
+          <p id="exportProgress" style="color:var(--text-muted);font-size:13px;">${t('act.starting')}</p>
         </div>
       `);
       const all = await this.fetchallwithprogress();
@@ -278,7 +278,7 @@ const ServerActivity = {
       }
       const textEl = Utils.el('exportProgress');
       const ringEl = Utils.el('exportRing');
-      if (textEl) textEl.textContent = 'Status: ' + page + '/' + total + ' pages loaded';
+      if (textEl) textEl.textContent = t('act.progress', { a: page, b: total });
       if (ringEl) {
         const progress = total > 0 ? page / total : 0;
         ringEl.setAttribute('stroke-dashoffset', String(circumference * (1 - progress)));
@@ -336,7 +336,7 @@ const ServerActivity = {
       const active = this.filter === cat.key ? ' active' : '';
       html += '<button class="activity-cat-btn' + active + '" onclick="ServerActivity.setfilter(\'' + cat.key + '\')">';
       html += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + cat.icon + '</svg>';
-      html += cat.label + '</button>';
+      html += t(cat.label) + '</button>';
     }
 
     if (overflowcats.length) {
@@ -350,7 +350,7 @@ const ServerActivity = {
         const active = this.filter === cat.key ? ' active' : '';
         html += '<div class="activity-dropdown-item' + active + '" onclick="ServerActivity.setfilter(\'' + cat.key + '\')">';
         html += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + cat.icon + '</svg>';
-        html += cat.label + '</div>';
+        html += t(cat.label) + '</div>';
       }
       html += '</div>';
       html += '</div>';
@@ -359,27 +359,27 @@ const ServerActivity = {
     html += '</div>';
 
     html += '<div class="activity-actions">';
-    html += '<input type="text" class="activity-search" placeholder="Search activity..." value="' + Utils.escape(this.searchquery) + '" oninput="ServerActivity.onsearch(this.value)" />';
-    html += '<button class="btn btn-secondary btn-sm" onclick="ServerActivity.exportcsv(\'current\')" title="Export current page">';
+    html += `<input type="text" class="activity-search" placeholder="${t('act.search')}" value="${Utils.escape(this.searchquery)}" oninput="ServerActivity.onsearch(this.value)" />`;
+    html += `<button class="btn btn-secondary btn-sm" onclick="ServerActivity.exportcsv('current')" title="${t('act.export.current')}">`;
     html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-    html += ' Page</button>';
-    html += '<button class="btn btn-secondary btn-sm" onclick="ServerActivity.exportcsv(\'all\')" title="Export all pages">';
+    html += ` ${t('act.page')}</button>`;
+    html += `<button class="btn btn-secondary btn-sm" onclick="ServerActivity.exportcsv('all')" title="${t('act.export.all')}">`;
     html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-    html += ' All</button>';
+    html += ` ${t('act.all')}</button>`;
     html += '</div>';
 
     html += '</div>';
 
     const filtered = this.getfiltered();
     if (!filtered.length) {
-      html += '<div class="tab-empty">No activity found.</div>';
+      html += `<div class="tab-empty">${t('act.empty')}</div>`;
     } else {
       html += '<div class="activity-list">';
       for (const item of filtered) {
-        let actorName = 'Unknown';
+        let actorName = t('users.unknown');
         if (item.actor) {
           const a = item.actor.attributes || item.actor;
-          actorName = a.username || a.email || 'Unknown';
+          actorName = a.username || a.email || t('users.unknown');
         }
         const icon = this.geticon(item.event);
         const timeStr = this.formatdate(item.timestamp);

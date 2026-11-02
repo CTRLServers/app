@@ -60,7 +60,7 @@ const Cron = {
     const content = current ? current + '\n' + newLine : newLine;
 
     const r = await this.exec(`echo '${content.replace(/'/g, "'\\''")}' | crontab -`);
-    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || 'Failed to add entry' };
+    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || t('cron.error.add') };
 
     await this.fetchentries();
     return { success: true };
@@ -69,7 +69,7 @@ const Cron = {
   async deleteentry(index) {
     const lines = this.rawCrontab.split('\n');
     const targetLine = this.entries[index];
-    if (!targetLine) return { error: 'Entry not found' };
+    if (!targetLine) return { error: t('cron.error.not_found') };
 
     const newLines = [];
     for (let i = 0; i < lines.length; i++) {
@@ -83,7 +83,7 @@ const Cron = {
       ? await this.exec(`echo '${content.replace(/'/g, "'\\''")}' | crontab -`)
       : await this.exec('crontab -r 2>/dev/null; echo done');
 
-    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || 'Failed to delete entry' };
+    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || t('cron.error.delete') };
 
     await this.fetchentries();
     return { success: true };
@@ -120,17 +120,17 @@ const Cron = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      tab.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
     let html = `<div class="cron-container">
       <div class="fw-card">
         <div class="fw-card-header">
-          <h3>Cron Jobs</h3>
+          <h3>${t('cron.title')}</h3>
           <div class="cron-header-right">
             <span class="packages-count-badge">${this.entries.length}</span>
-            <button class="btn btn-primary btn-sm" onclick="Cron.showaddentry()">Add Job</button>
+            <button class="btn btn-primary btn-sm" onclick="Cron.showaddentry()">${t('cron.add_job')}</button>
           </div>
         </div>
         <div class="fw-card-body">`;
@@ -138,13 +138,13 @@ const Cron = {
     if (this.entries.length > 0) {
       html += `<div class="cron-table-wrap"><table class="fw-table cron-table">
         <thead><tr>
-          <th>Schedule</th>
-          <th>Minute</th>
-          <th>Hour</th>
-          <th>Day</th>
-          <th>Month</th>
-          <th>Weekday</th>
-          <th>Command</th>
+          <th>${t('cron.col.schedule')}</th>
+          <th>${t('cron.col.minute')}</th>
+          <th>${t('cron.col.hour')}</th>
+          <th>${t('cron.col.day')}</th>
+          <th>${t('cron.col.month')}</th>
+          <th>${t('cron.col.weekday')}</th>
+          <th>${t('cron.col.command')}</th>
           <th></th>
         </tr></thead>
         <tbody>`;
@@ -160,7 +160,7 @@ const Cron = {
           <td><code>${Utils.escape(e.dow)}</code></td>
           <td><code class="cron-cmd">${Utils.escape(e.command)}</code></td>
           <td>
-            <button class="btn-icon btn-danger-sm" onclick="Cron.confirmdelete(${i})" title="Delete">
+            <button class="btn-icon btn-danger-sm" onclick="Cron.confirmdelete(${i})" title="${t('cron.delete')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </td>
@@ -169,15 +169,15 @@ const Cron = {
 
       html += '</tbody></table></div>';
     } else {
-      html += '<div class="fw-empty">No cron jobs configured</div>';
+      html += `<div class="fw-empty">${t('cron.empty')}</div>`;
     }
 
     html += `</div></div>
 
       <div class="fw-card">
-        <div class="fw-card-header"><h3>Raw Crontab</h3></div>
+        <div class="fw-card-header"><h3>${t('cron.raw')}</h3></div>
         <div class="fw-card-body">
-          <pre class="fw-raw">${Utils.escape(this.rawCrontab || 'No crontab for current user')}</pre>
+          <pre class="fw-raw">${Utils.escape(this.rawCrontab || t('cron.no_crontab'))}</pre>
         </div>
       </div>
     </div>`;
@@ -186,46 +186,46 @@ const Cron = {
   },
 
   showaddentry() {
-    Modal.open('Add Cron Job', `
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Use * for any field. Example: 0 2 * * * = daily at 2:00 AM</p>
+    Modal.open(t('cron.add_title'), `
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${t('cron.hint')}</p>
       <div class="cron-form-grid">
         <div class="form-group">
-          <label class="form-label">Minute</label>
+          <label class="form-label">${t('cron.label.minute')}</label>
           <input class="form-input" type="text" id="cronMin" value="0" placeholder="0-59" />
         </div>
         <div class="form-group">
-          <label class="form-label">Hour</label>
+          <label class="form-label">${t('cron.label.hour')}</label>
           <input class="form-input" type="text" id="cronHour" value="0" placeholder="0-23" />
         </div>
         <div class="form-group">
-          <label class="form-label">Day (1-31)</label>
+          <label class="form-label">${t('cron.label.day')}</label>
           <input class="form-input" type="text" id="cronDom" value="*" placeholder="1-31" />
         </div>
         <div class="form-group">
-          <label class="form-label">Month (1-12)</label>
+          <label class="form-label">${t('cron.label.month')}</label>
           <input class="form-input" type="text" id="cronMonth" value="*" placeholder="1-12" />
         </div>
         <div class="form-group">
-          <label class="form-label">Weekday (0-6)</label>
+          <label class="form-label">${t('cron.label.weekday')}</label>
           <input class="form-input" type="text" id="cronDow" value="*" placeholder="0-6" />
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Command</label>
+        <label class="form-label">${t('cron.label.command')}</label>
         <input class="form-input" type="text" id="cronCmd" placeholder="/path/to/script.sh" />
       </div>
       <div class="cron-presets">
-        <span class="cron-preset-label">Presets:</span>
-        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('minute')">Every minute</button>
-        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('hourly')">Every hour</button>
-        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('daily')">Daily</button>
-        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('weekly')">Weekly</button>
-        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('monthly')">Monthly</button>
+        <span class="cron-preset-label">${t('cron.presets')}</span>
+        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('minute')">${t('cron.preset.minute')}</button>
+        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('hourly')">${t('cron.preset.hourly')}</button>
+        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('daily')">${t('cron.preset.daily')}</button>
+        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('weekly')">${t('cron.preset.weekly')}</button>
+        <button class="btn btn-sm btn-secondary" onclick="Cron.preset('monthly')">${t('cron.preset.monthly')}</button>
       </div>
       <div id="cronError"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="cronAddBtn">Add Job</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('cron.cancel')}</button>
+        <button class="btn btn-primary" id="cronAddBtn">${t('cron.add_job')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -238,14 +238,14 @@ const Cron = {
         const dow = Utils.el('cronDow').value.trim() || '*';
         const cmd = Utils.el('cronCmd').value.trim();
         const err = Utils.el('cronError');
-        if (!cmd) { err.innerHTML = '<div class="error-msg">Command is required</div>'; return; }
+        if (!cmd) { err.innerHTML = `<div class="error-msg">${t('cron.error.command_required')}</div>`; return; }
         btn.disabled = true;
-        btn.textContent = 'Adding...';
+        btn.textContent = t('cron.adding');
         const res = await Cron.addentry(min, hour, dom, month, dow, cmd);
         if (res.error) {
           err.innerHTML = `<div class="error-msg">${Utils.escape(res.error)}</div>`;
           btn.disabled = false;
-          btn.textContent = 'Add Job';
+          btn.textContent = t('cron.add_job');
           return;
         }
         Modal.close();
@@ -274,7 +274,7 @@ const Cron = {
   confirmdelete(index) {
     const entry = this.entries[index];
     if (!entry) return;
-    Modal.confirm('Delete Cron Job', `Delete "${entry.command}"?`, async () => {
+    Modal.confirm(t('cron.delete_title'), t('cron.delete_message', { command: Utils.escape(entry.command) }), async () => {
       await this.deleteentry(index);
       this.render();
     });

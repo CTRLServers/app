@@ -709,13 +709,13 @@ const Servers = {
           <div class="server-card-actions">
             ${res.uptime ? `<span class="status-uptime">${Utils.formatuptime(res.uptime)}</span>` : ''}
             ${((server.type === 'Pterodactyl' || server.type === 'Calagopus') && server.apiKey && server.panelUrl || server.type === 'PufferPanel') && (state === 'running' || state === 'stopped' || state === 'offline') ? `
-              <button type="button" class="card-action-btn" data-power="start" data-action="start" title="Start" ${state === 'running' ? 'disabled' : ''}>
+              <button type="button" class="card-action-btn" data-power="start" data-action="start" title="${t('dashboard.start')}" ${state === 'running' ? 'disabled' : ''}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               </button>
-              <button type="button" class="card-action-btn" data-power="restart" title="Restart">
+              <button type="button" class="card-action-btn" data-power="restart" title="${t('dashboard.restart')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               </button>
-              <button type="button" class="card-action-btn" data-power="stop" data-action="stop" title="Stop" ${state === 'stopped' || state === 'offline' ? 'disabled' : ''}>
+              <button type="button" class="card-action-btn" data-power="stop" data-action="stop" title="${t('dashboard.stop')}" ${state === 'stopped' || state === 'offline' ? 'disabled' : ''}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
               </button>
             ` : ''}
@@ -1038,42 +1038,42 @@ const Servers = {
           <span class="ctx-tag-dot" style="--tag-dot:${this._tagcolor(t)}"></span>
           ${tags.includes(t) ? '✓ ' : ''}${Utils.escape(t)}
         </button>`).join('')
-      : '<div class="context-menu-label">No tags yet</div>';
+      : `<div class="context-menu-label">${t('dashboard.notags')}</div>`;
     const folderhtml = this.folders.length > 0
       ? this.folders.map((f, fi) => `<button type="button" class="context-menu-item" data-ctx="folder" data-folder-idx="${fi}">
           ${server.folder === f ? '✓ ' : ''}${Utils.escape(f)}
-        </button>`).join('') + '<button type="button" class="context-menu-item" data-ctx="folder-clear">Remove from folder</button>'
+        </button>`).join('') + `<button type="button" class="context-menu-item" data-ctx="folder-clear">${t('dashboard.removefromfolder')}</button>`
       : '';
     menu.innerHTML = `
       <button type="button" class="context-menu-item" data-ctx="pin">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
         </svg>
-        ${server.pinned ? 'Unpin' : 'Pin'}
+        ${server.pinned ? t('dashboard.unpin') : t('dashboard.pin')}
       </button>
       <div class="context-menu-separator"></div>
-      <div class="context-menu-label">Tags</div>
+      <div class="context-menu-label">${t('dashboard.tags')}</div>
       ${taghtml}
       <button type="button" class="context-menu-item" data-ctx="newtag">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
-        New tag
+        ${t('dashboard.newtag')}
       </button>
-      ${folderhtml ? '<div class="context-menu-separator"></div><div class="context-menu-label">Folder</div>' + folderhtml : ''}
+      ${folderhtml ? `<div class="context-menu-separator"></div><div class="context-menu-label">${t('dashboard.folder')}</div>` + folderhtml : ''}
       <div class="context-menu-separator"></div>
       ${server.type === 'Pterodactyl' ? `
       <button type="button" class="context-menu-item" data-ctx="clone">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
         </svg>
-        Clone
+        ${t('dashboard.clone')}
       </button>` : ''}
       <button type="button" class="context-menu-item danger" data-ctx="delete">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
         </svg>
-        Delete
+        ${t('dashboard.delete')}
       </button>
     `;
     menu.style.left = e.clientX + 'px';
@@ -1287,13 +1287,13 @@ const Servers = {
   _actionshtml(server, d) {
     if (!d.actions) return '<span class="srv-dash">-</span>';
     return `<div class="srv-actions">
-      <button type="button" class="card-action-btn" data-power="start" data-action="start" title="Start" ${d.state === 'running' ? 'disabled' : ''}>
+      <button type="button" class="card-action-btn" data-power="start" data-action="start" title="${t('dashboard.start')}" ${d.state === 'running' ? 'disabled' : ''}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       </button>
-      <button type="button" class="card-action-btn" data-power="restart" title="Restart">
+      <button type="button" class="card-action-btn" data-power="restart" title="${t('dashboard.restart')}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       </button>
-      <button type="button" class="card-action-btn" data-power="stop" data-action="stop" title="Stop" ${d.state === 'stopped' || d.state === 'offline' ? 'disabled' : ''}>
+      <button type="button" class="card-action-btn" data-power="stop" data-action="stop" title="${t('dashboard.stop')}" ${d.state === 'stopped' || d.state === 'offline' ? 'disabled' : ''}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
       </button>
     </div>`;
@@ -1346,14 +1346,14 @@ const Servers = {
                 <span class="file-checkbox-mark"></span>
               </label>
             </th>
-            <th>Name</th>
-            <th>IP / Address</th>
-            <th>Status</th>
+            <th>${t('dashboard.h.name')}</th>
+            <th>${t('dashboard.h.ip')}</th>
+            <th>${t('dashboard.h.status')}</th>
             <th class="srv-col-num">CPU</th>
             <th class="srv-col-num">RAM</th>
             <th class="srv-col-num">Disk</th>
-            <th class="srv-col-num">Uptime</th>
-            <th class="srv-col-actions">Actions</th>
+            <th class="srv-col-num">${t('dashboard.h.uptime')}</th>
+            <th class="srv-col-actions">${t('dashboard.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -1415,7 +1415,7 @@ const Servers = {
         return `<button type="button" class="filter-pill tag-pill${this._filtertag === t ? ' active' : ''}" data-tag="${enc}">
           <span class="filter-pill-dot" style="--tag-dot:${this._tagcolor(t)}"></span>
           ${Utils.escape(t)}
-          <span class="filter-pill-x" data-tag="${enc}" title="Delete tag">&times;</span>
+          <span class="filter-pill-x" data-tag="${enc}" title="${t('dashboard.delete')}">&times;</span>
         </button>`;
       }).join('');
     }
@@ -1424,7 +1424,7 @@ const Servers = {
 
   deleteserver(index) {
     document.querySelectorAll('.context-menu.active').forEach(m => m.classList.remove('active'));
-    Modal.confirm('Delete Server', 'Are you sure you want to remove this server?', () => {
+    Modal.confirm(t('dashboard.delete'), t('dashboard.delete.confirm', { n: 1, plural: I18n.getlang() === 'ru' ? '' : 's' }), () => {
       const server = this.list[index];
       if (server) this._selected.delete(this._serverkey(server));
       this.list.splice(index, 1);
@@ -1478,12 +1478,20 @@ const Servers = {
     const count = bar?.querySelector('.mass-actions-count');
     if (!bar) return;
     bar.classList.toggle('is-hidden', this._selected.size === 0);
-    if (count) count.textContent = this._selected.size + ' selected';
+    if (count) count.textContent = t('dashboard.selected', { n: this._selected.size });
+  },
+
+  _ruplural(n) {
+    if (I18n.getlang() !== 'ru') return n === 1 ? '' : 's';
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return '';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'а';
+    return 'ов';
   },
 
   massdelete() {
     const count = this._selected.size;
-    Modal.confirm('Delete Servers', `Are you sure you want to remove ${count} server${count > 1 ? 's' : ''}?`, () => {
+    Modal.confirm(t('dashboard.delete'), t('dashboard.delete.confirm', { n: count, plural: this._ruplural(count) }), () => {
       this.list = this.list.filter(s => !this._selected.has(this._serverkey(s)));
       this._selected.clear();
       this.save();
@@ -1493,8 +1501,8 @@ const Servers = {
   },
 
   openaddmodal() {
-    Modal.open('Add Server', `
-      <p class="modal-text">Select server type</p>
+    Modal.open(t('dashboard.addserver'), `
+      <p class="modal-text">${t('add.selecttype')}</p>
       <div class="server-types">
         <div class="server-type-option" data-add-type="pterodactyl">
           <div class="server-type-icon">
@@ -1504,7 +1512,7 @@ const Servers = {
           </div>
           <div class="server-type-info">
             <div class="server-type-name">Pterodactyl</div>
-            <div class="server-type-desc">Connect via Panel URL and API Key</div>
+            <div class="server-type-desc">${t('add.pterodactyl.desc')}</div>
           </div>
         </div>
         <div class="server-type-option" data-add-type="calagopus">
@@ -1513,12 +1521,12 @@ const Servers = {
           </div>
           <div class="server-type-info">
             <div class="server-type-name">Calagopus</div>
-            <div class="server-type-desc">Connect via Panel URL and API Key</div>
+            <div class="server-type-desc">${t('add.calagopus.desc')}</div>
           </div>
         </div>
         <div class="server-type-option" data-add-type="pufferpanel">
           <div class="server-type-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7a5 5 0 0 1 0 10H9v8H7z"/><path d="M9 6h5a2 2 0 0 1 0 4H9z"/></svg></div>
-          <div class="server-type-info"><div class="server-type-name">PufferPanel</div><div class="server-type-desc">Connect with OAuth2 credentials</div></div>
+          <div class="server-type-info"><div class="server-type-name">PufferPanel</div><div class="server-type-desc">${t('add.pufferpanel.desc')}</div></div>
         </div>
         <div class="server-type-option" data-add-type="vps">
           <div class="server-type-icon">
@@ -1528,7 +1536,7 @@ const Servers = {
           </div>
           <div class="server-type-info">
             <div class="server-type-name">VPS / VDS</div>
-            <div class="server-type-desc">Virtual private or dedicated server</div>
+            <div class="server-type-desc">${t('add.vps.desc')}</div>
           </div>
         </div>
         <div class="server-type-option" data-add-type="link">
@@ -1539,7 +1547,7 @@ const Servers = {
           </div>
           <div class="server-type-info">
             <div class="server-type-name">Link Server</div>
-            <div class="server-type-desc">Connect via external link</div>
+            <div class="server-type-desc">${t('add.link.desc')}</div>
           </div>
         </div>
       </div>
@@ -1563,22 +1571,22 @@ const Servers = {
   showpterodactylform() {
     Modal.open('Pterodactyl', `
       <div class="form-group">
-        <label class="form-label">Panel URL</label>
+        <label class="form-label">${t('form.panelurl')}</label>
         <input class="form-input" type="url" id="panelurl" placeholder="https://panel.example.com" />
       </div>
       <div class="form-group">
-        <label class="form-label">API Key</label>
+        <label class="form-label">${t('form.apikey')}</label>
         <input class="form-input" type="password" id="apikey" placeholder="ptlc_..., ptla_..., hydro..., pacc... or rtlc..." oninput="Servers.updatepterodactylkeywarning()" />
         <div class="pterodactyl-key-warning" id="pterodactylkeywarning" style="display:none;">
-          <strong>Warning!</strong> To work properly in CTRLServers, make sure the key have all the permissions in Read &amp; Write.
-          <span>And, you must install our extension so all features will work:</span>
+          <strong>${t('form.key.warning.title')}</strong> ${t('form.key.warning.text')}
+          <span>${t('form.key.warning.extension')}</span>
           <button type="button" class="pterodactyl-extension-link" data-modal-action="open-admin-extension">https://github.com/CTRLServers/adminextension</button>
         </div>
       </div>
       <div id="pterodactylerror"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" data-modal-action="ptero-back">Back</button>
-        <button type="button" class="btn btn-primary" data-modal-action="ptero-connect">Connect</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="ptero-back">${t('form.back')}</button>
+        <button type="button" class="btn btn-primary" data-modal-action="ptero-connect">${t('form.connect')}</button>
       </div>
     `);
   },
@@ -1586,28 +1594,28 @@ const Servers = {
   showcalagopusform() {
     Modal.open('Calagopus', `
       <div class="form-group">
-        <label class="form-label">Panel URL</label>
+        <label class="form-label">${t('form.panelurl')}</label>
         <input class="form-input" type="url" id="panelurl" placeholder="https://panel.example.com" />
       </div>
       <div class="form-group">
-        <label class="form-label">API Key</label>
+        <label class="form-label">${t('form.apikey')}</label>
         <input class="form-input" type="password" id="apikey" placeholder="Calagopus API key" />
       </div>
       <div id="pterodactylerror"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" data-modal-action="calagopus-back">Back</button>
-        <button type="button" class="btn btn-primary" data-modal-action="calagopus-connect">Connect</button>
+        <button type="button" class="btn btn-secondary" data-modal-action="calagopus-back">${t('form.back')}</button>
+        <button type="button" class="btn btn-primary" data-modal-action="calagopus-connect">${t('form.connect')}</button>
       </div>
     `);
   },
 
   showpufferpanelform() {
     Modal.open('PufferPanel', `
-      <div class="form-group"><label class="form-label">Panel URL</label><input class="form-input" type="url" id="puffer_panel_url" placeholder="https://panel.example.com" /></div>
-      <div class="form-group"><label class="form-label">Client ID</label><input class="form-input" id="puffer_client_id" autocomplete="off" /></div>
-      <div class="form-group"><label class="form-label">Client Secret</label><input class="form-input" type="password" id="puffer_client_secret" autocomplete="off" /></div>
+      <div class="form-group"><label class="form-label">${t('form.panelurl')}</label><input class="form-input" type="url" id="puffer_panel_url" placeholder="https://panel.example.com" /></div>
+      <div class="form-group"><label class="form-label">${t('form.clientid')}</label><input class="form-input" id="puffer_client_id" autocomplete="off" /></div>
+      <div class="form-group"><label class="form-label">${t('form.clientsecret')}</label><input class="form-input" type="password" id="puffer_client_secret" autocomplete="off" /></div>
       <div id="puffer_connect_error"></div>
-      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-modal-action="ptero-back">Back</button><button type="button" class="btn btn-primary" data-modal-action="pufferpanel-connect">Continue</button></div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-modal-action="ptero-back">${t('form.back')}</button><button type="button" class="btn btn-primary" data-modal-action="pufferpanel-connect">${t('form.continue')}</button></div>
     `);
   },
 
@@ -1617,7 +1625,7 @@ const Servers = {
     const client_secret = Utils.el('puffer_client_secret')?.value || '';
     const error_element = Utils.el('puffer_connect_error');
     if (!panel_url || !client_id || !client_secret) {
-      if (error_element) error_element.innerHTML = '<div class="form-error">All three fields are required.</div>';
+      if (error_element) error_element.innerHTML = `<div class="form-error">${t('form.key.required')}</div>`;
       return;
     }
     try {

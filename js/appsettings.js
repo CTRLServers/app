@@ -128,8 +128,18 @@ const AppSettings = {
       await window.electronAPI.securestoreclear();
       ServerKeychain.keys = [];
       this.render();
-      Modal.alert('Cache Cleared', '<span style="color:var(--text-secondary);">Server data and connections have been cleared.</span>');
+      Modal.alert(t('settings.data.cleared'), `<span style="color:var(--text-secondary);">${t('settings.data.cleared.text')}</span>`);
     } catch (e) {}
+  },
+
+  setcurrentlang() {
+    return I18n.getlang();
+  },
+
+  setlanguage(code) {
+    if (!I18n.available.some(l => l.code === code)) return;
+    if (code === I18n.getlang()) return;
+    I18n.setLang(code);
   },
 
   render() {
@@ -146,25 +156,41 @@ const AppSettings = {
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            <h3>Appearance</h3>
+            <h3>${t('settings.appearance.title')}</h3>
           </div>
           <div class="settings-body">
             <div class="settings-field">
-              <label>Theme</label>
+              <label>${t('settings.theme')}</label>
               <div class="settings-theme-group">
                 <button class="settings-theme-btn ${theme === 'light' ? 'active' : ''}" onclick="AppSettings.settheme('light')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>
-                  Light
+                  ${t('settings.light')}
                 </button>
                 <button class="settings-theme-btn ${theme === 'dark' ? 'active' : ''}" onclick="AppSettings.settheme('dark')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                  Dark
+                  ${t('settings.dark')}
                 </button>
                 <button class="settings-theme-btn ${theme === 'oled' ? 'active' : ''}" onclick="AppSettings.settheme('oled')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
-                  OLED
+                  ${t('settings.oled')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card" id="languageSettingsCard">
+          <div class="settings-card-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <h3>${t('settings.language.title')}</h3>
+          </div>
+          <div class="settings-body">
+            <div class="settings-field">
+              <label>${t('settings.language.label')}</label>
+              <select class="settings-input" id="appLanguage" onchange="AppSettings.setlanguage(this.value)">
+                ${I18n.available.map(l => `<option value="${l.code}" ${I18n.getlang() === l.code ? 'selected' : ''}>${l.name}</option>`).join('')}
+              </select>
+              <p class="settings-note">${t('settings.language.note')}</p>
             </div>
           </div>
         </div>
@@ -175,26 +201,26 @@ const AppSettings = {
             <h3>MCP Server</h3>
           </div>
           <div class="settings-body" id="mcpSettingsBody">
-            <div class="mcp-loading"><span class="spinner-sm"></span> Loading MCP status...</div>
+            <div class="mcp-loading"><span class="spinner-sm"></span> ${t('settings.mcp.loading')}</div>
           </div>
         </div>
 
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <h3>Polling</h3>
+            <h3>${t('settings.polling.title')}</h3>
           </div>
           <div class="settings-body">
             <div class="settings-field">
-              <label>Dashboard refresh interval</label>
+              <label>${t('settings.polling.label')}</label>
               <select class="settings-input" id="appPollInterval" onchange="AppSettings.setpollinterval(this.value)">
-                <option value="5" ${poll === 5 ? 'selected' : ''}>5 seconds</option>
-                <option value="10" ${poll === 10 ? 'selected' : ''}>10 seconds</option>
-                <option value="15" ${poll === 15 ? 'selected' : ''}>15 seconds</option>
-                <option value="30" ${poll === 30 ? 'selected' : ''}>30 seconds</option>
-                <option value="60" ${poll === 60 ? 'selected' : ''}>60 seconds</option>
+                <option value="5" ${poll === 5 ? 'selected' : ''}>${t('settings.secs', { n: 5 })}</option>
+                <option value="10" ${poll === 10 ? 'selected' : ''}>${t('settings.secs', { n: 10 })}</option>
+                <option value="15" ${poll === 15 ? 'selected' : ''}>${t('settings.secs', { n: 15 })}</option>
+                <option value="30" ${poll === 30 ? 'selected' : ''}>${t('settings.secs', { n: 30 })}</option>
+                <option value="60" ${poll === 60 ? 'selected' : ''}>${t('settings.secs', { n: 60 })}</option>
               </select>
-              <p class="settings-note">How often to refresh server resources on the dashboard.</p>
+              <p class="settings-note">${t('settings.polling.note')}</p>
             </div>
           </div>
         </div>
@@ -202,13 +228,13 @@ const AppSettings = {
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <h3>Security</h3>
+            <h3>${t('settings.security.title')}</h3>
           </div>
           <div class="settings-body">
             <div class="settings-row">
               <div class="settings-row-info">
-                <div class="settings-row-label">Passcode Lock</div>
-                <div class="settings-row-desc">Require a passcode to unlock the app on startup</div>
+                <div class="settings-row-label">${t('settings.passcode.title')}</div>
+                <div class="settings-row-desc">${t('settings.passcode.desc')}</div>
               </div>
               <button class="settings-toggle ${passcodeEnabled ? 'active' : ''}" onclick="AppSettings.togglepasscode()">
                 <span class="settings-toggle-knob"></span>
@@ -216,14 +242,14 @@ const AppSettings = {
             </div>
             <div id="passcodeSection" style="display:${passcodeEnabled ? '' : 'none'}">
               <div class="settings-field">
-                <label>${passcodeEnabled ? 'Change Passcode' : 'Set Passcode'}</label>
-                <input type="password" class="settings-input" id="passcodeInput" placeholder="Enter passcode" autocomplete="off" />
-                <input type="password" class="settings-input" id="passcodeConfirm" placeholder="Confirm passcode" autocomplete="off" style="margin-top:8px" />
-                <p class="settings-note">Use a passcode you can remember. It is stored securely as a SHA-256 hash.</p>
+                <label>${passcodeEnabled ? t('settings.passcode.change') : t('settings.passcode.set')}</label>
+                <input type="password" class="settings-input" id="passcodeInput" placeholder="${t('settings.passcode.enter')}" autocomplete="off" />
+                <input type="password" class="settings-input" id="passcodeConfirm" placeholder="${t('settings.passcode.confirm')}" autocomplete="off" style="margin-top:8px" />
+                <p class="settings-note">${t('settings.passcode.note')}</p>
               </div>
               <div class="settings-row">
-                <button class="btn btn-primary btn-sm" onclick="AppSettings.savepasscode()">Save Passcode</button>
-                ${passcodeEnabled ? '<button class="btn btn-danger btn-sm" onclick="AppSettings.disablepasscode()">Remove Passcode</button>' : ''}
+                <button class="btn btn-primary btn-sm" onclick="AppSettings.savepasscode()">${t('settings.passcode.save')}</button>
+                ${passcodeEnabled ? `<button class="btn btn-danger btn-sm" onclick="AppSettings.disablepasscode()">${t('settings.passcode.remove')}</button>` : ''}
               </div>
               <div id="passcodeError" style="display:none" class="settings-error"></div>
             </div>
@@ -233,25 +259,25 @@ const AppSettings = {
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-            <h3>SSH Host Keys</h3>
+            <h3>${t('settings.hostkeys.title')}</h3>
           </div>
           <div class="settings-body" id="hostKeysBody">
-            <div class="mcp-loading"><span class="spinner-sm"></span> Loading host keys...</div>
+            <div class="mcp-loading"><span class="spinner-sm"></span> ${t('settings.hostkeys.loading')}</div>
           </div>
         </div>
 
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <h3>Developer</h3>
+            <h3>${t('settings.developer.title')}</h3>
           </div>
           <div class="settings-body">
             <div class="settings-row">
               <div class="settings-row-info">
-                <div class="settings-row-label">Developer Tools</div>
-                <div class="settings-row-desc">This will open Devtools. It can be used to debug bugs or anything else.</div>
+                <div class="settings-row-label">${t('settings.dev.title')}</div>
+                <div class="settings-row-desc">${t('settings.dev.desc')}</div>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="AppSettings.opendevtools()">Open</button>
+              <button class="btn btn-primary btn-sm" onclick="AppSettings.opendevtools()">${t('settings.dev.open')}</button>
             </div>
           </div>
         </div>
@@ -259,41 +285,41 @@ const AppSettings = {
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <h3>Debug Info</h3>
+            <h3>${t('settings.debug.title')}</h3>
           </div>
           <div class="settings-body">
             <div class="debug-info-grid">
               <div class="debug-info-row">
-                <span class="debug-info-label">OS</span>
+                <span class="debug-info-label">${t('settings.debug.os')}</span>
                 <span class="debug-info-val">${window.electronAPI?.getplatform?.() || navigator.platform}</span>
               </div>
               <div class="debug-info-row">
-                <span class="debug-info-label">App Version</span>
+                <span class="debug-info-label">${t('settings.debug.appversion')}</span>
                 <span class="debug-info-val">${window.electronAPI?.getappversion?.() || '1.0.5'}</span>
               </div>
               <div class="debug-info-row">
                 <span class="debug-info-label">Electron</span>
-                <span class="debug-info-val">${window.electronAPI?.getelectronversion?.() || 'N/A'} (bundled)</span>
+                <span class="debug-info-val">${window.electronAPI?.getelectronversion?.() || 'N/A'} ${t('settings.debug.bundled')}</span>
               </div>
               <div class="debug-info-row">
                 <span class="debug-info-label">Chrome</span>
-                <span class="debug-info-val">${window.electronAPI?.getchromeversion?.() || 'N/A'} (bundled)</span>
+                <span class="debug-info-val">${window.electronAPI?.getchromeversion?.() || 'N/A'} ${t('settings.debug.bundled')}</span>
               </div>
               <div class="debug-info-row">
                 <span class="debug-info-label">Node.js</span>
-                <span class="debug-info-val">${window.electronAPI?.getnodeversion?.() || 'N/A'} (bundled)</span>
+                <span class="debug-info-val">${window.electronAPI?.getnodeversion?.() || 'N/A'} ${t('settings.debug.bundled')}</span>
               </div>
               <div class="debug-info-separator"></div>
               <div class="debug-info-row">
-                <span class="debug-info-label">Servers</span>
-                <span class="debug-info-val">${(Servers.list || []).length} added</span>
+                <span class="debug-info-label">${t('settings.debug.servers')}</span>
+                <span class="debug-info-val">${t('settings.debug.added', { n: (Servers.list || []).length })}</span>
               </div>
               <div class="debug-info-row">
-                <span class="debug-info-label">Keychains</span>
-                <span class="debug-info-val">${(ServerKeychain?.keys || []).length} saved</span>
+                <span class="debug-info-label">${t('settings.debug.keychains')}</span>
+                <span class="debug-info-val">${t('settings.debug.saved', { n: (ServerKeychain?.keys || []).length })}</span>
               </div>
               <div class="debug-info-row">
-                <span class="debug-info-label">Storage Used</span>
+                <span class="debug-info-label">${t('settings.debug.storageused')}</span>
                 <span class="debug-info-val">${Math.round((JSON.stringify(localStorage).length / 1024) * 10) / 10} KB</span>
               </div>
             </div>
@@ -303,13 +329,13 @@ const AppSettings = {
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <h3>Discord Rich Presence</h3>
+            <h3>${t('settings.discord.title')}</h3>
           </div>
           <div class="settings-body">
             <div class="settings-row">
               <div class="settings-row-info">
-                <div class="settings-row-label">Enable Discord RPC</div>
-                <div class="settings-row-desc">Show CTRLServers status in Discord</div>
+                <div class="settings-row-label">${t('settings.discord.enable')}</div>
+                <div class="settings-row-desc">${t('settings.discord.enable.desc')}</div>
               </div>
               <button class="settings-toggle ${rpc ? 'active' : ''}" onclick="AppSettings.togglediscordrpc()">
                 <span class="settings-toggle-knob"></span>
@@ -318,8 +344,8 @@ const AppSettings = {
             ${rpc ? `
             <div class="settings-row">
               <div class="settings-row-info">
-                <div class="settings-row-label">Show current server</div>
-                <div class="settings-row-desc">Display which server you are managing</div>
+                <div class="settings-row-label">${t('settings.discord.showserver')}</div>
+                <div class="settings-row-desc">${t('settings.discord.showserver.desc')}</div>
               </div>
               <button class="settings-toggle ${showserver ? 'active' : ''}" onclick="AppSettings.togglediscordshowserver()">
                 <span class="settings-toggle-knob"></span>
@@ -332,7 +358,7 @@ const AppSettings = {
         <div class="settings-card" id="monitorCard">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <h3>Server Monitor</h3>
+            <h3>${t('settings.monitor.title')}</h3>
           </div>
           <div class="settings-body" id="monitorBody"></div>
         </div>
@@ -340,15 +366,15 @@ const AppSettings = {
         <div class="settings-card">
           <div class="settings-card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            <h3>Data</h3>
+            <h3>${t('settings.data.title')}</h3>
           </div>
           <div class="settings-body">
             <div class="settings-row">
               <div class="settings-row-info">
-                <div class="settings-row-label">Clear server data</div>
-                <div class="settings-row-desc">Remove saved servers, keys, and SFTP connections</div>
+                <div class="settings-row-label">${t('settings.data.clear')}</div>
+                <div class="settings-row-desc">${t('settings.data.clear.desc')}</div>
               </div>
-              <button class="btn btn-danger btn-sm" onclick="AppSettings.clearcache()">Clear</button>
+              <button class="btn btn-danger btn-sm" onclick="AppSettings.clearcache()">${t('settings.data.clear.btn')}</button>
             </div>
           </div>
         </div>
@@ -368,24 +394,24 @@ const AppSettings = {
         <div class="settings-row">
           <div class="settings-row-info">
             <div class="settings-row-label" style="font-family:monospace;word-break:break-all;">
-              ${Utils.escape(key.host)}${key.port && key.port !== 22 ? ':' + Utils.escape(String(key.port)) : ''} · ${Utils.escape(key.keyType)}${key.revoked ? ' · <span style="color:#ef4444;">revoked</span>' : ''}
+              ${Utils.escape(key.host)}${key.port && key.port !== 22 ? ':' + Utils.escape(String(key.port)) : ''} · ${Utils.escape(key.keyType)}${key.revoked ? ` · <span style="color:#ef4444;">${t('settings.hostkeys.revoked')}</span>` : ''}
             </div>
             <div class="settings-row-desc" style="font-family:monospace;word-break:break-all;">${Utils.escape(key.fingerprint)}</div>
           </div>
-          <button class="btn btn-danger btn-sm" data-host-key-id="${Utils.escape(key.id)}" onclick="AppSettings.removehostkey(this.dataset.hostKeyId)">Forget</button>
+          <button class="btn btn-danger btn-sm" data-host-key-id="${Utils.escape(key.id)}" onclick="AppSettings.removehostkey(this.dataset.hostKeyId)">${t('settings.hostkeys.forget')}</button>
         </div>`).join('');
       body.innerHTML = `
         <div class="settings-row">
           <div class="settings-row-info">
-            <div class="settings-row-label">Trusted fingerprints</div>
-            <div class="settings-row-desc">${keys.length} stored. Connections are confirmed on first use and refused if a fingerprint changes.</div>
+            <div class="settings-row-label">${t('settings.hostkeys.trusted')}</div>
+            <div class="settings-row-desc">${t('settings.hostkeys.trusted.desc', { n: keys.length })}</div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary btn-sm" onclick="AppSettings.importknownhosts()">Import known_hosts</button>
-            ${keys.length ? '<button class="btn btn-danger btn-sm" onclick="AppSettings.clearhostkeys()">Clear all</button>' : ''}
+            <button class="btn btn-secondary btn-sm" onclick="AppSettings.importknownhosts()">${t('settings.hostkeys.import')}</button>
+            ${keys.length ? `<button class="btn btn-danger btn-sm" onclick="AppSettings.clearhostkeys()">${t('settings.hostkeys.clearall')}</button>` : ''}
           </div>
         </div>
-        ${rows || '<p class="settings-note">No host keys stored yet. You will be asked to confirm a fingerprint the first time you connect to a host.</p>'}`;
+        ${rows || `<p class="settings-note">${t('settings.hostkeys.none')}</p>`}`;
     } catch (error) {
       body.innerHTML = `<div class="settings-error">${Utils.escape(error?.message || String(error))}</div>`;
     }
@@ -395,10 +421,10 @@ const AppSettings = {
     try {
       const result = await window.electronAPI?.hostkeysimport?.();
       if (!result) return;
-      Modal.alert('Import complete', `Added ${result.added}, updated ${result.updated}, skipped ${result.skipped} entries.`);
+      Modal.alert(t('settings.hostkeys.importdone'), t('settings.hostkeys.importdone.text', { added: result.added, updated: result.updated, skipped: result.skipped }));
       this.loadhostkeys();
     } catch (error) {
-      Modal.alert('Import failed', Utils.escape(error?.message || String(error)));
+      Modal.alert(t('settings.hostkeys.importfailed'), Utils.escape(error?.message || String(error)));
     }
   },
 
@@ -428,13 +454,13 @@ const AppSettings = {
     const body = Utils.el('mcpSettingsBody');
     if (!body || !status) return;
     const stateclass = status.running ? 'running' : status.error ? 'error' : 'stopped';
-    const statetext = status.running ? 'Running' : status.error ? 'Error' : 'Stopped';
+    const statetext = status.running ? t('settings.mcp.running') : status.error ? t('settings.mcp.error') : t('settings.mcp.stopped');
     if (!status.enabled) {
       body.innerHTML = `
         <div class="settings-row mcp-main-toggle">
           <div class="settings-row-info">
-            <div class="settings-row-label">Enable MCP Server</div>
-            <div class="settings-row-desc">Allow MCP-compatible AI clients to connect to CTRLServers.</div>
+            <div class="settings-row-label">${t('settings.mcp.enable')}</div>
+            <div class="settings-row-desc">${t('settings.mcp.enable.desc')}</div>
           </div>
           <button class="settings-toggle" onclick="MCP.toggleserver()" aria-label="Enable MCP Server"><span class="settings-toggle-knob"></span></button>
         </div>`;
@@ -457,9 +483,9 @@ const AppSettings = {
               <div class="mcp-permission-description">${Utils.escape(definition.description)}</div>
             </div>
             <select class="mcp-permission-select mode-${mode}" onchange="MCP.setpermission('${Utils.escape(definition.id)}', this.value)" aria-label="${Utils.escape(definition.label)} permission">
-              <option value="allow" ${mode === 'allow' ? 'selected' : ''}>Allow</option>
-              <option value="ask" ${mode === 'ask' ? 'selected' : ''}>Ask</option>
-              <option value="deny" ${mode === 'deny' ? 'selected' : ''}>Deny</option>
+              <option value="allow" ${mode === 'allow' ? 'selected' : ''}>${t('settings.mcp.allow')}</option>
+              <option value="ask" ${mode === 'ask' ? 'selected' : ''}>${t('settings.mcp.ask')}</option>
+              <option value="deny" ${mode === 'deny' ? 'selected' : ''}>${t('settings.mcp.deny')}</option>
             </select>
           </div>`;
         }).join('')}
@@ -472,40 +498,40 @@ const AppSettings = {
         <span class="mcp-activity-tool">${Utils.escape(item.tool || '')}</span>
         <span class="mcp-activity-permission">${Utils.escape(item.permission || '')}</span>
         <span class="mcp-activity-time">${Utils.escape(new Date(item.time).toLocaleTimeString())}</span>
-      </div>`).join('') : '<div class="mcp-empty-activity">No MCP calls in this app session.</div>';
+      </div>`).join('') : `<div class="mcp-empty-activity">${t('settings.mcp.noactivity')}</div>`;
 
     body.innerHTML = `
       <div class="settings-row mcp-main-toggle">
         <div class="settings-row-info">
-          <div class="settings-row-label">Enable MCP Server</div>
-          <div class="settings-row-desc"><span class="mcp-state ${stateclass}"></span>${statetext}${status.locked ? ' - locked' : ''}</div>
+          <div class="settings-row-label">${t('settings.mcp.enable')}</div>
+          <div class="settings-row-desc"><span class="mcp-state ${stateclass}"></span>${statetext}${status.locked ? t('settings.mcp.locked') : ''}</div>
         </div>
         <button class="settings-toggle active" onclick="MCP.toggleserver()" aria-label="Disable MCP Server"><span class="settings-toggle-knob"></span></button>
       </div>
       ${status.error ? `<div class="settings-error mcp-server-error">${Utils.escape(status.error)}</div>` : ''}
       <div class="mcp-credentials">
-        <div class="mcp-section-title">Connection</div>
+        <div class="mcp-section-title">${t('settings.mcp.connection')}</div>
         <div class="settings-field">
-          <label>Streamable HTTP endpoint</label>
-          <div class="mcp-copy-line"><input class="settings-input" readonly value="${Utils.escape(status.endpoint)}"><button class="btn-icon" onclick="MCP.copyendpoint()" title="Copy endpoint" aria-label="Copy endpoint"><span class="mcp-copy-symbol">&#10697;</span></button></div>
+          <label>${t('settings.mcp.endpoint')}</label>
+          <div class="mcp-copy-line"><input class="settings-input" readonly value="${Utils.escape(status.endpoint)}"><button class="btn-icon" onclick="MCP.copyendpoint()" title="${t('settings.mcp.copyendpoint')}" aria-label="${t('settings.mcp.copyendpoint')}"><span class="mcp-copy-symbol">&#10697;</span></button></div>
         </div>
         <div class="settings-field">
-          <label>Bearer token</label>
-          <div class="mcp-copy-line"><input class="settings-input" readonly type="${MCP._showtoken ? 'text' : 'password'}" value="${Utils.escape(status.token)}"><button class="btn-icon" onclick="MCP.toggletoken()" title="${MCP._showtoken ? 'Hide' : 'Show'} token" aria-label="${MCP._showtoken ? 'Hide' : 'Show'} token"><span class="mcp-eye-symbol">${MCP._showtoken ? '&#9673;' : '&#9678;'}</span></button><button class="btn-icon" onclick="MCP.copytoken()" title="Copy token" aria-label="Copy token"><span class="mcp-copy-symbol">&#10697;</span></button></div>
+          <label>${t('settings.mcp.token')}</label>
+          <div class="mcp-copy-line"><input class="settings-input" readonly type="${MCP._showtoken ? 'text' : 'password'}" value="${Utils.escape(status.token)}"><button class="btn-icon" onclick="MCP.toggletoken()" title="${MCP._showtoken ? t('settings.mcp.hide') : t('settings.mcp.show')} token" aria-label="${MCP._showtoken ? t('settings.mcp.hide') : t('settings.mcp.show')} token"><span class="mcp-eye-symbol">${MCP._showtoken ? '&#9673;' : '&#9678;'}</span></button><button class="btn-icon" onclick="MCP.copytoken()" title="${t('settings.mcp.copytoken')}" aria-label="${t('settings.mcp.copytoken')}"><span class="mcp-copy-symbol">&#10697;</span></button></div>
         </div>
         <div class="mcp-connection-actions">
-          <button class="btn btn-secondary btn-sm" onclick="MCP.copygenericconfig()">Copy generic HTTP config</button>
-          <button class="btn btn-secondary btn-sm" onclick="MCP.confirmregenerate()">Regenerate token</button>
+          <button class="btn btn-secondary btn-sm" onclick="MCP.copygenericconfig()">${t('settings.mcp.copyconfig')}</button>
+          <button class="btn btn-secondary btn-sm" onclick="MCP.confirmregenerate()">${t('settings.mcp.regenerate')}</button>
         </div>
-        <p class="settings-note">Use the endpoint and bearer token in Codex, Claude, Antigravity, or any client that supports MCP Streamable HTTP.</p>
+        <p class="settings-note">${t('settings.mcp.note')}</p>
       </div>
       <div class="mcp-permissions">
-        <div class="mcp-section-bar"><div class="mcp-section-title">Permissions</div><div class="mcp-bulk-actions"><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('allow')">Allow all</button><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('ask')">Ask all</button><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('deny')">Deny all</button></div></div>
-        <div class="mcp-permission-warning">VPS shell execution is unrestricted. When allowed, shell commands can perform operations covered by every narrower VPS permission.</div>
+        <div class="mcp-section-bar"><div class="mcp-section-title">${t('settings.mcp.permissions')}</div><div class="mcp-bulk-actions"><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('allow')">${t('settings.mcp.allowall')}</button><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('ask')">${t('settings.mcp.askall')}</button><button class="btn btn-secondary btn-sm" onclick="MCP.setallpermissions('deny')">${t('settings.mcp.denyall')}</button></div></div>
+        <div class="mcp-permission-warning">${t('settings.mcp.warning')}</div>
         ${permissionshtml}
       </div>
       <div class="mcp-activity">
-        <div class="mcp-section-bar"><div class="mcp-section-title">Recent activity</div><button class="btn btn-secondary btn-sm" onclick="MCP.clearactivity()">Clear</button></div>
+        <div class="mcp-section-bar"><div class="mcp-section-title">${t('settings.mcp.activity')}</div><button class="btn btn-secondary btn-sm" onclick="MCP.clearactivity()">${t('settings.data.clear.btn')}</button></div>
         <div class="mcp-activity-list">${activityhtml}</div>
       </div>`;
   },
@@ -563,11 +589,11 @@ const AppSettings = {
     if (error) { error.style.display = 'none'; error.textContent = ''; }
 
     if (!pass || pass.length < 4) {
-      if (error) { error.style.display = ''; error.textContent = 'Passcode must be at least 4 characters.'; }
+      if (error) { error.style.display = ''; error.textContent = t('settings.passcode.error.min'); }
       return;
     }
     if (pass !== conf) {
-      if (error) { error.style.display = ''; error.textContent = 'Passcodes do not match.'; }
+      if (error) { error.style.display = ''; error.textContent = t('settings.passcode.error.match'); }
       return;
     }
 
@@ -575,11 +601,11 @@ const AppSettings = {
     input.value = '';
     confirm.value = '';
     this.render();
-    Modal.alert('Passcode Saved', '<span style="color:var(--text-secondary);">Passcode has been set. You will be prompted on next launch.</span>');
+    Modal.alert(t('settings.passcode.saved'), `<span style="color:var(--text-secondary);">${t('settings.passcode.saved.text')}</span>`);
   },
 
   disablepasscode() {
-    Modal.confirm('Remove Passcode', 'Are you sure you want to remove the passcode lock?', () => {
+    Modal.confirm(t('settings.passcode.remove'), t('settings.passcode.remove.confirm'), () => {
       this.removepasscode();
       this.render();
     });
@@ -604,8 +630,8 @@ const AppSettings = {
     body.innerHTML = `
       <div class="settings-row">
         <div class="settings-row-info">
-          <div class="settings-row-label">Enable Server Monitor</div>
-          <div class="settings-row-desc">Background process that checks Pterodactyl and VPS server status and notifies on offline/online changes</div>
+          <div class="settings-row-label">${t('settings.monitor.enable')}</div>
+          <div class="settings-row-desc">${t('settings.monitor.desc')}</div>
         </div>
         <button class="settings-toggle ${running ? 'active' : ''}" onclick="AppSettings.togglemonitor()">
           <span class="settings-toggle-knob"></span>
@@ -613,75 +639,75 @@ const AppSettings = {
       </div>
       <div class="monitor-warning">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <span>Warning! It can affect your network. Each server is checked periodically via API/TCP, generating continuous traffic.</span>
+        <span>${t('settings.monitor.warning')}</span>
       </div>
       <div id="monitorDetails" style="display:${running ? '' : 'none'}">
         <div class="settings-field">
-          <label>Check interval</label>
+          <label>${t('settings.monitor.interval')}</label>
           <select class="settings-input" id="monitorInterval" onchange="AppSettings.setmonitorinterval(this.value)">
-            <option value="10" ${tick === 10 ? 'selected' : ''}>10 seconds</option>
-            <option value="15" ${tick === 15 ? 'selected' : ''}>15 seconds</option>
-            <option value="20" ${tick === 20 ? 'selected' : ''}>20 seconds</option>
-            <option value="25" ${tick === 25 ? 'selected' : ''}>25 seconds</option>
-            <option value="30" ${tick === 30 ? 'selected' : ''}>30 seconds</option>
+            <option value="10" ${tick === 10 ? 'selected' : ''}>${t('settings.secs', { n: 10 })}</option>
+            <option value="15" ${tick === 15 ? 'selected' : ''}>${t('settings.secs', { n: 15 })}</option>
+            <option value="20" ${tick === 20 ? 'selected' : ''}>${t('settings.secs', { n: 20 })}</option>
+            <option value="25" ${tick === 25 ? 'selected' : ''}>${t('settings.secs', { n: 25 })}</option>
+            <option value="30" ${tick === 30 ? 'selected' : ''}>${t('settings.secs', { n: 30 })}</option>
           </select>
-          <p class="settings-note">How often to check each server's status.</p>
+          <p class="settings-note">${t('settings.monitor.interval.note')}</p>
         </div>
         <div class="monitor-status-row">
           <div class="monitor-status-item">
-            <span class="monitor-status-lbl">Status</span>
-            <span class="monitor-status-val monitor-running">Running</span>
+            <span class="monitor-status-lbl">${t('settings.monitor.status')}</span>
+            <span class="monitor-status-val monitor-running">${t('status.running')}</span>
           </div>
           <div class="monitor-status-item">
-            <span class="monitor-status-lbl">PID</span>
+            <span class="monitor-status-lbl">${t('settings.monitor.pid')}</span>
             <span class="monitor-status-val">${pid || 'N/A'}</span>
           </div>
           <div class="monitor-status-item">
-            <span class="monitor-status-lbl">Servers</span>
+            <span class="monitor-status-lbl">${t('settings.monitor.servers')}</span>
             <span class="monitor-status-val">${serverCount}</span>
           </div>
-          <button class="btn btn-danger btn-sm" onclick="AppSettings.stopmonitor()">Kill Process</button>
+          <button class="btn btn-danger btn-sm" onclick="AppSettings.stopmonitor()">${t('settings.monitor.kill')}</button>
         </div>
       </div>
       <div class="settings-separator"></div>
-      <div class="settings-row-label" style="margin-bottom:8px">Alert Rules</div>
-      <p class="settings-note" style="margin-bottom:12px">Notify when server stats exceed thresholds. Alerts apply to all monitored servers.</p>
+      <div class="settings-row-label" style="margin-bottom:8px">${t('settings.monitor.rules')}</div>
+      <p class="settings-note" style="margin-bottom:12px">${t('settings.monitor.rules.note')}</p>
       <div id="alertRulesList">${this._renderalertrules()}</div>
-      <button class="btn btn-sm" style="margin-top:8px" onclick="AppSettings.showaddalertrule()">+ Add Rule</button>
+      <button class="btn btn-sm" style="margin-top:8px" onclick="AppSettings.showaddalertrule()">${t('settings.monitor.addrule')}</button>
       <div id="addAlertRuleForm" style="display:none;margin-top:12px">
         <div class="settings-field">
-          <label>Metric</label>
+          <label>${t('settings.monitor.metric')}</label>
           <select class="settings-input" id="alertMetric">
-            <option value="cpu">CPU Usage (%)</option>
-            <option value="ram">RAM Usage (%)</option>
-            <option value="disk">Disk Usage (%)</option>
+            <option value="cpu">${t('settings.monitor.metric.cpu')}</option>
+            <option value="ram">${t('settings.monitor.metric.ram')}</option>
+            <option value="disk">${t('settings.monitor.metric.disk')}</option>
           </select>
         </div>
         <div class="settings-field">
-          <label>Threshold (%)</label>
+          <label>${t('settings.monitor.threshold')}</label>
           <input type="number" class="settings-input" id="alertThreshold" min="1" max="100" value="90">
         </div>
         <div class="settings-field">
-          <label>Duration (minutes, 0 = instant)</label>
+          <label>${t('settings.monitor.duration')}</label>
           <input type="number" class="settings-input" id="alertDuration" min="0" max="1440" value="5">
         </div>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-sm" onclick="AppSettings.savealertrule()">Save</button>
-          <button class="btn btn-secondary btn-sm" onclick="AppSettings.hideaddalertrule()">Cancel</button>
+          <button class="btn btn-sm" onclick="AppSettings.savealertrule()">${t('settings.save')}</button>
+          <button class="btn btn-secondary btn-sm" onclick="AppSettings.hideaddalertrule()">${t('dashboard.cancel')}</button>
         </div>
       </div>`;
   },
 
   _renderalertrules() {
     const rules = this.getalertrules();
-    if (!rules.length) return '<p class="settings-note">No alert rules configured.</p>';
+    if (!rules.length) return `<p class="settings-note">${t('settings.monitor.norules')}</p>`;
     const metrics = { cpu: 'CPU', ram: 'RAM', disk: 'Disk' };
     return rules.map(r => `
       <div class="alert-rule-item">
         <span class="alert-rule-toggle ${r.enabled ? 'active' : ''}" onclick="AppSettings.togglealertrule('${r.id}');AppSettings.loadmonitor()">
           <span class="settings-toggle-knob"></span>
         </span>
-        <span class="alert-rule-text">${metrics[r.metric] || r.metric} &gt; ${r.threshold}%${r.duration ? ' for ' + r.duration + ' min' : ''}</span>
+        <span class="alert-rule-text">${metrics[r.metric] || r.metric} &gt; ${r.threshold}%${r.duration ? t('settings.monitor.for', { n: r.duration }) : ''}</span>
         <button class="alert-rule-remove" onclick="AppSettings.removealertrule('${r.id}');AppSettings.loadmonitor()">&times;</button>
       </div>`).join('');
   },
@@ -741,7 +767,7 @@ const AppSettings = {
       resolved.push(entry);
     }
     if (!resolved.length) {
-      Modal.alert('No Servers', 'Add at least one server to monitor.');
+      Modal.alert(t('settings.monitor.noservers'), t('settings.monitor.noservers.text'));
       return;
     }
     const tick = parseInt(Utils.el('monitorInterval')?.value) || 10;

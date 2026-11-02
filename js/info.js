@@ -9,6 +9,14 @@ const VPSInfo = {
     return String(server.id || [server.host, server.port || 22, server.username || 'root'].join(':'));
   },
 
+  pluralform(n) {
+    if (I18n.getlang() !== 'ru') return n === 1 ? 'one' : 'many';
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'one';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'few';
+    return 'many';
+  },
+
   async load() {
     this.server = App.currentServer;
     if (!this.server || this.server.type !== 'VPS/VDS') return;
@@ -78,15 +86,15 @@ const VPSInfo = {
     const swapParts = (results.swap || '').split(' ').map(Number);
 
     return {
-      os: results.os || 'Unknown',
-      kernel: results.kernel || 'Unknown',
-      hostname: results.hostname_cmd || 'Unknown',
-      uptime: results.uptime_cmd || 'Unknown',
+      os: results.os || t('info.unknown'),
+      kernel: results.kernel || t('info.unknown'),
+      hostname: results.hostname_cmd || t('info.unknown'),
+      uptime: results.uptime_cmd || t('info.unknown'),
       diskTotal: diskParts[0] || 0,
       diskUsed: diskParts[1] || 0,
       diskAvail: diskParts[2] || 0,
       diskPercent: results.disk ? results.disk.split(' ').pop() : '0%',
-      diskFs: results.disk_fs || 'Unknown',
+      diskFs: results.disk_fs || t('info.unknown'),
       ramTotal: ramParts[0] || 0,
       ramUsed: ramParts[1] || 0,
       ramFree: ramParts[2] || 0,
@@ -94,17 +102,18 @@ const VPSInfo = {
       swapTotal: swapParts[0] || 0,
       swapUsed: swapParts[1] || 0,
       swapFree: swapParts[2] || 0,
-      cpuModel: results.cpu_model || 'Unknown',
+      cpuModel: results.cpu_model || t('info.unknown'),
       cpuCores: parseInt(results.cpu_cores) || 0,
       cpuMhz: results.cpu_mhz ? parseFloat(results.cpu_mhz) : 0,
       processes: parseInt(results.processes) || 0,
       procsRunning: parseInt(results.procs_running) || 0,
-      gpu: results.gpu || 'No GPU detected',
+      gpu: results.gpu || '',
+      gpuMissing: !results.gpu || results.gpu.includes('No GPU'),
       packageCount: parseInt(results.packages_cmd) || 0,
-      publicIp: results.public_ip || 'N/A',
+      publicIp: results.public_ip || t('info.na'),
       netInterfaces: this.parsenetinterfaces(results.net_ifaces),
-      timezone: results.timezone || 'Unknown',
-      ntpSync: results.ntp_sync || 'N/A'
+      timezone: results.timezone || t('info.unknown'),
+      ntpSync: results.ntp_sync || t('info.na')
     };
   },
 
@@ -153,19 +162,19 @@ const VPSInfo = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      tab.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
     if (!this.data) {
-      tab.innerHTML = '<div class="info-unsupported"><h3>Failed to load system information</h3></div>';
+      tab.innerHTML = `<div class="info-unsupported"><h3>${t('info.load_failed')}</h3></div>`;
       return;
     }
 
     const d = this.data;
     const diskPercentNum = d.diskTotal > 0 ? Math.round((d.diskUsed / d.diskTotal) * 100) : 0;
     const ramPercentNum = d.ramTotal > 0 ? Math.round((d.ramUsed / d.ramTotal) * 100) : 0;
-    const gpuText = d.gpu.includes('No GPU') ? 'No GPU detected' : d.gpu;
+    const gpuText = d.gpuMissing ? t('info.no_gpu') : d.gpu;
 
     const cpuSpeed = d.cpuMhz > 0 ? (d.cpuMhz >= 1000 ? (d.cpuMhz / 1000).toFixed(2) + ' GHz' : d.cpuMhz.toFixed(0) + ' MHz') : '';
     const swapPercentNum = d.swapTotal > 0 ? Math.round((d.swapUsed / d.swapTotal) * 100) : 0;
@@ -180,7 +189,7 @@ const VPSInfo = {
             <h2>${Utils.escape(d.hostname)}</h2>
             <span class="info-subtitle">${Utils.escape(d.os)}</span>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="VPSInfo.load()" title="Refresh">
+          <button class="btn btn-secondary btn-sm" onclick="VPSInfo.load()" title="${t('info.refresh')}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           </button>
         </div>
@@ -191,13 +200,13 @@ const VPSInfo = {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
             </div>
             <div class="info-stat-content">
-              <div class="info-stat-label">Disk</div>
+              <div class="info-stat-label">${t('info.disk')}</div>
               <div class="info-stat-value">${this.fmt(d.diskUsed)} / ${this.fmt(d.diskTotal)}</div>
               <div class="info-progress-wrap">
                 <div class="info-progress-bar"><div class="info-progress-fill" style="width:${diskPercentNum}%;background:${diskPercentNum > 90 ? '#ef4444' : diskPercentNum > 70 ? '#f59e0b' : 'var(--accent)'}"></div></div>
                 <span class="info-progress-text">${diskPercentNum}%</span>
               </div>
-              <div class="info-stat-detail">${Utils.escape(d.diskFs)} &middot; ${this.fmt(d.diskAvail)} free</div>
+              <div class="info-stat-detail">${Utils.escape(d.diskFs)} &middot; ${t('info.free', { size: this.fmt(d.diskAvail) })}</div>
             </div>
           </div>
 
@@ -221,7 +230,7 @@ const VPSInfo = {
             </div>
             <div class="info-stat-content">
               <div class="info-stat-label">CPU</div>
-              <div class="info-stat-value">${d.cpuCores} Core${d.cpuCores !== 1 ? 's' : ''}</div>
+              <div class="info-stat-value">${t('info.cores.' + this.pluralform(d.cpuCores), { count: d.cpuCores })}</div>
               <div class="info-stat-detail">${Utils.escape(d.cpuModel)}${cpuSpeed ? ' @ ' + cpuSpeed : ''}</div>
             </div>
           </div>
@@ -231,9 +240,9 @@ const VPSInfo = {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </div>
             <div class="info-stat-content">
-              <div class="info-stat-label">Processes</div>
+              <div class="info-stat-label">${t('info.processes')}</div>
               <div class="info-stat-value">${d.processes}</div>
-              <div class="info-stat-detail">${d.procsRunning} running</div>
+              <div class="info-stat-detail">${t('info.running.' + this.pluralform(d.procsRunning), { count: d.procsRunning })}</div>
             </div>
           </div>
 
@@ -242,9 +251,9 @@ const VPSInfo = {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             </div>
             <div class="info-stat-content">
-              <div class="info-stat-label">Packages</div>
+              <div class="info-stat-label">${t('info.packages')}</div>
               <div class="info-stat-value">${d.packageCount}</div>
-              <div class="info-stat-detail">${Packages.pkgManager || 'N/A'}</div>
+              <div class="info-stat-detail">${Packages.pkgManager || t('info.na')}</div>
             </div>
           </div>
 
@@ -263,15 +272,15 @@ const VPSInfo = {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             </div>
             <div class="info-stat-content">
-              <div class="info-stat-label">Swap</div>
+              <div class="info-stat-label">${t('info.swap')}</div>
               ${d.swapTotal > 0
                 ? `<div class="info-stat-value">${this.fmt(d.swapUsed)} / ${this.fmt(d.swapTotal)}</div>
                    <div class="info-progress-wrap">
                      <div class="info-progress-bar"><div class="info-progress-fill" style="width:${swapPercentNum}%;background:${swapPercentNum > 80 ? '#ef4444' : 'var(--accent)'}"></div></div>
                      <span class="info-progress-text">${swapPercentNum}%</span>
                    </div>`
-                : `<div class="info-stat-value">No swap</div>
-                   <div class="info-stat-detail">Swap not configured</div>`}
+                : `<div class="info-stat-value">${t('info.no_swap')}</div>
+                   <div class="info-stat-detail">${t('info.swap_not_configured')}</div>`}
             </div>
           </div>
 
@@ -280,11 +289,11 @@ const VPSInfo = {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
             </div>
             <div class="info-stat-content">
-              <div class="info-stat-label">Network Interfaces</div>
+              <div class="info-stat-label">${t('info.network')}</div>
               <div class="info-net-list">
                 ${d.netInterfaces.length
                   ? d.netInterfaces.map(n => `<div class="info-net-row"><span class="info-net-name">${Utils.escape(n.name)}</span><code class="info-net-addr">${Utils.escape(n.addr)}<span class="info-net-mask">/${Utils.escape(n.mask)}</span></code></div>`).join('')
-                  : '<div class="info-stat-detail">No interfaces found</div>'}
+                  : `<div class="info-stat-detail">${t('info.no_interfaces')}</div>`}
               </div>
             </div>
           </div>
@@ -292,23 +301,23 @@ const VPSInfo = {
 
         <div class="info-details-card">
           <div class="info-detail-row">
-            <span class="info-detail-label">Kernel</span>
+            <span class="info-detail-label">${t('info.kernel')}</span>
             <span class="info-detail-value">${Utils.escape(d.kernel)}</span>
           </div>
           <div class="info-detail-row">
-            <span class="info-detail-label">Uptime</span>
+            <span class="info-detail-label">${t('info.uptime')}</span>
             <span class="info-detail-value">${Utils.escape(d.uptime)}</span>
           </div>
           <div class="info-detail-row">
-            <span class="info-detail-label">Public IP</span>
+            <span class="info-detail-label">${t('info.public_ip')}</span>
             <span class="info-detail-value">${Utils.escape(d.publicIp)}</span>
           </div>
           <div class="info-detail-row">
-            <span class="info-detail-label">Timezone</span>
+            <span class="info-detail-label">${t('info.timezone')}</span>
             <span class="info-detail-value">${Utils.escape(d.timezone)}</span>
           </div>
           <div class="info-detail-row">
-            <span class="info-detail-label">NTP Sync</span>
+            <span class="info-detail-label">${t('info.ntp_sync')}</span>
             <span class="info-detail-value">${Utils.escape(d.ntpSync)}</span>
           </div>
         </div>

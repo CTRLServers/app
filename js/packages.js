@@ -238,21 +238,21 @@ const Packages = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      tab.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
     if (!this.pkgManager) {
       tab.innerHTML = `<div class="packages-unsupported">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <h3>Unable to detect package manager</h3>
-        <p>Detected OS: ${Utils.escape(this.osName || this.osId || 'Unknown')}</p>
-        <p>Supported: Ubuntu, Debian, Mint, CentOS, RHEL, Rocky, AlmaLinux, Fedora, Arch, Alpine, Gentoo</p>
+        <h3>${t('packages.unsupported.title')}</h3>
+        <p>${t('packages.unsupported.os', { os: Utils.escape(this.osName || this.osId || t('packages.unknown')) })}</p>
+        <p>${t('packages.unsupported.supported')}</p>
       </div>`;
       return;
     }
 
-    const osLabel = this.osName || (this.osId ? this.osId.charAt(0).toUpperCase() + this.osId.slice(1) : 'Unknown');
+    const osLabel = this.osName || (this.osId ? this.osId.charAt(0).toUpperCase() + this.osId.slice(1) : t('packages.unknown'));
     const displayLimit = 30;
     const hasMore = this.allInstalledRaw.length > displayLimit;
     const visiblePkgs = this.showAll ? this.allInstalledRaw : this.allInstalledRaw.slice(0, displayLimit);
@@ -262,7 +262,7 @@ const Packages = {
         <div class="packages-card-header">
           <div class="packages-card-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            <h3>Installed Packages</h3>
+            <h3>${t('packages.installed')}</h3>
           </div>
           <div class="packages-card-right">
             <span class="packages-os-badge">${Utils.escape(osLabel)}</span>
@@ -279,7 +279,7 @@ const Packages = {
     html += '</div>';
 
     if (hasMore && !this.showAll) {
-      html += `<button class="btn btn-secondary btn-sm packages-show-more" onclick="Packages.showallpackages()">Show all ${this.allInstalledRaw.length} packages</button>`;
+      html += `<button class="btn btn-secondary btn-sm packages-show-more" onclick="Packages.showallpackages()">${t('packages.show_all', { count: this.allInstalledRaw.length })}</button>`;
     }
 
     html += `</div></div>
@@ -287,9 +287,9 @@ const Packages = {
         <div class="packages-card-header">
           <div class="packages-card-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <h3>Install Packages</h3>
+            <h3>${t('packages.install.title')}</h3>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="Packages.load()" title="Refresh">
+          <button class="btn btn-secondary btn-sm" onclick="Packages.load()" title="${t('packages.refresh')}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           </button>
         </div>
@@ -301,7 +301,7 @@ const Packages = {
       html += `<label class="pkg-check-item ${installed ? 'pkg-installed' : ''}">
         <input type="checkbox" class="pkg-checkbox" value="${pkg.id}" ${installed ? 'disabled checked' : ''} />
         <span class="pkg-check-name">${Utils.escape(pkg.name)}</span>
-        ${installed ? '<span class="pkg-badge-installed">Installed</span>' : ''}
+        ${installed ? `<span class="pkg-badge-installed">${t('packages.installed_badge')}</span>` : ''}
       </label>`;
     }
 
@@ -309,7 +309,7 @@ const Packages = {
           <div class="packages-install-actions">
             <button class="btn btn-primary" id="pkgInstallBtn" onclick="Packages.installselected()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Install Selected
+              ${t('packages.install.selected')}
             </button>
           </div>
           <div id="pkgInstallOutput" class="pkg-output" style="display:none;"></div>
@@ -340,7 +340,7 @@ const Packages = {
     const output = Utils.el('pkgInstallOutput');
     if (!output) return;
     output.style.display = '';
-    output.innerHTML = '<div class="pkg-output-loading"><div class="spinner"></div><span>Installing packages...</span></div>';
+    output.innerHTML = `<div class="pkg-output-loading"><div class="spinner"></div><span>${t('packages.installing')}</span></div>`;
 
     const btn = Utils.el('pkgInstallBtn');
     if (btn) btn.disabled = true;
@@ -351,9 +351,9 @@ const Packages = {
 
       let html = '';
       if (res.exitCode === 0) {
-        html += '<div class="pkg-output-success">Packages installed successfully</div>';
+        html += `<div class="pkg-output-success">${t('packages.install.success')}</div>`;
       } else {
-        html += `<div class="pkg-output-error">Installation failed (exit code: ${res.exitCode})</div>`;
+        html += `<div class="pkg-output-error">${t('packages.install.failed', { code: res.exitCode })}</div>`;
       }
       if (res.stdout && res.stdout.trim()) {
         html += `<pre class="pkg-output-pre">${Utils.escape(res.stdout.trim())}</pre>`;
@@ -368,7 +368,7 @@ const Packages = {
         this.render();
       }
     } catch (e) {
-      output.innerHTML = `<div class="pkg-output-error">Error: ${Utils.escape(e.message || String(e))}</div>`;
+      output.innerHTML = `<div class="pkg-output-error">${t('packages.error', { error: Utils.escape(e.message || String(e)) })}</div>`;
     }
 
     if (btn) btn.disabled = false;

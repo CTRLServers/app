@@ -28,14 +28,14 @@ const CLI = {
         <div class="cli-output" id="cliOutput"></div>
         <div class="cli-input-row">
           <span class="cli-prompt">&gt;</span>
-          <input class="cli-input" id="cliInput" type="text" autocomplete="off" spellcheck="false" placeholder="Type 'help' for commands..." />
+          <input class="cli-input" id="cliInput" type="text" autocomplete="off" spellcheck="false" placeholder="${Utils.escape(t('cli.placeholder'))}" />
         </div>`;
       document.querySelector('.app-body').appendChild(panel);
       document.getElementById('cliInput').addEventListener('keydown', (e) => this.onkey(e));
     }
     this._open = true;
     panel.classList.add('open');
-    this.print('Welcome to CTRLServers. Type "help" for commands.', 'cli-info');
+    this.print(t('cli.welcome'), 'cli-info');
     setTimeout(() => document.getElementById('cliInput')?.focus(), 100);
   },
 
@@ -127,7 +127,7 @@ const CLI = {
       case 'export': return this.cmdexport();
       case 'import': return this.cmdimport();
       default:
-        this.print(`Unknown command: "${cmd}". Type "help" for available commands.`, 'cli-error');
+        this.print(t('cli.unknown', { cmd }), 'cli-error');
     }
   },
 
@@ -138,40 +138,40 @@ const CLI = {
 
   cmdhelp() {
     const lines = [
-      ['help', 'Show this help'],
-      ['list servers', 'List all servers'],
-      ['start <name>', 'Start a Pterodactyl server'],
-      ['stop <name>', 'Stop a Pterodactyl server'],
-      ['restart <name>', 'Restart a Pterodactyl server'],
-      ['status <name>', 'Show server status and stats'],
-      ['add server', 'Open add server dialog'],
-      ['remove <name>', 'Remove a server'],
-      ['theme <dark|light|oled>', 'Switch theme'],
-      ['lock', 'Lock the app'],
-      ['monitor start', 'Start background monitor'],
-      ['monitor stop', 'Stop background monitor'],
-      ['monitor status', 'Show monitor status'],
-      ['export', 'Export servers to clipboard'],
-      ['import', 'Import servers from clipboard'],
-      ['clear', 'Clear terminal output'],
+      ['help', t('cli.help.help')],
+      ['list servers', t('cli.help.list')],
+      ['start <name>', t('cli.help.start')],
+      ['stop <name>', t('cli.help.stop')],
+      ['restart <name>', t('cli.help.restart')],
+      ['status <name>', t('cli.help.status')],
+      ['add server', t('cli.help.add')],
+      ['remove <name>', t('cli.help.remove')],
+      ['theme <dark|light|oled>', t('cli.help.theme')],
+      ['lock', t('cli.help.lock')],
+      ['monitor start', t('cli.help.monitor_start')],
+      ['monitor stop', t('cli.help.monitor_stop')],
+      ['monitor status', t('cli.help.monitor_status')],
+      ['export', t('cli.help.export')],
+      ['import', t('cli.help.import')],
+      ['clear', t('cli.help.clear')],
     ];
-    this.print('Available commands:', 'cli-info');
+    this.print(t('cli.available_commands'), 'cli-info');
     lines.forEach(([cmd, desc]) => {
-      this.printhtml(`<span class="cli-cmd-name">${cmd}</span> <span class="cli-cmd-desc">${desc}</span>`);
+      this.printhtml(`<span class="cli-cmd-name">${cmd}</span> <span class="cli-cmd-desc">${Utils.escape(desc)}</span>`);
     });
   },
 
   cmdlist(args) {
     const q = args.join(' ').toLowerCase();
     if (q && q !== 'servers') {
-      this.print('Usage: list servers', 'cli-error');
+      this.print(t('cli.usage.list'), 'cli-error');
       return;
     }
     const list = Servers.list;
-    if (!list.length) { this.print('No servers found.', 'cli-info'); return; }
-    this.print(`Servers (${list.length}):`, 'cli-info');
+    if (!list.length) { this.print(t('cli.no_servers'), 'cli-info'); return; }
+    this.print(t('cli.servers_count', { count: list.length }), 'cli-info');
     list.forEach((s, i) => {
-      const status = s.status || 'unknown';
+      const status = s.status || t('cli.unknown_status');
       const stcls = status === 'online' || status === 'running' ? 'cli-ok' : status === 'offline' ? 'cli-err' : '';
       this.printhtml(`<span class="cli-idx">${i + 1}.</span> <span class="cli-srv-name">${Utils.escape(s.name)}</span> <span class="cli-tag">[${s.type}]</span> <span class="${stcls}">${status}</span>`);
     });
@@ -179,111 +179,111 @@ const CLI = {
 
   async cmdstart(args) {
     const name = args.join(' ');
-    if (!name) { this.print('Usage: start <server name>', 'cli-error'); return; }
+    if (!name) { this.print(t('cli.usage.start'), 'cli-error'); return; }
     const server = this._findserver(name);
-    if (!server) { this.print(`Server "${name}" not found.`, 'cli-error'); return; }
-    if (server.type !== 'Pterodactyl') { this.print('Start/stop only works for Pterodactyl servers.', 'cli-error'); return; }
+    if (!server) { this.print(t('cli.server_not_found', { name }), 'cli-error'); return; }
+    if (server.type !== 'Pterodactyl') { this.print(t('cli.ptero_only'), 'cli-error'); return; }
     const idx = Servers.list.indexOf(server);
     await Servers.quickpower(idx, 'start');
-    this.print(`Starting ${server.name}...`, 'cli-ok');
+    this.print(t('cli.starting', { name: server.name }), 'cli-ok');
   },
 
   async cmdstop(args) {
     const name = args.join(' ');
-    if (!name) { this.print('Usage: stop <server name>', 'cli-error'); return; }
+    if (!name) { this.print(t('cli.usage.stop'), 'cli-error'); return; }
     const server = this._findserver(name);
-    if (!server) { this.print(`Server "${name}" not found.`, 'cli-error'); return; }
-    if (server.type !== 'Pterodactyl') { this.print('Start/stop only works for Pterodactyl servers.', 'cli-error'); return; }
+    if (!server) { this.print(t('cli.server_not_found', { name }), 'cli-error'); return; }
+    if (server.type !== 'Pterodactyl') { this.print(t('cli.ptero_only'), 'cli-error'); return; }
     const idx = Servers.list.indexOf(server);
     await Servers.quickpower(idx, 'stop');
-    this.print(`Stopping ${server.name}...`, 'cli-ok');
+    this.print(t('cli.stopping', { name: server.name }), 'cli-ok');
   },
 
   async cmdrestart(args) {
     const name = args.join(' ');
-    if (!name) { this.print('Usage: restart <server name>', 'cli-error'); return; }
+    if (!name) { this.print(t('cli.usage.restart'), 'cli-error'); return; }
     const server = this._findserver(name);
-    if (!server) { this.print(`Server "${name}" not found.`, 'cli-error'); return; }
-    if (server.type !== 'Pterodactyl') { this.print('Start/stop only works for Pterodactyl servers.', 'cli-error'); return; }
+    if (!server) { this.print(t('cli.server_not_found', { name }), 'cli-error'); return; }
+    if (server.type !== 'Pterodactyl') { this.print(t('cli.ptero_only'), 'cli-error'); return; }
     const idx = Servers.list.indexOf(server);
     await Servers.quickpower(idx, 'restart');
-    this.print(`Restarting ${server.name}...`, 'cli-ok');
+    this.print(t('cli.restarting', { name: server.name }), 'cli-ok');
   },
 
   cmdstatus(args) {
     const name = args.join(' ');
-    if (!name) { this.print('Usage: status <server name>', 'cli-error'); return; }
+    if (!name) { this.print(t('cli.usage.status'), 'cli-error'); return; }
     const server = this._findserver(name);
-    if (!server) { this.print(`Server "${name}" not found.`, 'cli-error'); return; }
-    const st = server.status || 'unknown';
+    if (!server) { this.print(t('cli.server_not_found', { name }), 'cli-error'); return; }
+    const st = server.status || t('cli.unknown_status');
     const res = Servers.resources[server.uuid] || {};
     const vst = Servers.vpsstats[server.id];
     this.printhtml(`<span class="cli-srv-name">${Utils.escape(server.name)}</span>`);
-    this.print(`  Type: ${server.type}`);
-    this.print(`  Status: ${st}`);
-    this.print(`  Host: ${server.host || 'N/A'}:${server.port || ''}`);
+    this.print(t('cli.status.type', { type: server.type }));
+    this.print(t('cli.status.status', { status: st }));
+    this.print(t('cli.status.host', { host: `${server.host || t('cli.na')}:${server.port || ''}` }));
     if (server.type === 'Pterodactyl') {
-      if (res.cpu !== undefined) this.print(`  CPU: ${res.cpu?.toFixed(1)}%`);
-      if (res.memory_bytes !== undefined) this.print(`  RAM: ${Utils.formatbytes(res.memory_bytes)} / ${Utils.formatmb(server.limits?.memory)}`);
-      if (res.disk_bytes !== undefined) this.print(`  Disk: ${Utils.formatbytes(res.disk_bytes)} / ${Utils.formatmb(server.limits?.disk)}`);
-      if (res.uptime) this.print(`  Uptime: ${Utils.formatuptime(res.uptime)}`);
+      if (res.cpu !== undefined) this.print(t('cli.status.cpu', { value: res.cpu?.toFixed(1) }));
+      if (res.memory_bytes !== undefined) this.print(t('cli.status.ram', { used: Utils.formatbytes(res.memory_bytes), total: Utils.formatmb(server.limits?.memory) }));
+      if (res.disk_bytes !== undefined) this.print(t('cli.status.disk', { used: Utils.formatbytes(res.disk_bytes), total: Utils.formatmb(server.limits?.disk) }));
+      if (res.uptime) this.print(t('cli.status.uptime', { value: Utils.formatuptime(res.uptime) }));
     }
     if (vst) {
-      this.print(`  RAM: ${Utils.formatbytes(vst.memUsed)} / ${Utils.formatbytes(vst.memTotal)}`);
-      this.print(`  Disk: ${Utils.formatbytes(vst.diskUsed)} / ${Utils.formatbytes(vst.diskTotal)}`);
-      this.print(`  Swap: ${Utils.formatbytes(vst.swapUsed)} / ${Utils.formatbytes(vst.swapTotal)}`);
-      this.print(`  Load: ${vst.load1.toFixed(2)} / ${vst.load5.toFixed(2)} / ${vst.load15.toFixed(2)}`);
+      this.print(t('cli.status.ram', { used: Utils.formatbytes(vst.memUsed), total: Utils.formatbytes(vst.memTotal) }));
+      this.print(t('cli.status.disk', { used: Utils.formatbytes(vst.diskUsed), total: Utils.formatbytes(vst.diskTotal) }));
+      this.print(t('cli.status.swap', { used: Utils.formatbytes(vst.swapUsed), total: Utils.formatbytes(vst.swapTotal) }));
+      this.print(t('cli.status.load', { one: vst.load1.toFixed(2), five: vst.load5.toFixed(2), fifteen: vst.load15.toFixed(2) }));
     }
   },
 
   cmdadd(args) {
     Servers.openaddmodal();
-    this.print('Opening add server dialog...', 'cli-info');
+    this.print(t('cli.add_opening'), 'cli-info');
   },
 
   cmdremove(args) {
     const name = args.join(' ');
-    if (!name) { this.print('Usage: remove <server name>', 'cli-error'); return; }
+    if (!name) { this.print(t('cli.usage.remove'), 'cli-error'); return; }
     const server = this._findserver(name);
-    if (!server) { this.print(`Server "${name}" not found.`, 'cli-error'); return; }
+    if (!server) { this.print(t('cli.server_not_found', { name }), 'cli-error'); return; }
     const idx = Servers.list.indexOf(server);
     Servers.deleteserver(idx);
-    this.print(`Removed ${server.name}.`, 'cli-ok');
+    this.print(t('cli.removed', { name: server.name }), 'cli-ok');
   },
 
   cmdtheme(args) {
-    const t = args[0]?.toLowerCase();
-    if (!t || !['dark', 'light', 'oled'].includes(t)) {
-      this.print('Usage: theme <dark|light|oled>', 'cli-error');
+    const theme = args[0]?.toLowerCase();
+    if (!theme || !['dark', 'light', 'oled'].includes(theme)) {
+      this.print(t('cli.usage.theme'), 'cli-error');
       return;
     }
-    Theme.settheme(t);
-    this.print(`Theme set to ${t}.`, 'cli-ok');
+    Theme.settheme(theme);
+    this.print(t('cli.theme_set', { theme }), 'cli-ok');
   },
 
   cmdlock() {
     LockScreen.lock();
-    this.print('App locked.', 'cli-info');
+    this.print(t('cli.locked'), 'cli-info');
   },
 
   async cmdmonitor(args) {
     const action = args[0]?.toLowerCase();
     if (action === 'start') {
       await AppSettings.startmonitor();
-      this.print('Monitor started.', 'cli-ok');
+      this.print(t('cli.monitor.started'), 'cli-ok');
     } else if (action === 'stop') {
       await AppSettings.stopmonitor();
-      this.print('Monitor stopped.', 'cli-ok');
+      this.print(t('cli.monitor.stopped'), 'cli-ok');
     } else if (action === 'status') {
       const status = await window.electronAPI?.monitorstatus?.();
-      this.print(`Monitor: ${status?.running ? 'Running' : 'Stopped'}`);
+      this.print(t('cli.monitor.line', { state: status?.running ? t('cli.monitor.running') : t('cli.monitor.stopped_state') }));
       if (status?.running) {
-        this.print(`  PID: ${status.pid}`);
-        this.print(`  Interval: ${status.tick}s`);
-        this.print(`  Servers: ${status.serverCount}`);
+        this.print(t('cli.monitor.pid', { pid: status.pid }));
+        this.print(t('cli.monitor.interval', { seconds: status.tick }));
+        this.print(t('cli.monitor.servers', { count: status.serverCount }));
       }
     } else {
-      this.print('Usage: monitor <start|stop|status>', 'cli-error');
+      this.print(t('cli.usage.monitor'), 'cli-error');
     }
   },
 
@@ -294,11 +294,11 @@ const CLI = {
 
   cmdexport() {
     Servers.exportlist();
-    this.print('Servers exported to clipboard.', 'cli-ok');
+    this.print(t('cli.exported'), 'cli-ok');
   },
 
   cmdimport() {
     Servers.importlist();
-    this.print('Opening import dialog...', 'cli-info');
+    this.print(t('cli.import_opening'), 'cli-info');
   }
 };

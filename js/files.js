@@ -188,7 +188,7 @@ const ServerFiles = {
 
   async apicall(operation, ...args) {
     const s = App.currentServer;
-    if (!s) throw new Error('No server selected');
+    if (!s) throw new Error(t('files.noserver'));
     const apiKey = await Servers.resolveapikey(s);
     if (App.currentServer !== s) throw new Error('The selected server changed');
     if (s.type !== 'Calagopus') {
@@ -311,7 +311,7 @@ const ServerFiles = {
     const renderDirectory = (path, depth) => {
       const entries = this._ideTreeCache.get(path);
       if (!entries) {
-        rows.push(`<div class="files-tree-loading" style="padding-left:${14 + depth * 16}px">Loading...</div>`);
+        rows.push(`<div class="files-tree-loading" style="padding-left:${14 + depth * 16}px">${t('files.loading')}</div>`);
         return;
       }
       entries.forEach(file => {
@@ -368,14 +368,14 @@ const ServerFiles = {
       const port = details.sftp_port || 2022;
       const url = `sftp://${encodeURIComponent(username)}@${host}:${port}`;
       this._sftpUrl = url;
-      Modal.open('Connect via SFTP', `
+      Modal.open(t('files.connectsftp.title'), `
         <div class="sftp-connect-details">
           <div><span>Host</span><strong>${Utils.escape(host)}</strong></div>
           <div><span>Port</span><strong>${port}</strong></div>
           <div><span>Username</span><strong>${Utils.escape(username)}</strong></div>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+          <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
           <button class="btn btn-primary" onclick="ServerFiles.launchsftp()">Open SFTP Client</button>
         </div>`);
     } catch (e) {
@@ -530,7 +530,7 @@ const ServerFiles = {
       this.render();
     } catch (e) {
       if (App.currentServer !== s || loadid !== this._loadid) return;
-      Utils.el('filesList').innerHTML = `<div class="files-empty">Failed to load: ${Utils.escape(e.message)}</div>`;
+      Utils.el('filesList').innerHTML = `<div class="files-empty">${t('files.loadfail', { m: Utils.escape(e.message) })}</div>`;
     }
   },
 
@@ -577,7 +577,7 @@ const ServerFiles = {
     this.filteredFiles = sorted;
 
     if (!sorted.length) {
-      list.innerHTML = '<div class="files-empty">' + (this.files.length ? 'No matching files' : 'This directory is empty') + '</div>';
+      list.innerHTML = '<div class="files-empty">' + (this.files.length ? t('files.nomatch') : t('files.emptydir')) + '</div>';
       this.updateinfocards();
       return;
     }
@@ -602,7 +602,7 @@ const ServerFiles = {
         </div>
         <div class="file-size">${size}</div>
         <div class="file-date">${modified}</div>
-        <button class="file-menu-btn" onclick="event.stopPropagation(); ServerFiles.showmenufor(event, ${realIdx})" title="Actions">
+        <button class="file-menu-btn" onclick="event.stopPropagation(); ServerFiles.showmenufor(event, ${realIdx})" title="${t('files.actions')}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>
       </div>`;
@@ -625,7 +625,7 @@ const ServerFiles = {
   renderbreadcrumb() {
     const bc = Utils.el('filesBreadcrumb');
     const parts = this.currentPath.split('/').filter(Boolean);
-    let html = `<span class="breadcrumb-home" data-bc-path="/" title="Root">
+    let html = `<span class="breadcrumb-home" data-bc-path="/" title="${t('files.root')}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     </span>`;
     let acc = '';
@@ -662,11 +662,11 @@ const ServerFiles = {
             <img src="${blobUrl}" alt="${Utils.escape(name)}" style="max-width:100%;max-height:60vh;border-radius:var(--radius-sm);" />
           </div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+            <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
           </div>
         `);
       } catch (e) {
-        Modal.open(name, `<div class="file-preview" style="padding:32px 0;text-align:center;color:var(--text-muted);">Failed to load image</div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">Close</button></div>`);
+        Modal.open(name, `<div class="file-preview" style="padding:32px 0;text-align:center;color:var(--text-muted);">${t('files.imagefail')}</div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button></div>`);
       }
       return;
     }
@@ -678,10 +678,10 @@ const ServerFiles = {
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <div style="color:var(--text-muted);margin-bottom:8px;">${label}</div>
           <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">${Utils.escape(name)} (${this.formatsize(size)})</div>
-          <button class="btn btn-primary" onclick="ServerFiles.downloadfile('${Utils.escape(path)}', '${Utils.escape(name)}')">Download</button>
+          <button class="btn btn-primary" onclick="ServerFiles.downloadfile('${Utils.escape(path)}', '${Utils.escape(name)}')">${t('files.download')}</button>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+          <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
         </div>
       `);
       return;
@@ -694,10 +694,10 @@ const ServerFiles = {
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <div style="color:var(--text-muted);margin-bottom:8px;">${label}</div>
           <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">${Utils.escape(name)} (${this.formatsize(size)})</div>
-          <button class="btn btn-primary" onclick="ServerFiles.downloadfile('${Utils.escape(path)}', '${Utils.escape(name)}')">Download</button>
+          <button class="btn btn-primary" onclick="ServerFiles.downloadfile('${Utils.escape(path)}', '${Utils.escape(name)}')">${t('files.download')}</button>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+          <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
         </div>
       `);
       return;
@@ -715,7 +715,7 @@ const ServerFiles = {
             <div style="color:var(--text-muted);">Cannot read this file</div>
           </div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+            <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
           </div>
         `);
       }
@@ -729,7 +729,7 @@ const ServerFiles = {
         <div style="font-size:13px;color:var(--text-secondary);">${Utils.escape(name)}</div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
       </div>
     `);
   },
@@ -746,8 +746,8 @@ const ServerFiles = {
     container.innerHTML = this._ideTabs.map(tab => `
       <button class="file-editor-tab${tab.path === this._activeIdeTab ? ' active' : ''}" data-path="${encodeURIComponent(tab.path)}" title="${Utils.escape(tab.path)}">
         <span class="file-editor-tab-name">${Utils.escape(tab.name)}</span>
-        ${tab.dirty ? '<span class="file-editor-tab-dirty" title="Unsaved changes"></span>' : ''}
-        <span class="file-editor-tab-close" title="Close">
+        ${tab.dirty ? `<span class="file-editor-tab-dirty" title="${t('files.dirty')}"></span>` : ''}
+        <span class="file-editor-tab-close" title="${t('titlebar.close')}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </span>
       </button>`).join('');
@@ -766,11 +766,11 @@ const ServerFiles = {
     if (index < 0) return;
     if (this._ideTabs[index].dirty && !force) {
       this._pendingCloseIdeTab = path;
-      Modal.open('Unsaved Changes', `
+      Modal.open(t('files.unsaved.title'), `
         <div class="modal-text">Close <strong>${Utils.escape(this._ideTabs[index].name)}</strong> without saving?</div>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-          <button class="btn btn-danger" onclick="ServerFiles.confirmcloseidetab()">Discard Changes</button>
+          <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+          <button class="btn btn-danger" onclick="ServerFiles.confirmcloseidetab()">${t('files.discard')}</button>
         </div>`);
       return;
     }
@@ -1064,14 +1064,14 @@ const ServerFiles = {
     const calagopus = server.type === 'Calagopus';
     Modal.open(calagopus ? 'Create Directory' : 'New Folder', `
       <div class="form-group">
-        <label class="form-label">${calagopus ? 'Directory Name' : 'Folder Name'}</label>
+        <label class="form-label">${calagopus ? t('files.dirname') : t('files.foldername')}</label>
         <input class="form-input" type="text" id="new-folder-name" maxlength="255" placeholder="my-folder" oninput="ServerFiles.updatedirectory()" />
       </div>
-      ${calagopus ? '<div class="files-path-preview"><span>Created as</span><code id="directory-path-preview"></code></div>' : ''}
+      ${calagopus ? `<div class="files-path-preview"><span>${t('files.createdas')}</span><code id="directory-path-preview"></code></div>` : ''}
       <div class="files-new-error" id="files-new-error" style="display:none;"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="directory-create" onclick="ServerFiles.docreatefolder()" disabled>Create</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" id="directory-create" onclick="ServerFiles.docreatefolder()" disabled>${t('files.create')}</button>
       </div>
     `);
     this.updatedirectory();
@@ -1124,9 +1124,9 @@ const ServerFiles = {
       this.editorbreadcrumb(context.directory, 'New File');
       return;
     }
-    Modal.open('New File', `
+    Modal.open(t('files.newfile.title'), `
       <div class="form-group">
-        <label class="form-label">File Name</label>
+        <label class="form-label">${t('files.filename')}</label>
         <input class="form-input" type="text" id="newFileName" placeholder="file" />
       </div>
       <div class="form-group">
@@ -1134,8 +1134,8 @@ const ServerFiles = {
         <input class="form-input" type="text" id="newFileExt" placeholder="txt" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="ServerFiles.docreatefile()">Create</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" onclick="ServerFiles.docreatefile()">${t('files.create')}</button>
       </div>
     `);
   },
@@ -1158,16 +1158,16 @@ const ServerFiles = {
   namecreatedfile() {
     const context = this._creatingfile;
     if (!context || !this.contextvalid(context)) return;
-    Modal.open('Create File', `
+    Modal.open(t('files.createfile.title'), `
       <div class="form-group">
-        <label class="form-label">File Name</label>
+        <label class="form-label">${t('files.filename')}</label>
         <input class="form-input" type="text" id="new-file-name" maxlength="255" placeholder="file.txt" oninput="ServerFiles.updatenewfile()" />
       </div>
-      <div class="files-path-preview"><span>Created as</span><code id="new-file-path-preview"></code></div>
+      <div class="files-path-preview"><span>${t('files.createdas')}</span><code id="new-file-path-preview"></code></div>
       <div class="files-new-error" id="files-new-error" style="display:none;"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
-        <button class="btn btn-primary" id="new-file-create" onclick="ServerFiles.docreatenewfile()" disabled>Create</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
+        <button class="btn btn-primary" id="new-file-create" onclick="ServerFiles.docreatenewfile()" disabled>${t('files.create')}</button>
       </div>`);
     this.updatenewfile();
   },
@@ -1222,9 +1222,9 @@ const ServerFiles = {
     const server = App.currentServer;
     if (!server || server.type !== 'Calagopus' || !this.cancreate()) return;
     this._newcontext = { server, directory: this.currentPath, key: this.serverkey(server) };
-    Modal.open('Create Symlink', `
+    Modal.open(t('files.createsymlink.title'), `
       <div class="form-group">
-        <label class="form-label">Symlink Name</label>
+        <label class="form-label">${t('files.symlinkname')}</label>
         <input class="form-input" type="text" id="symlink-name" maxlength="255" oninput="ServerFiles.updatesymlink()" />
       </div>
       <div class="files-new-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M7 14l5 5 5-5"/></svg></div>
@@ -1233,12 +1233,12 @@ const ServerFiles = {
         <div class="files-new-description">Relative to the directory in which the symlink is created.</div>
         <input class="form-input" type="text" id="symlink-target" maxlength="4095" oninput="ServerFiles.updatesymlink()" />
       </div>
-      <div class="files-path-preview"><span>Created as</span><code id="symlink-link-preview"></code></div>
+      <div class="files-path-preview"><span>${t('files.createdas')}</span><code id="symlink-link-preview"></code></div>
       <div class="files-path-preview"><span>Points to</span><code id="symlink-target-preview"></code></div>
       <div class="files-new-error" id="files-new-error" style="display:none;"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
-        <button class="btn btn-primary" id="symlink-create" onclick="ServerFiles.docreatesymlink()" disabled>Create</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
+        <button class="btn btn-primary" id="symlink-create" onclick="ServerFiles.docreatesymlink()" disabled>${t('files.create')}</button>
       </div>`);
     this.updatesymlink();
   },
@@ -1283,24 +1283,24 @@ const ServerFiles = {
     if (!server || server.type !== 'Calagopus' || !this.cancreate()) return;
     this._newcontext = { server, directory: this.currentPath, key: this.serverkey(server) };
     this._pullresult = null;
-    Modal.open('Pull File', `
+    Modal.open(t('files.pull'), `
       <div class="files-pull-query">
         <div class="form-group">
           <label class="form-label">File URL</label>
           <input class="form-input" type="url" id="pull-url" placeholder="https://example.com/file.zip" oninput="ServerFiles.updatepull(true)" />
         </div>
-        <button class="btn btn-secondary" id="pull-query" onclick="ServerFiles.doquerypull()" disabled>Query</button>
+        <button class="btn btn-secondary" id="pull-query" onclick="ServerFiles.doquerypull()" disabled>${t('files.query')}</button>
       </div>
       <div class="form-group">
-        <label class="form-label">File Name</label>
-        <input class="form-input" type="text" id="pull-name" maxlength="255" placeholder="File Name" oninput="ServerFiles.updatepull()" />
+        <label class="form-label">${t('files.filename')}</label>
+        <input class="form-input" type="text" id="pull-name" maxlength="255" placeholder="${t('files.name.ph')}" oninput="ServerFiles.updatepull()" />
       </div>
       <div class="files-pull-result" id="pull-result" style="display:none;"></div>
-      <div class="files-path-preview"><span>Created as</span><code id="pull-path-preview"></code></div>
+      <div class="files-path-preview"><span>${t('files.createdas')}</span><code id="pull-path-preview"></code></div>
       <div class="files-new-error" id="files-new-error" style="display:none;"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
-        <button class="btn btn-primary" id="pull-create" onclick="ServerFiles.dopullfile()" disabled>Pull</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
+        <button class="btn btn-primary" id="pull-create" onclick="ServerFiles.dopullfile()" disabled>${t('files.pull.btn')}</button>
       </div>`);
     this.updatepull();
   },
@@ -1352,7 +1352,7 @@ const ServerFiles = {
       const box = Utils.el('pull-result');
       if (box) {
         const filesize = result.file_size ?? result.fileSize;
-        const size = filesize == null ? 'Unknown size' : this.formatsize(filesize);
+        const size = filesize == null ? t('files.unknowsize') : this.formatsize(filesize);
         box.innerHTML = `<strong>Remote file</strong><span>${Utils.escape(size)}</span><code>${Utils.escape(result.final_url || result.finalUrl || url)}</code>`;
         box.style.display = 'grid';
       }
@@ -1382,7 +1382,7 @@ const ServerFiles = {
         const finished = this._finishedoperations.get(identifier);
         if (finished) {
           this._finishedoperations.delete(identifier);
-          this.showtoast(finished.error || 'File pulled successfully.', finished.error ? 'error' : 'success');
+          this.showtoast(finished.error || t('files.pullsuccess'), finished.error ? 'error' : 'success');
           if (!finished.error) await this.refreshfiledirectory(context.directory);
           return;
         }
@@ -1494,7 +1494,7 @@ const ServerFiles = {
       ? `<span class="spinner spinner-sm"></span><strong>${operations.length}</strong>`
       : `<svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.5"></circle><circle class="file-operation-ring" cx="18" cy="18" r="15.5" stroke-dasharray="${average} 100"></circle></svg><strong>${Math.round(average)}%</strong>`;
     const cancelall = this.can('files.update') && operations.some(([, operation]) => !operation.failed)
-      ? '<button class="file-operation-cancel-all" onclick="event.stopPropagation(); ServerFiles.confirmcanceloperations()">Cancel all operations</button>'
+      ? `<button class="file-operation-cancel-all" onclick="event.stopPropagation(); ServerFiles.confirmcanceloperations()">${t('files.cancelall')}</button>`
       : '';
     menu.innerHTML = `${cancelall}${operations.map(([identifier, operation]) => {
       const total = Number(operation.bytes_total ?? operation.bytesTotal ?? 0);
@@ -1502,13 +1502,13 @@ const ServerFiles = {
       const percent = total > 0 ? Math.min(100, processed / total * 100) : 0;
       const destination = operation.destination_path || operation.destinationPath || 'remote file';
       const action = operation.failed
-        ? `<button class="file-operation-close" title="Close" onclick="event.stopPropagation(); ServerFiles.removeoperation('${Utils.escape(identifier)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`
+        ? `<button class="file-operation-close" title="${t('titlebar.close')}" onclick="event.stopPropagation(); ServerFiles.removeoperation('${Utils.escape(identifier)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`
         : this.can('files.update')
-          ? `<button class="file-operation-close" title="Cancel" onclick="event.stopPropagation(); ServerFiles.canceloperation('${Utils.escape(identifier)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`
+          ? `<button class="file-operation-close" title="${t('dashboard.cancel')}" onclick="event.stopPropagation(); ServerFiles.canceloperation('${Utils.escape(identifier)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`
           : '';
       return `<div class="file-operation-row${operation.failed ? ' failed' : ''}">
-        <div class="file-operation-main"><span>Pulling ${Utils.escape(destination)}</span>${action}</div>
-        <div class="file-operation-bytes">${operation.failed ? Utils.escape(operation.error || 'Operation failed.') : `${this.formatsize(processed)} / ${total ? this.formatsize(total) : 'Unknown'}`}</div>
+        <div class="file-operation-main"><span>${t('files.pulling', { name: Utils.escape(destination) })}</span>${action}</div>
+        <div class="file-operation-bytes">${operation.failed ? Utils.escape(operation.error || t('files.opfailed')) : `${this.formatsize(processed)} / ${total ? this.formatsize(total) : t('files.unknown')}`}</div>
         <div class="file-operation-track"><div class="file-operation-fill${!total && !operation.failed ? ' indeterminate' : ''}" style="width:${total ? percent : 35}%"></div></div>
       </div>`;
     }).join('')}`;
@@ -1531,10 +1531,10 @@ const ServerFiles = {
   },
 
   confirmcanceloperations() {
-    Modal.open('Cancel Operations', `
+    Modal.open(t('files.cancelops'), `
       <div class="modal-text">Cancel all active file operations?</div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Keep Running</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('files.keeprunning')}</button>
         <button class="btn btn-danger" onclick="ServerFiles.docanceloperations()">Cancel Operations</button>
       </div>`);
   },
@@ -1717,13 +1717,13 @@ const ServerFiles = {
       </div>
     `).join('');
 
-    Modal.open(`${items.length} file(s) - ${this.formatsize(totalSize)}`, `
+    Modal.open(t('files.massupload', { n: items.length, size: this.formatsize(totalSize) }), `
       <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;">
         ${listHtml}
       </div>
       <div id="uploadProgress" style="display:none;margin-top:12px;">
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-          <span id="uploadProgressText">Uploading...</span>
+          <span id="uploadProgressText">${t('files.uploading')}</span>
           <span id="uploadProgressCount"></span>
         </div>
         <div style="height:6px;background:var(--accent-light);border-radius:3px;overflow:hidden;">
@@ -1731,8 +1731,8 @@ const ServerFiles = {
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="uploadConfirmBtn" onclick="ServerFiles.startupload()">Upload</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" id="uploadConfirmBtn" onclick="ServerFiles.startupload()">${t('files.upload.btn')}</button>
       </div>
     `);
 
@@ -1780,25 +1780,25 @@ const ServerFiles = {
       <div class="upload-conflict-row">
         <div class="upload-conflict-heading">
           <strong>${Utils.escape(conflict.path)}</strong>
-          <span>${conflict.kind === 'folder' ? `${conflict.count} selected file(s)` : this.formatsize(conflict.item.size)}</span>
+          <span>${conflict.kind === 'folder' ? t('files.selcount', { n: conflict.count }) : this.formatsize(conflict.item.size)}</span>
         </div>
         <div class="upload-conflict-options">
-          <button class="active" data-upload-conflict="${index}" data-resolution="skip" onclick="ServerFiles.setuploadresolution(${index}, 'skip')">Skip</button>
-          <button data-upload-conflict="${index}" data-resolution="overwrite" onclick="ServerFiles.setuploadresolution(${index}, 'overwrite')">${conflict.kind === 'folder' ? 'Merge' : 'Overwrite'}</button>
-          <button data-upload-conflict="${index}" data-resolution="rename" onclick="ServerFiles.setuploadresolution(${index}, 'rename')">Rename</button>
+          <button class="active" data-upload-conflict="${index}" data-resolution="skip" onclick="ServerFiles.setuploadresolution(${index}, 'skip')">${t('files.skip')}</button>
+          <button data-upload-conflict="${index}" data-resolution="overwrite" onclick="ServerFiles.setuploadresolution(${index}, 'overwrite')">${conflict.kind === 'folder' ? t('files.merge') : t('files.overwrite')}</button>
+          <button data-upload-conflict="${index}" data-resolution="rename" onclick="ServerFiles.setuploadresolution(${index}, 'rename')">${t('files.rename')}</button>
         </div>
         <input class="form-input upload-conflict-rename" id="upload-conflict-rename-${index}" value="${Utils.escape(conflict.rename)}" maxlength="255" oninput="ServerFiles.updateuploadconflicts()" style="display:none;" />
       </div>`).join('');
-    Modal.open('Upload Conflicts', `
+    Modal.open(t('files.conflicts.title'), `
       <div class="upload-conflict-summary">
-        <span>${conflicts.length} existing item(s) found in ${Utils.escape(this._uploadcontext.directory)}.</span>
-        <div><button class="btn btn-secondary btn-sm" onclick="ServerFiles.uploadconflictall('skip')">Skip All</button><button class="btn btn-secondary btn-sm" onclick="ServerFiles.uploadconflictall('overwrite')">Overwrite All</button></div>
+        <span>${t('files.conflictsummary', { n: conflicts.length, dir: Utils.escape(this._uploadcontext.directory) })}.</span>
+        <div><button class="btn btn-secondary btn-sm" onclick="ServerFiles.uploadconflictall('skip')">${t('files.skipall')}</button><button class="btn btn-secondary btn-sm" onclick="ServerFiles.uploadconflictall('overwrite')">${t('files.overwriteall')}</button></div>
       </div>
       <div class="upload-conflict-list">${rows}</div>
       <div class="files-new-error" id="files-new-error" style="display:none;"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
-        <button class="btn btn-primary" id="upload-conflict-apply" onclick="ServerFiles.applyuploadconflicts()" disabled>Continue Upload</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('titlebar.close')}</button>
+        <button class="btn btn-primary" id="upload-conflict-apply" onclick="ServerFiles.applyuploadconflicts()" disabled>${t('files.continue')}</button>
       </div>`);
     this.updateuploadconflicts();
   },
@@ -1893,7 +1893,7 @@ const ServerFiles = {
     const count = Utils.el('uploadProgressCount');
     const btn = Utils.el('uploadConfirmBtn');
     btn.disabled = true;
-    btn.textContent = 'Uploading...';
+    btn.textContent = t('files.uploading');
     progress.style.display = 'block';
 
     const dirsToCreate = new Set();
@@ -1919,7 +1919,7 @@ const ServerFiles = {
         this.showtoast('Upload stopped because the selected server changed.', 'error');
         return;
       }
-      text.textContent = `Creating folders...`;
+      text.textContent = t('files.creatingfolders');
       count.textContent = `${created + 1}/${totalDirs + 1}`;
       bar.style.width = ((created / (totalDirs + 1)) * 100) + '%';
       const name = dir.split('/').pop();
@@ -1962,8 +1962,8 @@ const ServerFiles = {
         return;
       }
       const files = groups[dir];
-      text.textContent = `Uploading ${files.length} file(s) to ${dir}...`;
-      count.textContent = `${uploaded}/${totalFiles} files`;
+      text.textContent = t('files.uploadingto', { n: files.length, dir });
+      count.textContent = t('files.uploadedcount', { a: uploaded, b: totalFiles });
       bar.style.width = ((uploaded / totalFiles) * 100) + '%';
       try {
         await this.apicall('uploadfiles', dir, files);
@@ -1976,7 +1976,7 @@ const ServerFiles = {
 
     bar.style.width = '100%';
     const totalfailed = failed + directoryfailures;
-    text.textContent = `Done. ${uploaded} uploaded, ${totalfailed} failed`;
+    text.textContent = t('files.donemsg', { a: uploaded, b: totalfailed });
     if (totalfailed) this.showtoast(operationerror || `${totalfailed} upload item(s) failed.`, 'error');
     else this.showtoast(`${uploaded} file(s) uploaded.`);
     if (this.contextvalid(context)) await this.refreshfiledirectory(context.directory);
@@ -1999,26 +1999,26 @@ const ServerFiles = {
     const filePath = this.currentPath === '/' ? '/' + name : this.currentPath + '/' + name;
     let items = [];
 
-    items.push({ label: 'Rename', icon: 'rename', action: () => this.modalrename(filePath, name) });
-    items.push({ label: 'Move', icon: 'move', action: () => this.modalmove(filePath, name) });
-    items.push({ label: 'Permissions', icon: 'lock', action: () => this.modalpermissions(filePath, name) });
+    items.push({ label: t('files.rename'), icon: 'rename', action: () => this.modalrename(filePath, name) });
+    items.push({ label: t('files.move'), icon: 'move', action: () => this.modalmove(filePath, name) });
+    items.push({ label: t('files.permissions'), icon: 'lock', action: () => this.modalpermissions(filePath, name) });
 
     if (!isDir) {
-      items.push({ label: 'Copy', icon: 'copy', action: () => this.modalcopy(filePath, name) });
+      items.push({ label: t('files.copy'), icon: 'copy', action: () => this.modalcopy(filePath, name) });
     }
 
     if (!isDir && !isarchive) {
-      items.push({ label: 'Archive', icon: 'archive', action: () => this.doarchive(filePath) });
+      items.push({ label: t('files.archive'), icon: 'archive', action: () => this.doarchive(filePath) });
     }
     if (!isDir && isarchive) {
-      items.push({ label: 'Unarchive', icon: 'archive', action: () => this.dounarchive(filePath) });
+      items.push({ label: t('files.unarchive'), icon: 'archive', action: () => this.dounarchive(filePath) });
     }
 
     if (!isDir) {
-      items.push({ label: 'Download', icon: 'download', action: () => this.downloadfile(filePath, name) });
+      items.push({ label: t('files.download'), icon: 'download', action: () => this.downloadfile(filePath, name) });
     }
 
-    items.push({ label: 'Delete', icon: 'delete', danger: true, action: () => this.modaldelete(filePath, name) });
+    items.push({ label: t('files.delete'), icon: 'delete', danger: true, action: () => this.modaldelete(filePath, name) });
 
     const iconMap = {
       rename: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
@@ -2063,14 +2063,14 @@ const ServerFiles = {
 
   modalrename(filePath, name) {
     const dir = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
-    Modal.open('Rename', `
+    Modal.open(t('files.rename'), `
       <div class="form-group">
-        <label class="form-label">New Name</label>
+        <label class="form-label">${t('files.newname')}</label>
         <input class="form-input" type="text" id="renameInput" value="${Utils.escape(name)}" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="ServerFiles.dorename('${Utils.escape(dir)}', '${Utils.escape(name)}')">Rename</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" onclick="ServerFiles.dorename('${Utils.escape(dir)}', '${Utils.escape(name)}')">${t('files.rename')}</button>
       </div>
     `);
     setTimeout(() => { const el = Utils.el('renameInput'); if (el) { el.focus(); el.select(); } }, 50);
@@ -2090,9 +2090,9 @@ const ServerFiles = {
   },
 
   modalmove(filePath, name) {
-    Modal.open('Move', `
+    Modal.open(t('files.move'), `
       <div class="form-group">
-        <label class="form-label">File</label>
+        <label class="form-label">${t('files.filelabel')}</label>
         <input class="form-input" type="text" value="${Utils.escape(filePath)}" disabled />
       </div>
       <div class="form-group">
@@ -2100,8 +2100,8 @@ const ServerFiles = {
         <input class="form-input" type="text" id="moveInput" value="${Utils.escape(this.currentPath)}" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="ServerFiles.domove('${Utils.escape(filePath)}', '${Utils.escape(name)}')">Move</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" onclick="ServerFiles.domove('${Utils.escape(filePath)}', '${Utils.escape(name)}')">${t('files.move')}</button>
       </div>
     `);
   },
@@ -2122,9 +2122,9 @@ const ServerFiles = {
   },
 
   modalcopy(filePath, name) {
-    Modal.open('Copy', `
+    Modal.open(t('files.copy'), `
       <div class="form-group">
-        <label class="form-label">File</label>
+        <label class="form-label">${t('files.filelabel')}</label>
         <input class="form-input" type="text" value="${Utils.escape(filePath)}" disabled />
       </div>
       <div class="form-group">
@@ -2132,8 +2132,8 @@ const ServerFiles = {
         <input class="form-input" type="text" id="copyInput" value="${Utils.escape(this.currentPath)}" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="ServerFiles.docopy('${Utils.escape(filePath)}')">Copy</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" onclick="ServerFiles.docopy('${Utils.escape(filePath)}')">${t('files.copy')}</button>
       </div>
     `);
   },
@@ -2154,13 +2154,13 @@ const ServerFiles = {
   },
 
   modalpermissions(filePath, name) {
-    Modal.open('Permissions', `
+    Modal.open(t('files.permissions'), `
       <div class="form-group">
-        <label class="form-label">File</label>
+        <label class="form-label">${t('files.filelabel')}</label>
         <input class="form-input" type="text" value="${Utils.escape(name)}" disabled />
       </div>
       <div class="form-group">
-        <label class="form-label">Mode (e.g. 0644, 0755)</label>
+        <label class="form-label">${t('files.modelabel')}</label>
         <input class="form-input" type="text" id="permInput" value="0644" />
       </div>
       <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
@@ -2171,8 +2171,8 @@ const ServerFiles = {
         <button class="btn btn-sm btn-secondary" onclick="Utils.el('permInput').value='0666'">666 (rw-rw-rw-)</button>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="ServerFiles.dopermissions('${Utils.escape(filePath)}')">Apply</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" onclick="ServerFiles.dopermissions('${Utils.escape(filePath)}')">${t('files.apply')}</button>
       </div>
     `);
   },
@@ -2217,15 +2217,15 @@ const ServerFiles = {
   },
 
   modaldelete(filePath, name) {
-    Modal.open('Delete', `
+    Modal.open(t('files.delete'), `
       <div style="text-align:center;padding:8px 0;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" style="margin-bottom:12px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         <div style="font-size:15px;margin-bottom:4px;">Delete "${Utils.escape(name)}"?</div>
         <div style="font-size:13px;color:var(--text-muted);">This action cannot be undone.</div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-danger" onclick="ServerFiles.dodelete('${Utils.escape(filePath)}')">Delete</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-danger" onclick="ServerFiles.dodelete('${Utils.escape(filePath)}')">${t('files.delete')}</button>
       </div>
     `);
   },
@@ -2266,11 +2266,11 @@ const ServerFiles = {
     const selCount = Utils.el('filesSelectionCount');
     if (this.selected.size > 0) {
       bar.style.display = 'flex';
-      count.textContent = `${this.selected.size} selected`;
-      if (selCount) selCount.textContent = `${this.selected.size} selected`;
+      count.textContent = t('dashboard.selected', { n: this.selected.size });
+      if (selCount) selCount.textContent = t('dashboard.selected', { n: this.selected.size });
     } else {
       bar.style.display = 'none';
-      if (selCount) selCount.textContent = '0 selected';
+      if (selCount) selCount.textContent = t('dashboard.selected', { n: 0 });
     }
   },
 
@@ -2288,15 +2288,15 @@ const ServerFiles = {
   massdelete() {
     const items = this.getselectedpaths();
     if (!items.length) return;
-    Modal.open('Delete', `
+    Modal.open(t('files.delete'), `
       <div style="text-align:center;padding:8px 0;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" style="margin-bottom:12px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         <div style="font-size:15px;margin-bottom:4px;">Delete ${items.length} item(s)?</div>
         <div style="font-size:13px;color:var(--text-muted);">This action cannot be undone.</div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-danger" onclick="ServerFiles.domassdelete()">Delete</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-danger" onclick="ServerFiles.domassdelete()">${t('files.delete')}</button>
       </div>
     `);
   },
@@ -2324,7 +2324,7 @@ const ServerFiles = {
   massmove() {
     const items = this.getselectedpaths();
     if (!items.length) return;
-    Modal.open('Move', `
+    Modal.open(t('files.move'), `
       <div class="form-group">
         <label class="form-label">${items.length} item(s) selected</label>
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">${items.map(i => Utils.escape(i.name)).join(', ')}</div>
@@ -2334,8 +2334,8 @@ const ServerFiles = {
         <input class="form-input" type="text" id="massMoveInput" value="${Utils.escape(this.currentPath)}" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="ServerFiles.domassmove()">Move</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" onclick="ServerFiles.domassmove()">${t('files.move')}</button>
       </div>
     `);
   },
@@ -2361,14 +2361,14 @@ const ServerFiles = {
   massarchive() {
     const items = this.getselectedpaths();
     if (!items.length) return;
-    Modal.open('Archive', `
+    Modal.open(t('files.archive'), `
       <div class="form-group">
-        <label class="form-label">${items.length} item(s) will be archived</label>
+        <label class="form-label">${t('files.willarchive', { n: items.length })}</label>
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">${items.map(i => Utils.escape(i.name)).join(', ')}</div>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="ServerFiles.domassarchive()">Archive</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('dashboard.cancel')}</button>
+        <button class="btn btn-primary" onclick="ServerFiles.domassarchive()">${t('files.archive')}</button>
       </div>
     `);
   },
@@ -2460,10 +2460,10 @@ const ServerFiles = {
     const mins = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return mins + 'm ago';
-    if (hours < 24) return hours + 'h ago';
-    if (days < 7) return days + 'd ago';
+    if (mins < 1) return t('time.justnow');
+    if (mins < 60) return t('time.mago', { n: mins });
+    if (hours < 24) return t('time.hago', { n: hours });
+    if (days < 7) return t('time.dago', { n: days });
     return d.toLocaleDateString();
   },
 
@@ -2476,7 +2476,7 @@ const ServerFiles = {
     if (count) count.textContent = this.files.length;
     const fileCount = this.files.filter(f => !this.isdirectory(f.attributes)).length;
     const folderCount = this.files.length - fileCount;
-    if (sub) sub.textContent = `${fileCount} files · ${folderCount} folders`;
+    if (sub) sub.textContent = t('files.count', { n: fileCount, m: folderCount });
     if (size) {
       const total = this.files.reduce((sum, f) => {
         if (this.isdirectory(f.attributes)) return sum;

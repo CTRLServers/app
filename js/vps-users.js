@@ -88,32 +88,32 @@ const VPSUsers = {
 
   async adduser(username, password) {
     const r = await this.exec(`useradd -m -s /bin/bash '${username.replace(/'/g, "'\\''")}' 2>&1`);
-    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || 'Failed to create user' };
+    if (r.exitCode !== 0) return { error: r.stdout || r.stderr || t('vusers.err.create') };
 
     if (password) {
       const pw = await this.exec(`echo '${username.replace(/'/g, "'\\''")}:${password.replace(/'/g, "'\\''")}' | chpasswd 2>&1`);
-      if (pw.exitCode !== 0) return { error: 'User created but failed to set password: ' + (pw.stdout || pw.stderr) };
+      if (pw.exitCode !== 0) return { error: t('vusers.err.createpw', { msg: pw.stdout || pw.stderr }) };
     }
     return { success: true };
   },
 
   async deleteuser(username) {
     const r = await this.exec(`userdel -r '${username.replace(/'/g, "'\\''")}' 2>&1`);
-    return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || 'Failed to delete user' };
+    return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || t('vusers.err.delete') };
   },
 
   async changepassword(username, password) {
     const r = await this.exec(`echo '${username.replace(/'/g, "'\\''")}:${password.replace(/'/g, "'\\''")}' | chpasswd 2>&1`);
-    return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || 'Failed to change password' };
+    return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || t('vusers.err.changepw') };
   },
 
   async togglesudo(username, add) {
     if (add) {
       const r = await this.exec(`usermod -aG ${this.sudoGroup} '${username.replace(/'/g, "'\\''")}' 2>&1`);
-      return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || 'Failed to add to sudo' };
+      return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || t('vusers.err.sudo.add') };
     } else {
       const r = await this.exec(`deluser '${username.replace(/'/g, "'\\''")}' ${this.sudoGroup} 2>&1`);
-      return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || 'Failed to remove from sudo' };
+      return r.exitCode === 0 ? { success: true } : { error: r.stdout || r.stderr || t('vusers.err.sudo.remove') };
     }
   },
 
@@ -148,7 +148,7 @@ const VPSUsers = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      tab.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
@@ -157,7 +157,7 @@ const VPSUsers = {
     let html = `<div class="vps-users-container">
       <div class="fw-card">
         <div class="fw-card-header">
-          <h3>Logged In</h3>
+          <h3>${t('vusers.loggedin')}</h3>
           <span class="packages-count-badge">${this.loggedIn.length}</span>
         </div>
         <div class="fw-card-body">`;
@@ -168,25 +168,25 @@ const VPSUsers = {
         html += `<div class="vps-loggedin-item">
           <span class="vps-loggedin-dot"></span>
           <span class="vps-loggedin-user">${Utils.escape(l.user)}</span>
-          <span class="vps-loggedin-detail">${Utils.escape(l.terminal)} from ${Utils.escape(l.from)}</span>
+          <span class="vps-loggedin-detail">${t('vusers.loggedin.detail', { terminal: Utils.escape(l.terminal), from: Utils.escape(l.from) })}</span>
           <span class="vps-loggedin-time">${Utils.escape(l.time)}</span>
         </div>`;
       }
       html += '</div>';
     } else {
-      html += '<div class="fw-empty">No users currently logged in</div>';
+      html += `<div class="fw-empty">${t('vusers.nologgedin')}</div>`;
     }
 
     html += `</div></div>
 
       <div class="fw-card">
         <div class="fw-card-header">
-          <h3>System Users</h3>
-          <button class="btn btn-primary btn-sm" onclick="VPSUsers.showadduser()">Add User</button>
+          <h3>${t('vusers.system')}</h3>
+          <button class="btn btn-primary btn-sm" onclick="VPSUsers.showadduser()">${t('vusers.add')}</button>
         </div>
         <div class="fw-card-body">
           <div class="vps-users-table-wrap"><table class="fw-table">
-            <thead><tr><th>User</th><th>UID</th><th>Home</th><th>Shell</th><th>Groups</th><th></th></tr></thead>
+            <thead><tr><th>${t('vusers.h.user')}</th><th>${t('vusers.h.uid')}</th><th>${t('vusers.h.home')}</th><th>${t('vusers.h.shell')}</th><th>${t('vusers.h.groups')}</th><th></th></tr></thead>
             <tbody>`;
 
     for (const u of this.users) {
@@ -212,13 +212,13 @@ const VPSUsers = {
 
       if (!u.isRoot) {
         html += `<div class="vps-user-actions">
-          <button class="btn btn-secondary btn-sm" onclick="VPSUsers.showchangepassword('${Utils.escape(u.name)}')" title="Change Password">
+          <button class="btn btn-secondary btn-sm" onclick="VPSUsers.showchangepassword('${Utils.escape(u.name)}')" title="${t('vusers.changepw')}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="VPSUsers.togglesudouser('${Utils.escape(u.name)}', ${!u.isSudo})" title="${u.isSudo ? 'Remove Sudo' : 'Grant Sudo'}">
+          <button class="btn btn-secondary btn-sm" onclick="VPSUsers.togglesudouser('${Utils.escape(u.name)}', ${!u.isSudo})" title="${u.isSudo ? t('vusers.sudo.remove') : t('vusers.sudo.grant')}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </button>
-          <button class="btn-icon btn-danger-sm" onclick="VPSUsers.confirmdelete('${Utils.escape(u.name)}')" title="Delete User">
+          <button class="btn-icon btn-danger-sm" onclick="VPSUsers.confirmdelete('${Utils.escape(u.name)}')" title="${t('vusers.delete')}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div>`;
@@ -233,19 +233,19 @@ const VPSUsers = {
   },
 
   showadduser() {
-    Modal.open('Add User', `
+    Modal.open(t('vusers.add'), `
       <div class="form-group">
-        <label class="form-label">Username</label>
-        <input class="form-input" type="text" id="vpsNewUser" placeholder="username" />
+        <label class="form-label">${t('vusers.username')}</label>
+        <input class="form-input" type="text" id="vpsNewUser" placeholder="${t('vusers.ph.username')}" />
       </div>
       <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" type="password" id="vpsNewPass" placeholder="password" />
+        <label class="form-label">${t('vusers.password')}</label>
+        <input class="form-input" type="password" id="vpsNewPass" placeholder="${t('vusers.ph.password')}" />
       </div>
       <div id="vpsUserError"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="vpsAddUserBtn">Create User</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('vusers.cancel')}</button>
+        <button class="btn btn-primary" id="vpsAddUserBtn">${t('vusers.create')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -254,14 +254,14 @@ const VPSUsers = {
         const name = Utils.el('vpsNewUser').value.trim();
         const pass = Utils.el('vpsNewPass').value;
         const err = Utils.el('vpsUserError');
-        if (!name) { err.innerHTML = '<div class="error-msg">Username required</div>'; return; }
+        if (!name) { err.innerHTML = `<div class="error-msg">${t('vusers.username.required')}</div>`; return; }
         btn.disabled = true;
-        btn.textContent = 'Creating...';
+        btn.textContent = t('vusers.creating');
         const res = await VPSUsers.adduser(name, pass);
         if (res.error) {
           err.innerHTML = `<div class="error-msg">${Utils.escape(res.error)}</div>`;
           btn.disabled = false;
-          btn.textContent = 'Create User';
+          btn.textContent = t('vusers.create');
           return;
         }
         Modal.close();
@@ -272,15 +272,15 @@ const VPSUsers = {
   },
 
   showchangepassword(username) {
-    Modal.open('Change Password', `
+    Modal.open(t('vusers.changepw'), `
       <div class="form-group">
-        <label class="form-label">New Password for ${Utils.escape(username)}</label>
-        <input class="form-input" type="password" id="vpsChangePass" placeholder="new password" />
+        <label class="form-label">${t('vusers.newpw', { user: Utils.escape(username) })}</label>
+        <input class="form-input" type="password" id="vpsChangePass" placeholder="${t('vusers.ph.newpassword')}" />
       </div>
       <div id="vpsPassError"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="vpsChangePassBtn">Change Password</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('vusers.cancel')}</button>
+        <button class="btn btn-primary" id="vpsChangePassBtn">${t('vusers.changepw')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -288,14 +288,14 @@ const VPSUsers = {
       if (btn) btn.addEventListener('click', async () => {
         const pass = Utils.el('vpsChangePass').value;
         const err = Utils.el('vpsPassError');
-        if (!pass) { err.innerHTML = '<div class="error-msg">Password required</div>'; return; }
+        if (!pass) { err.innerHTML = `<div class="error-msg">${t('vusers.password.required')}</div>`; return; }
         btn.disabled = true;
-        btn.textContent = 'Changing...';
+        btn.textContent = t('vusers.changing');
         const res = await VPSUsers.changepassword(username, pass);
         if (res.error) {
           err.innerHTML = `<div class="error-msg">${Utils.escape(res.error)}</div>`;
           btn.disabled = false;
-          btn.textContent = 'Change Password';
+          btn.textContent = t('vusers.changepw');
           return;
         }
         Modal.close();
@@ -310,10 +310,10 @@ const VPSUsers = {
   },
 
   confirmdelete(username) {
-    Modal.confirm('Delete User', `Are you sure you want to delete "${username}"? This will remove their home directory.`, async () => {
+    Modal.confirm(t('vusers.delete'), t('vusers.delete.confirm', { user: Utils.escape(username) }), async () => {
       const res = await this.deleteuser(username);
       if (res.error) {
-        Modal.open('Error', `<div class="error-msg">${Utils.escape(res.error)}</div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">OK</button></div>`);
+        Modal.open(t('vusers.error'), `<div class="error-msg">${Utils.escape(res.error)}</div><div class="modal-actions"><button class="btn btn-secondary" onclick="Modal.close()">${t('vusers.ok')}</button></div>`);
         return;
       }
       await this.fetchusers();

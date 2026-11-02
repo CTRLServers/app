@@ -64,7 +64,7 @@ const calagopusactivity = {
     this.error = '';
     this.permissionpromise = Promise.resolve(false);
     const container = Utils.el('tabActivity');
-    if (this.server && container) container.innerHTML = '<div class="calagopus-activity-empty" role="status"><span class="spinner"></span><span>Loading activity access...</span></div>';
+    if (this.server && container) container.innerHTML = `<div class="calagopus-activity-empty" role="status"><span class="spinner"></span><span>${t('cact.loadingaccess')}</span></div>`;
   },
 
   async syncnav(server) {
@@ -95,16 +95,16 @@ const calagopusactivity = {
   },
 
   async request(path, options = {}, server = this.server) {
-    if (!server || !this.active(server)) throw new Error('No Calagopus server selected');
+    if (!server || !this.active(server)) throw new Error(t('csub.noserver'));
     const apikey = await Servers.resolveapikey(server);
-    if (!this.active(server)) throw new Error('The selected server changed');
+    if (!this.active(server)) throw new Error(t('cact.serverchanged'));
     const response = await fetch(`${server.panelUrl.replace(/\/+$/, '')}/api/client/servers/${encodeURIComponent(server.uuid)}${path}`, {
       ...options,
       headers: { ...Api.calagopusheaders(apikey), ...(options.headers || {}) }
     });
     const raw = await response.text();
     if (!response.ok) {
-      let message = `Request failed (HTTP ${response.status})`;
+      let message = t('cset.httperror', { status: response.status });
       try {
         const data = raw ? JSON.parse(raw) : {};
         const errors = Array.isArray(data.errors) ? data.errors : Object.values(data.errors || {});
@@ -140,9 +140,9 @@ const calagopusactivity = {
       if (!this.active(server) || requestid !== this.requestid || App.currentServerPage !== 'activity') return;
       let payload;
       try { payload = result.raw ? JSON.parse(result.raw) : {}; }
-      catch (error) { throw new Error('The panel returned an invalid activity response'); }
+      catch (error) { throw new Error(t('cact.badresponse')); }
       const pagination = payload.activities;
-      if (!pagination || !Array.isArray(pagination.data)) throw new Error('The panel returned incomplete activity data');
+      if (!pagination || !Array.isArray(pagination.data)) throw new Error(t('cact.incompletedata'));
       this.activities = pagination.data;
       this.total = Number(pagination.total) || 0;
       this.perpage = Math.max(1, Number(pagination.per_page) || 25);
@@ -168,11 +168,11 @@ const calagopusactivity = {
     const container = Utils.el('tabActivity');
     if (!container) return;
     if (this.error) {
-      container.innerHTML = `<div class="calagopus-activity-empty error" role="alert"><strong>Unable to load activity access</strong><span>${this.safe(this.error)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.retrypermissions()">Try Again</button></div>`;
+      container.innerHTML = `<div class="calagopus-activity-empty error" role="alert"><strong>${t('cact.accessfail')}</strong><span>${this.safe(this.error)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.retrypermissions()">${t('csub.retry')}</button></div>`;
     } else if (!this.routevisible) {
-      container.innerHTML = '<div class="calagopus-activity-empty"><strong>Activity unavailable</strong><span>Activity is not enabled for this server.</span></div>';
+      container.innerHTML = `<div class="calagopus-activity-empty"><strong>${t('cact.unavailable')}</strong><span>${t('cact.unavailable.desc')}</span></div>`;
     } else {
-      container.innerHTML = '<div class="calagopus-activity-empty"><strong>No access</strong><span>You do not have permission to view activity for this server.</span></div>';
+      container.innerHTML = `<div class="calagopus-activity-empty"><strong>${t('cact.noaccess')}</strong><span>${t('cact.noaccess.desc')}</span></div>`;
     }
   },
 
@@ -248,14 +248,14 @@ const calagopusactivity = {
 
   actor(item) {
     const method = item.is_api ? 'API' : 'Web';
-    const impersonated = item.impersonator?.username ? ` (Impersonated by ${this.safe(item.impersonator.username)})` : '';
+    const impersonated = item.impersonator?.username ? ` (${t('cact.impersonated', { name: this.safe(item.impersonator.username) })})` : '';
     if (item.user) return `<button type="button" class="calagopus-activity-actor" data-user="${this.safe(item.user.uuid)}">${this.safe(item.user.username)}</button> (${method})${impersonated}`;
-    return `${item.is_schedule ? 'Schedule' : 'System'}${impersonated}`;
+    return `${item.is_schedule ? t('cact.schedule') : t('cact.system')}${impersonated}`;
   },
 
   formatwhen(value) {
     const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) return 'N/A';
+    if (!Number.isFinite(date.getTime())) return t('csub.na');
     const seconds = Math.round((date.getTime() - Date.now()) / 1000);
     const absolute = Math.abs(seconds);
     const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
@@ -293,14 +293,14 @@ const calagopusactivity = {
     const numberend = Math.min(pages, numberstart + 2);
     const numbers = [];
     for (let page = numberstart; page <= numberend; page++) numbers.push(`<button type="button" class="${page === this.page ? 'active' : ''}" onclick="calagopusactivity.setpage(${page})" ${page === this.page ? 'aria-current="page"' : ''}>${page}</button>`);
-    return `<div class="calagopus-activity-pagination"><span>${start}-${end} of ${this.total}</span><div><button type="button" title="First page" onclick="calagopusactivity.setpage(1)" ${this.page <= 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"></path></svg></button><button type="button" title="Previous page" onclick="calagopusactivity.setpage(${this.page - 1})" ${this.page <= 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg></button>${numbers.join('')}<button type="button" title="Next page" onclick="calagopusactivity.setpage(${this.page + 1})" ${this.page >= pages ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></button><button type="button" title="Last page" onclick="calagopusactivity.setpage(${pages})" ${this.page >= pages ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 17 5-5-5-5M13 17l5-5-5-5"></path></svg></button></div></div>`;
+    return `<div class="calagopus-activity-pagination"><span>${t('cact.range', { start, end, total: this.total })}</span><div><button type="button" title="${t('cact.firstpage')}" onclick="calagopusactivity.setpage(1)" ${this.page <= 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"></path></svg></button><button type="button" title="${t('cact.prevpage')}" onclick="calagopusactivity.setpage(${this.page - 1})" ${this.page <= 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg></button>${numbers.join('')}<button type="button" title="${t('cact.nextpage')}" onclick="calagopusactivity.setpage(${this.page + 1})" ${this.page >= pages ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></button><button type="button" title="${t('cact.lastpage')}" onclick="calagopusactivity.setpage(${pages})" ${this.page >= pages ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 17 5-5-5-5M13 17l5-5-5-5"></path></svg></button></div></div>`;
   },
 
   row(item, index) {
     const details = this.hasdata(item.data);
     const revisionid = Number(item.data?.revision_id);
     const revision = item.event === 'server:file.write' && item.data?.file && Number.isInteger(revisionid) && revisionid > 0;
-    return `<tr><td>${this.avatar(item.user)}</td><td>${this.actor(item)}</td><td><code>${this.safe(item.event)}</code></td><td><code>${this.safe(item.ip || 'N/A')}</code></td><td><time data-activity-time="${this.safe(item.created)}" datetime="${this.safe(item.created)}" title="${this.safe(this.formattitle(item.created))}">${this.safe(this.formatwhen(item.created))}</time></td><td><div class="calagopus-activity-row-actions">${revision ? `<button type="button" title="View file revision" aria-label="View file revision" onclick="calagopusactivity.openrevision(${index})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M6 8v2a8 8 0 0 0 6 8M18 8v1a5 5 0 0 1-5 5"></path></svg></button>` : ''}${details ? `<button type="button" title="Activity details" aria-label="Activity details" onclick="calagopusactivity.details(${index})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg></button>` : ''}</div></td></tr>`;
+    return `<tr><td>${this.avatar(item.user)}</td><td>${this.actor(item)}</td><td><code>${this.safe(item.event)}</code></td><td><code>${this.safe(item.ip || t('csub.na'))}</code></td><td><time data-activity-time="${this.safe(item.created)}" datetime="${this.safe(item.created)}" title="${this.safe(this.formattitle(item.created))}">${this.safe(this.formatwhen(item.created))}</time></td><td><div class="calagopus-activity-row-actions">${revision ? `<button type="button" title="${t('cact.viewrevision')}" aria-label="${t('cact.viewrevision')}" onclick="calagopusactivity.openrevision(${index})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M6 8v2a8 8 0 0 0 6 8M18 8v1a5 5 0 0 1-5 5"></path></svg></button>` : ''}${details ? `<button type="button" title="${t('cact.details')}" aria-label="${t('cact.details')}" onclick="calagopusactivity.details(${index})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg></button>` : ''}</div></td></tr>`;
   },
 
   render() {
@@ -312,9 +312,9 @@ const calagopusactivity = {
     const selectionend = oldsearch?.selectionEnd;
     const pagination = this.paginationhtml();
     const rows = this.activities.map((item, index) => this.row(item, index)).join('');
-    const empty = !this.loading && !this.error && !this.activities.length ? '<div class="calagopus-activity-empty"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5M4 12h16M20 5v14"></path></svg><span>No activity found.</span></div>' : '';
-    const error = this.error ? `<div class="calagopus-activity-empty error" role="alert"><strong>Unable to load activity</strong><span>${this.safe(this.error)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.load()">Try Again</button></div>` : '';
-    container.innerHTML = `<div class="calagopus-activity-page"><div class="calagopus-activity-header"><h2>Activity</h2><div class="calagopus-activity-tools"><label class="calagopus-activity-search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input id="calagopus-activity-search" type="search" maxlength="128" placeholder="Search activity" value="${this.safe(this.search)}" oninput="calagopusactivity.setsearch(this.value)"></label>${this.user ? '<button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.setuser(null)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 6-12 12M6 6l12 12"></path></svg>Clear User Filter</button>' : ''}</div></div><div class="calagopus-activity-tablebox">${pagination}<div class="calagopus-activity-tablewrap"><table><thead><tr><th></th><th>Actor</th><th>Event</th><th>IP</th><th>When</th><th></th></tr></thead><tbody>${!this.error ? rows : ''}</tbody></table>${this.loading ? '<div class="calagopus-activity-loading" role="status"><span class="spinner"></span></div>' : ''}</div>${error || empty}${pagination}</div></div>`;
+    const empty = !this.loading && !this.error && !this.activities.length ? `<div class="calagopus-activity-empty"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19V5M4 12h16M20 5v14"></path></svg><span>${t('cact.empty')}</span></div>` : '';
+    const error = this.error ? `<div class="calagopus-activity-empty error" role="alert"><strong>${t('cact.loadfail')}</strong><span>${this.safe(this.error)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.load()">${t('csub.retry')}</button></div>` : '';
+    container.innerHTML = `<div class="calagopus-activity-page"><div class="calagopus-activity-header"><h2>${t('cact.heading')}</h2><div class="calagopus-activity-tools"><label class="calagopus-activity-search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input id="calagopus-activity-search" type="search" maxlength="128" placeholder="${t('cact.search')}" value="${this.safe(this.search)}" oninput="calagopusactivity.setsearch(this.value)"></label>${this.user ? `<button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.setuser(null)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 6-12 12M6 6l12 12"></path></svg>${t('cact.clearfilter')}</button>` : ''}</div></div><div class="calagopus-activity-tablebox">${pagination}<div class="calagopus-activity-tablewrap"><table><thead><tr><th></th><th>${t('cact.h.actor')}</th><th>${t('cact.h.event')}</th><th>${t('cact.h.ip')}</th><th>${t('cact.h.when')}</th><th></th></tr></thead><tbody>${!this.error ? rows : ''}</tbody></table>${this.loading ? '<div class="calagopus-activity-loading" role="status"><span class="spinner"></span></div>' : ''}</div>${error || empty}${pagination}</div></div>`;
     if (restorefocus) {
       const search = Utils.el('calagopus-activity-search');
       search?.focus();
@@ -334,7 +334,7 @@ const calagopusactivity = {
     const item = this.activities[index];
     if (!item || !this.hasdata(item.data)) return;
     const json = JSON.stringify(item.data, null, 2);
-    Modal.open('Activity Details', `<pre class="calagopus-activity-json"><code>${this.safe(json)}</code></pre><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">Close</button></div>`, 'calagopus-activity-modal');
+    Modal.open(t('cact.details.title'), `<pre class="calagopus-activity-json"><code>${this.safe(json)}</code></pre><div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.close')}</button></div>`, 'calagopus-activity-modal');
   },
 
   async openrevision(index) {
@@ -343,11 +343,11 @@ const calagopusactivity = {
     const revision = Number(item?.data?.revision_id);
     if (!item || item.event !== 'server:file.write' || !file || !Number.isInteger(revision) || revision < 1) return;
     if (!this.can('files.read-content')) {
-      this.toast('You do not have permission to read file revisions.', 'error');
+      this.toast(t('cact.rev.noperm'), 'error');
       return;
     }
     if (!this.filesroutevisible) {
-      this.toast('File revisions are not enabled for this server.', 'error');
+      this.toast(t('cact.rev.disabled'), 'error');
       return;
     }
     this.diff = { server: this.server, file, revision, revisioncontent: '', currentcontent: '', baseline: '', dirty: false, loading: true, saving: false, error: '', left: null, right: null };
@@ -368,7 +368,7 @@ const calagopusactivity = {
   blocknavigation(page) {
     if (!this.diff || this.routingrevision || this.discardnavigation || !this.diff.dirty) return false;
     this.pendingpage = page;
-    Modal.confirm('Unsaved Changes', 'You have unsaved changes in the revision comparison. Leave this page and discard them?', () => {
+    Modal.confirm(t('files.unsaved.title'), t('cact.unsaved.leave'), () => {
       this.discardnavigation = true;
       this.closediff(true);
       const next = this.pendingpage;
@@ -403,7 +403,7 @@ const calagopusactivity = {
       view.className = 'calagopus-revision-view';
       tab.appendChild(view);
     }
-    view.innerHTML = `<div class="calagopus-revision-header"><div><button type="button" class="calagopus-revision-back" title="Back to Activity" onclick="calagopusactivity.backfromrevision()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg></button><h2>${this.safe(diff.file.split('/').pop())}</h2><span>Revision #${diff.revision} vs current</span></div><div class="calagopus-revision-actions">${this.can('files.create') ? '<button type="button" class="btn btn-secondary btn-sm" data-restore disabled>Restore Revision</button><button type="button" class="btn btn-primary btn-sm" data-save disabled>Save</button>' : ''}</div></div><div class="calagopus-revision-labels"><span>Revision #${diff.revision}</span><span>Current file</span></div><div class="calagopus-revision-editors"><div><textarea data-original></textarea></div><div><textarea data-current></textarea></div></div><div class="calagopus-revision-state" role="status"><span class="spinner"></span>Loading revision...</div>`;
+    view.innerHTML = `<div class="calagopus-revision-header"><div><button type="button" class="calagopus-revision-back" title="${t('cact.rev.back')}" onclick="calagopusactivity.backfromrevision()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg></button><h2>${this.safe(diff.file.split('/').pop())}</h2><span>${t('cact.rev.vs', { n: diff.revision })}</span></div><div class="calagopus-revision-actions">${this.can('files.create') ? `<button type="button" class="btn btn-secondary btn-sm" data-restore disabled>${t('cact.rev.restore')}</button><button type="button" class="btn btn-primary btn-sm" data-save disabled>${t('cact.rev.save')}</button>` : ''}</div></div><div class="calagopus-revision-labels"><span>${t('cact.rev.revision', { n: diff.revision })}</span><span>${t('cact.rev.current')}</span></div><div class="calagopus-revision-editors"><div><textarea data-original></textarea></div><div><textarea data-current></textarea></div></div><div class="calagopus-revision-state" role="status"><span class="spinner"></span>${t('cact.rev.loading')}</div>`;
     view.querySelector('[data-restore]')?.addEventListener('click', () => this.restorerevision());
     view.querySelector('[data-save]')?.addEventListener('click', () => this.saverevision());
     try {
@@ -422,7 +422,7 @@ const calagopusactivity = {
       if (this.diff !== diff || !this.active(diff.server)) return;
       diff.loading = false;
       diff.error = error.message;
-      view.querySelector('.calagopus-revision-state').innerHTML = `<strong>Unable to load revision</strong><span>${this.safe(error.message)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.renderrevision()">Try Again</button>`;
+      view.querySelector('.calagopus-revision-state').innerHTML = `<strong>${t('cact.rev.loadfail')}</strong><span>${this.safe(error.message)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="calagopusactivity.renderrevision()">${t('csub.retry')}</button>`;
     }
   },
 
@@ -468,7 +468,7 @@ const calagopusactivity = {
       diff.right.focus();
     };
     if (diff.dirty) {
-      Modal.confirm('Unsaved Changes', 'Restore this revision and discard your unsaved changes in the current comparison?', restore);
+      Modal.confirm(t('files.unsaved.title'), t('cact.rev.unsavedrestore'), restore);
     } else {
       restore();
     }
@@ -486,7 +486,7 @@ const calagopusactivity = {
       diff.baseline = content;
       diff.currentcontent = content;
       diff.dirty = false;
-      this.toast('File updated successfully.');
+      this.toast(t('cact.rev.saved'));
     } catch (error) {
       if (this.diff === diff) this.toast(error.message, 'error');
     } finally {

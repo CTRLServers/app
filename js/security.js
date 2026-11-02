@@ -176,12 +176,12 @@ const Security = {
     if (!tab) return;
 
     if (this.loading) {
-      tab.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+      tab.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
       return;
     }
 
     if (!this.data) {
-      tab.innerHTML = '<div class="fw-empty" style="padding:48px;">Failed to load security data</div>';
+      tab.innerHTML = `<div class="fw-empty" style="padding:48px;">${t('sec.load_failed')}</div>`;
       return;
     }
 
@@ -191,13 +191,13 @@ const Security = {
       <div class="sec-grid">
         <div class="fw-card">
           <div class="fw-card-header">
-            <h3>Open Ports (TCP)</h3>
+            <h3>${t('sec.tcp.title')}</h3>
             <span class="packages-count-badge">${d.tcpPorts.length}</span>
           </div>
           <div class="fw-card-body">`;
 
     if (d.tcpPorts.length) {
-      html += `<table class="fw-table"><thead><tr><th>Port</th><th>Bind</th><th>Process</th><th>State</th></tr></thead><tbody>`;
+      html += `<table class="fw-table"><thead><tr><th>${t('sec.col.port')}</th><th>${t('sec.col.bind')}</th><th>${t('sec.col.process')}</th><th>${t('sec.col.state')}</th></tr></thead><tbody>`;
       for (const p of d.tcpPorts) {
         html += `<tr>
           <td><code>${Utils.escape(p.port)}</code></td>
@@ -208,20 +208,20 @@ const Security = {
       }
       html += '</tbody></table>';
     } else {
-      html += '<div class="fw-empty">No TCP ports listening</div>';
+      html += `<div class="fw-empty">${t('sec.tcp.empty')}</div>`;
     }
 
     html += `</div></div>
 
         <div class="fw-card">
           <div class="fw-card-header">
-            <h3>Open Ports (UDP)</h3>
+            <h3>${t('sec.udp.title')}</h3>
             <span class="packages-count-badge">${d.udpPorts.length}</span>
           </div>
           <div class="fw-card-body">`;
 
     if (d.udpPorts.length) {
-      html += `<table class="fw-table"><thead><tr><th>Port</th><th>Bind</th><th>Process</th></tr></thead><tbody>`;
+      html += `<table class="fw-table"><thead><tr><th>${t('sec.col.port')}</th><th>${t('sec.col.bind')}</th><th>${t('sec.col.process')}</th></tr></thead><tbody>`;
       for (const p of d.udpPorts) {
         html += `<tr>
           <td><code>${Utils.escape(p.port)}</code></td>
@@ -231,22 +231,22 @@ const Security = {
       }
       html += '</tbody></table>';
     } else {
-      html += '<div class="fw-empty">No UDP ports listening</div>';
+      html += `<div class="fw-empty">${t('sec.udp.empty')}</div>`;
     }
 
     html += `</div></div></div>`;
 
     html += `<div class="sec-grid">
       <div class="fw-card">
-        <div class="fw-card-header"><h3>SSH Configuration</h3></div>
+        <div class="fw-card-header"><h3>${t('sec.ssh.title')}</h3></div>
         <div class="fw-card-body">`;
 
     if (d.sshConfig) {
       html += '<div class="sec-config-list">';
       const labels = {
-        'Port': 'SSH Port', 'PermitRootLogin': 'Root Login', 'PasswordAuthentication': 'Password Auth',
-        'PubkeyAuthentication': 'Key Auth', 'MaxAuthTries': 'Max Auth Tries',
-        'Protocol': 'Protocol', 'X11Forwarding': 'X11 Forwarding'
+        'Port': t('sec.ssh.port'), 'PermitRootLogin': t('sec.ssh.root_login'), 'PasswordAuthentication': t('sec.ssh.password_auth'),
+        'PubkeyAuthentication': t('sec.ssh.key_auth'), 'MaxAuthTries': t('sec.ssh.max_tries'),
+        'Protocol': t('sec.ssh.protocol'), 'X11Forwarding': t('sec.ssh.x11')
       };
       for (const [key, val] of Object.entries(d.sshConfig)) {
         const isOn = val === 'yes' || val === 'on';
@@ -258,7 +258,7 @@ const Security = {
       }
       html += '</div>';
     } else {
-      html += '<div class="fw-empty">SSH config not found</div>';
+      html += `<div class="fw-empty">${t('sec.ssh.not_found')}</div>`;
     }
 
     html += `</div></div>
@@ -270,22 +270,22 @@ const Security = {
     if (d.fail2ban) {
       html += `<div class="sec-config-list">
         <div class="sec-config-row">
-          <span class="sec-config-key">Status</span>
-          <span class="sec-config-val">Running</span>
+          <span class="sec-config-key">${t('sec.f2b.status')}</span>
+          <span class="sec-config-val">${t('sec.f2b.running')}</span>
         </div>
         <div class="sec-config-row">
-          <span class="sec-config-key">Banned IPs</span>
+          <span class="sec-config-key">${t('sec.f2b.banned')}</span>
           <span class="sec-config-val ${d.fail2ban.banned > 0 ? 'sec-warn' : ''}">${d.fail2ban.banned || 0}</span>
         </div>
         <div class="sec-config-row">
-          <span class="sec-config-key">Jails</span>
-          <span class="sec-config-val">${d.fail2ban.jails.join(', ') || 'None'}</span>
+          <span class="sec-config-key">${t('sec.f2b.jails')}</span>
+          <span class="sec-config-val">${d.fail2ban.jails.join(', ') || t('sec.f2b.none')}</span>
         </div>
       </div>`;
     } else {
       html += `<div class="sec-fail2ban-missing">
-        <p>Fail2Ban is not installed</p>
-        <button class="btn btn-sm btn-secondary" onclick="Security.installfail2ban()">Install Fail2Ban</button>
+        <p>${t('sec.f2b.not_installed')}</p>
+        <button class="btn btn-sm btn-secondary" onclick="Security.installfail2ban()">${t('sec.f2b.install')}</button>
       </div>`;
     }
 
@@ -293,11 +293,11 @@ const Security = {
 
     html += `<div class="sec-grid">
       <div class="fw-card">
-        <div class="fw-card-header"><h3>Recent Logins</h3></div>
+        <div class="fw-card-header"><h3>${t('sec.logins.title')}</h3></div>
         <div class="fw-card-body">`;
 
     if (d.lastLogins.length) {
-      html += `<table class="fw-table"><thead><tr><th>User</th><th>Terminal</th><th>From</th><th>Time</th></tr></thead><tbody>`;
+      html += `<table class="fw-table"><thead><tr><th>${t('sec.col.user')}</th><th>${t('sec.col.terminal')}</th><th>${t('sec.col.from')}</th><th>${t('sec.col.time')}</th></tr></thead><tbody>`;
       for (const l of d.lastLogins) {
         html += `<tr>
           <td><strong>${Utils.escape(l.user)}</strong></td>
@@ -308,19 +308,19 @@ const Security = {
       }
       html += '</tbody></table>';
     } else {
-      html += '<div class="fw-empty">No login records</div>';
+      html += `<div class="fw-empty">${t('sec.logins.empty')}</div>`;
     }
 
     html += `</div></div>
 
       <div class="fw-card">
-        <div class="fw-card-header"><h3>Failed Login Attempts</h3></div>
+        <div class="fw-card-header"><h3>${t('sec.failed.title')}</h3></div>
         <div class="fw-card-body">`;
 
     if (d.failedLoginsUnavailable) {
-      html += '<div class="fw-empty">Failed login records could not be read</div>';
+      html += `<div class="fw-empty">${t('sec.failed.unavailable')}</div>`;
     } else if (d.failedLogins.length) {
-      html += `<table class="fw-table"><thead><tr><th>User</th><th>Terminal</th><th>From</th><th>Time</th></tr></thead><tbody>`;
+      html += `<table class="fw-table"><thead><tr><th>${t('sec.col.user')}</th><th>${t('sec.col.terminal')}</th><th>${t('sec.col.from')}</th><th>${t('sec.col.time')}</th></tr></thead><tbody>`;
       for (const l of d.failedLogins) {
         html += `<tr>
           <td><strong>${Utils.escape(l.user)}</strong></td>
@@ -331,7 +331,7 @@ const Security = {
       }
       html += '</tbody></table>';
     } else {
-      html += '<div class="fw-empty">No failed login attempts</div>';
+      html += `<div class="fw-empty">${t('sec.failed.empty')}</div>`;
     }
 
     html += `</div></div></div></div>`;
@@ -339,7 +339,7 @@ const Security = {
   },
 
   async installfail2ban() {
-    Modal.confirm('Install Fail2Ban', 'Install Fail2Ban using the Packages tab?', async () => {
+    Modal.confirm(t('sec.f2b.install'), t('sec.f2b.install_message'), async () => {
       if (this.server) {
         await this.exec('apt-get install -y fail2ban 2>/dev/null || dnf install -y fail2ban 2>/dev/null || pacman -S --noconfirm fail2ban 2>/dev/null', { root: true });
         this.load();

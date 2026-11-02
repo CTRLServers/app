@@ -2,55 +2,55 @@ const ServerUsers = {
   users: [],
 
   PERM_GROUPS: [
-    { label: 'Server Control', perms: [
-      { key: 'control.console', desc: 'View console and send commands' },
-      { key: 'control.start', desc: 'Start the server' },
-      { key: 'control.stop', desc: 'Stop the server' },
-      { key: 'control.restart', desc: 'Restart the server' },
-      { key: 'control.kill', desc: 'Force kill the server' }
+    { label: 'users.pg.control', perms: [
+      { key: 'control.console', desc: 'users.pd.control_console' },
+      { key: 'control.start', desc: 'users.pd.control_start' },
+      { key: 'control.stop', desc: 'users.pd.control_stop' },
+      { key: 'control.restart', desc: 'users.pd.control_restart' },
+      { key: 'control.kill', desc: 'users.pd.control_kill' }
     ]},
-    { label: 'File Management', perms: [
-      { key: 'file.create', desc: 'Create files and directories' },
-      { key: 'file.read', desc: 'View file contents' },
-      { key: 'file.update', desc: 'Modify files' },
-      { key: 'file.delete', desc: 'Delete files' },
-      { key: 'file.archive', desc: 'Create/extract archives' },
-      { key: 'file.sftp', desc: 'Access via SFTP' }
+    { label: 'users.pg.files', perms: [
+      { key: 'file.create', desc: 'users.pd.file_create' },
+      { key: 'file.read', desc: 'users.pd.file_read' },
+      { key: 'file.update', desc: 'users.pd.file_update' },
+      { key: 'file.delete', desc: 'users.pd.file_delete' },
+      { key: 'file.archive', desc: 'users.pd.file_archive' },
+      { key: 'file.sftp', desc: 'users.pd.file_sftp' }
     ]},
-    { label: 'Backups', perms: [
-      { key: 'backup.create', desc: 'Create backups' },
-      { key: 'backup.read', desc: 'View backups' },
-      { key: 'backup.delete', desc: 'Delete backups' },
-      { key: 'backup.download', desc: 'Download backups' },
-      { key: 'backup.restore', desc: 'Restore backups' }
+    { label: 'users.pg.backups', perms: [
+      { key: 'backup.create', desc: 'users.pd.backup_create' },
+      { key: 'backup.read', desc: 'users.pd.backup_read' },
+      { key: 'backup.delete', desc: 'users.pd.backup_delete' },
+      { key: 'backup.download', desc: 'users.pd.backup_download' },
+      { key: 'backup.restore', desc: 'users.pd.backup_restore' }
     ]},
-    { label: 'Network', perms: [
-      { key: 'allocation.read', desc: 'View allocations' },
-      { key: 'allocation.create', desc: 'Assign allocations' },
-      { key: 'allocation.update', desc: 'Modify allocations' },
-      { key: 'allocation.delete', desc: 'Remove allocations' }
+    { label: 'users.pg.network', perms: [
+      { key: 'allocation.read', desc: 'users.pd.allocation_read' },
+      { key: 'allocation.create', desc: 'users.pd.allocation_create' },
+      { key: 'allocation.update', desc: 'users.pd.allocation_update' },
+      { key: 'allocation.delete', desc: 'users.pd.allocation_delete' }
     ]},
-    { label: 'Databases', perms: [
-      { key: 'database.create', desc: 'Create databases' },
-      { key: 'database.read', desc: 'View databases' },
-      { key: 'database.update', desc: 'Rotate passwords' },
-      { key: 'database.delete', desc: 'Delete databases' }
+    { label: 'users.pg.databases', perms: [
+      { key: 'database.create', desc: 'users.pd.database_create' },
+      { key: 'database.read', desc: 'users.pd.database_read' },
+      { key: 'database.update', desc: 'users.pd.database_update' },
+      { key: 'database.delete', desc: 'users.pd.database_delete' }
     ]},
-    { label: 'Schedules', perms: [
-      { key: 'schedule.create', desc: 'Create schedules' },
-      { key: 'schedule.read', desc: 'View schedules' },
-      { key: 'schedule.update', desc: 'Modify schedules' },
-      { key: 'schedule.delete', desc: 'Delete schedules' }
+    { label: 'users.pg.schedules', perms: [
+      { key: 'schedule.create', desc: 'users.pd.schedule_create' },
+      { key: 'schedule.read', desc: 'users.pd.schedule_read' },
+      { key: 'schedule.update', desc: 'users.pd.schedule_update' },
+      { key: 'schedule.delete', desc: 'users.pd.schedule_delete' }
     ]},
-    { label: 'User Management', perms: [
-      { key: 'user.create', desc: 'Invite subusers' },
-      { key: 'user.read', desc: 'View subusers' },
-      { key: 'user.update', desc: 'Modify permissions' },
-      { key: 'user.delete', desc: 'Remove subusers' }
+    { label: 'users.pg.users', perms: [
+      { key: 'user.create', desc: 'users.pd.user_create' },
+      { key: 'user.read', desc: 'users.pd.user_read' },
+      { key: 'user.update', desc: 'users.pd.user_update' },
+      { key: 'user.delete', desc: 'users.pd.user_delete' }
     ]},
-    { label: 'Startup', perms: [
-      { key: 'startup.read', desc: 'View startup config' },
-      { key: 'startup.update', desc: 'Modify variables' }
+    { label: 'users.pg.startup', perms: [
+      { key: 'startup.read', desc: 'users.pd.startup_read' },
+      { key: 'startup.update', desc: 'users.pd.startup_update' }
     ]}
   ],
 
@@ -91,9 +91,9 @@ const ServerUsers = {
     if (!this.users.length) {
       tab.innerHTML = `<div class="perm-content"><div class="perm-empty">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <h3>No subusers yet</h3>
-        <p>Invite users to grant them access to this server</p>
-        <button class="btn btn-primary" onclick="ServerUsers.showinvite()">Invite User</button>
+        <h3>${t('users.none.title')}</h3>
+        <p>${t('users.none.text')}</p>
+        <button class="btn btn-primary" onclick="ServerUsers.showinvite()">${t('users.invite')}</button>
       </div></div>`;
       return;
     }
@@ -102,9 +102,9 @@ const ServerUsers = {
       <div class="perm-header">
         <div class="network-info-box">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          <span>${this.users.length} subuser${this.users.length !== 1 ? 's' : ''} with access to this server</span>
+          <span>${t('users.count', { n: this.users.length })}</span>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="ServerUsers.showinvite()">Invite User</button>
+        <button class="btn btn-primary btn-sm" onclick="ServerUsers.showinvite()">${t('users.invite')}</button>
       </div>
       <div class="perm-users-list">`;
 
@@ -112,7 +112,7 @@ const ServerUsers = {
       const u = this.users[i];
       const attrs = u.attributes || u;
       const userId = attrs.uuid;
-      const email = attrs.email || 'Unknown';
+      const email = attrs.email || t('users.unknown');
       const username = attrs.username || email.split('@')[0];
       const perms = attrs.permissions || [];
       const avatarImg = attrs.image;
@@ -129,9 +129,9 @@ const ServerUsers = {
           <div class="perm-user-actions">
             <button class="btn btn-secondary btn-sm" onclick="ServerUsers.showedit(${i})">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-              Edit
+              ${t('users.editbtn')}
             </button>
-            <button class="btn-icon btn-danger-sm" onclick="ServerUsers.confirmdelete(${i})" title="Remove">
+            <button class="btn-icon btn-danger-sm" onclick="ServerUsers.confirmdelete(${i})" title="${t('users.remove')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
@@ -152,7 +152,7 @@ const ServerUsers = {
           </div>`;
         }
       } else {
-        html += '<span class="text-muted" style="font-size:12px;">No permissions assigned</span>';
+        html += `<span class="text-muted" style="font-size:12px;">${t('users.noperms')}</span>`;
       }
 
       html += `</div></div>`;
@@ -163,22 +163,22 @@ const ServerUsers = {
   },
 
   showinvite() {
-    Modal.open('Invite Subuser', `
+    Modal.open(t('users.invite.title'), `
       <div class="form-group">
-        <label class="form-label">Email</label>
+        <label class="form-label">${t('users.email')}</label>
         <input class="form-input" type="email" id="subuserEmail" placeholder="user@example.com" />
       </div>
       <div class="form-group">
-        <label class="form-label">Quick Template</label>
+        <label class="form-label">${t('users.quicktpl')}</label>
         <div class="perm-template-row">
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('readonly')">Read-Only</button>
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('moderator')">Moderator</button>
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('admin')">Admin</button>
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('developer')">Developer</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('readonly')">${t('users.tpl.readonly')}</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('moderator')">${t('users.tpl.moderator')}</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('admin')">${t('users.tpl.admin')}</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('developer')">${t('users.tpl.developer')}</button>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Permissions</label>
+        <label class="form-label">${t('users.permissions')}</label>
         <div class="perm-checkboxes" id="subuserPerms">
           ${this.buildpermcheckboxes([])}
         </div>
@@ -186,7 +186,7 @@ const ServerUsers = {
       <div id="subuserError"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="subuserInviteBtn">Invite</button>
+        <button class="btn btn-primary" id="subuserInviteBtn">${t('users.invite.btn')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -194,7 +194,7 @@ const ServerUsers = {
         const email = document.getElementById('subuserEmail').value.trim();
         const perms = this.getcheckedperms();
         const err = document.getElementById('subuserError');
-        if (!email) { err.innerHTML = '<div class="error-msg">Email required</div>'; return; }
+        if (!email) { err.innerHTML = `<div class="error-msg">${t('users.emailrequired')}</div>`; return; }
         const server = App.currentServer;
         const apiKey = await Servers.resolveapikey(server);
         try {
@@ -218,22 +218,22 @@ const ServerUsers = {
     const perms = attrs.permissions || [];
     const avatarImg = attrs.image;
 
-    Modal.open('Edit Subuser', `
+    Modal.open(t('users.edit.title'), `
       <div class="perm-edit-header">
         <div class="perm-user-avatar" style="width:36px;height:36px;font-size:14px;">${avatarImg ? `<img src="${Utils.escape(avatarImg)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : Utils.escape(username.charAt(0).toUpperCase())}</div>
         <span style="font-size:14px;font-weight:500;">${Utils.escape(username)}</span>
       </div>
       <div class="form-group">
-        <label class="form-label">Quick Template</label>
+        <label class="form-label">${t('users.quicktpl')}</label>
         <div class="perm-template-row">
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('readonly')">Read-Only</button>
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('moderator')">Moderator</button>
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('admin')">Admin</button>
-          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('developer')">Developer</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('readonly')">${t('users.tpl.readonly')}</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('moderator')">${t('users.tpl.moderator')}</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('admin')">${t('users.tpl.admin')}</button>
+          <button class="btn btn-sm btn-secondary perm-tpl-btn" onclick="ServerUsers.applytemplate('developer')">${t('users.tpl.developer')}</button>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Permissions</label>
+        <label class="form-label">${t('users.permissions')}</label>
         <div class="perm-checkboxes" id="subuserPerms">
           ${this.buildpermcheckboxes(perms)}
         </div>
@@ -241,7 +241,7 @@ const ServerUsers = {
       <div id="subuserError"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="subuserSaveBtn">Save Changes</button>
+        <button class="btn btn-primary" id="subuserSaveBtn">${t('sched.save')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -265,14 +265,14 @@ const ServerUsers = {
     let html = '';
     for (const group of this.PERM_GROUPS) {
       html += `<div class="perm-group">
-        <div class="perm-group-label">${Utils.escape(group.label)}</div>`;
+        <div class="perm-group-label">${Utils.escape(t(group.label))}</div>`;
       for (const p of group.perms) {
         const checked = selected.includes(p.key) ? 'checked' : '';
         html += `<label class="perm-check-item">
           <input type="checkbox" class="perm-cb" value="${p.key}" ${checked} />
           <div class="perm-check-content">
             <span class="perm-check-key">${Utils.escape(p.key)}</span>
-            <span class="perm-check-desc">${Utils.escape(p.desc)}</span>
+            <span class="perm-check-desc">${Utils.escape(t(p.desc))}</span>
           </div>
         </label>`;
       }
@@ -298,8 +298,8 @@ const ServerUsers = {
     if (!u) return;
     const attrs = u.attributes || u;
     const userId = attrs.uuid;
-    const email = attrs.email || 'Unknown';
-    Modal.confirm('Remove Subuser', `Remove "${email}" from this server?`, async () => {
+    const email = attrs.email || t('users.unknown');
+    Modal.confirm(t('users.remove.title'), t('users.remove.confirm', { email: email }), async () => {
       const server = App.currentServer;
       const apiKey = await Servers.resolveapikey(server);
       try {

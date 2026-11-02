@@ -53,7 +53,7 @@ const adminusers = {
   },
 
   renderloading(container) {
-    container.innerHTML = '<div class="paneladmin-loading"><div class="spinner"></div><span>Loading users...</span></div>';
+    container.innerHTML = `<div class="paneladmin-loading"><div class="spinner"></div><span>${t('auser.loading')}</span></div>`;
   },
 
   render() {
@@ -64,20 +64,20 @@ const adminusers = {
       <div class="paneladmin-page adminusers-page">
         <div class="paneladmin-heading adminusers-heading">
           <div>
-            <h2>Users</h2>
-            <span class="paneladmin-url">${total} account${total === 1 ? '' : 's'}</span>
+            <h2>${t('auser.title')}</h2>
+            <span class="paneladmin-url">${this.accounts(total)}</span>
           </div>
           <button type="button" class="btn btn-primary" onclick="adminusers.opencreate()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-            Create user
+            ${t('auser.create')}
           </button>
         </div>
         <div class="adminusers-toolbar">
           <label class="adminusers-search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
-            <input type="search" id="adminusers-search" value="${this.safeattr(this.search)}" placeholder="Search username or email" oninput="adminusers.searchinput(this.value)" />
+            <input type="search" id="adminusers-search" value="${this.safeattr(this.search)}" placeholder="${this.safeattr(t('auser.search'))}" oninput="adminusers.searchinput(this.value)" />
           </label>
-          <button type="button" class="paneladmin-refresh" onclick="adminusers.load(adminusers.page)" title="Refresh">
+          <button type="button" class="paneladmin-refresh" onclick="adminusers.load(adminusers.page)" title="${t('aloc.refresh')}">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
           </button>
         </div>
@@ -112,15 +112,15 @@ const adminusers = {
             <small>@${this.safe(user.username)}</small>
           </span>
         </div>
-        <div class="adminusers-card-field"><small>Role</small><span class="adminusers-role ${user.root_admin ? 'admin' : ''}">${user.root_admin ? 'Administrator' : 'User'}</span></div>
-        <div class="adminusers-card-field"><small>Servers</small><span class="adminusers-count">${servers}</span></div>
-        <div class="adminusers-card-field"><small>2FA</small><span class="adminusers-security ${user['2fa'] ? 'enabled' : ''}">${user['2fa'] ? 'Enabled' : 'Disabled'}</span></div>
-        <div class="adminusers-card-field"><small>Created</small><span class="adminusers-date">${this.safe(this.formatdate(user.created_at))}</span></div>
+        <div class="adminusers-card-field"><small>${t('auser.role')}</small><span class="adminusers-role ${user.root_admin ? 'admin' : ''}">${user.root_admin ? t('auser.admin') : t('auser.user')}</span></div>
+        <div class="adminusers-card-field"><small>${t('auser.servers')}</small><span class="adminusers-count">${servers}</span></div>
+        <div class="adminusers-card-field"><small>${t('auser.twofa')}</small><span class="adminusers-security ${user['2fa'] ? 'enabled' : ''}">${user['2fa'] ? t('csub.enabled') : t('csub.disabled')}</span></div>
+        <div class="adminusers-card-field"><small>${t('auser.created')}</small><span class="adminusers-date">${this.safe(this.formatdate(user.created_at))}</span></div>
         <div class="adminusers-actions">
-          <button type="button" onclick="event.stopPropagation(); adminusers.openedit(${id})" title="Edit user">
+          <button type="button" onclick="event.stopPropagation(); adminusers.openedit(${id})" title="${t('auser.edituser')}">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
           </button>
-          <button type="button" class="danger" onclick="event.stopPropagation(); adminusers.opendelete(${id})" title="Delete user">
+          <button type="button" class="danger" onclick="event.stopPropagation(); adminusers.opendelete(${id})" title="${t('auser.deleteuser')}">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6m3 0V4h8v2"/></svg>
           </button>
         </div>
@@ -138,7 +138,7 @@ const adminusers = {
     return `
       <div class="adminusers-empty">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/></svg>
-        <strong>No users found</strong>
+        <strong>${t('auser.empty')}</strong>
       </div>`;
   },
 
@@ -148,16 +148,26 @@ const adminusers = {
     if (pages <= 1) return '';
     return `
       <div class="adminusers-pagination">
-        <span>Page ${current} of ${pages}</span>
+        <span>${t('aloc.page', { current, pages })}</span>
         <div>
-          <button type="button" onclick="adminusers.load(${current - 1})" ${current <= 1 ? 'disabled' : ''} title="Previous page">
+          <button type="button" onclick="adminusers.load(${current - 1})" ${current <= 1 ? 'disabled' : ''} title="${t('aloc.prevpage')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <button type="button" onclick="adminusers.load(${current + 1})" ${current >= pages ? 'disabled' : ''} title="Next page">
+          <button type="button" onclick="adminusers.load(${current + 1})" ${current >= pages ? 'disabled' : ''} title="${t('aloc.nextpage')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
       </div>`;
+  },
+
+  accounts(count) {
+    const value = Number(count || 0);
+    const key = value % 10 === 1 && value % 100 !== 11
+      ? 'auser.accounts.one'
+      : value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 >= 20)
+        ? 'auser.accounts.few'
+        : 'auser.accounts.many';
+    return t(key, { count: value });
   },
 
   searchinput(value) {
@@ -168,14 +178,14 @@ const adminusers = {
 
   opencreate() {
     this.editingid = null;
-    Modal.open('Create User', this.renderform(null), 'modal-wide');
+    Modal.open(t('auser.create.title'), this.renderform(null), 'modal-wide');
   },
 
   openedit(id) {
     const user = this.users.find(entry => Number(entry.id) === Number(id));
     if (!user) return;
     this.editingid = Number(id);
-    Modal.open('Edit User', this.renderform(user), 'modal-wide');
+    Modal.open(t('auser.edit.title'), this.renderform(user), 'modal-wide');
   },
 
   async openremote(id) {
@@ -192,9 +202,9 @@ const adminusers = {
       if (existing >= 0) this.users[existing] = user;
       else this.users.push(user);
       this.editingid = Number(user.id);
-      Modal.open('Edit User', this.renderform(user), 'modal-wide');
+      Modal.open(t('auser.edit.title'), this.renderform(user), 'modal-wide');
     } catch (error) {
-      Modal.alert('Unable to load user', this.safe(error.message));
+      Modal.alert(t('auser.loadone'), this.safe(error.message));
     }
   },
 
@@ -203,25 +213,25 @@ const adminusers = {
     return `
       <div id="adminusers-form-error"></div>
       <div class="adminusers-form">
-        <label class="adminusers-field"><span>Email</span><input type="email" id="adminuser-email" value="${this.safeattr(user?.email)}" autocomplete="off" /></label>
-        <label class="adminusers-field"><span>Username</span><input type="text" id="adminuser-username" value="${this.safeattr(user?.username)}" autocomplete="off" /></label>
-        <label class="adminusers-field"><span>First name</span><input type="text" id="adminuser-first-name" value="${this.safeattr(user?.first_name)}" autocomplete="off" /></label>
-        <label class="adminusers-field"><span>Last name</span><input type="text" id="adminuser-last-name" value="${this.safeattr(user?.last_name)}" autocomplete="off" /></label>
-        <label class="adminusers-field"><span>Password</span><input type="password" id="adminuser-password" value="" placeholder="${editing ? 'Unchanged' : 'Optional'}" autocomplete="new-password" /></label>
-        <label class="adminusers-field"><span>Language</span><select id="adminuser-language">${this.languageoptions(user?.language || 'en')}</select></label>
+        <label class="adminusers-field"><span>${t('auser.email')}</span><input type="email" id="adminuser-email" value="${this.safeattr(user?.email)}" autocomplete="off" /></label>
+        <label class="adminusers-field"><span>${t('auser.username')}</span><input type="text" id="adminuser-username" value="${this.safeattr(user?.username)}" autocomplete="off" /></label>
+        <label class="adminusers-field"><span>${t('auser.firstname')}</span><input type="text" id="adminuser-first-name" value="${this.safeattr(user?.first_name)}" autocomplete="off" /></label>
+        <label class="adminusers-field"><span>${t('auser.lastname')}</span><input type="text" id="adminuser-last-name" value="${this.safeattr(user?.last_name)}" autocomplete="off" /></label>
+        <label class="adminusers-field"><span>${t('auser.password')}</span><input type="password" id="adminuser-password" value="" placeholder="${editing ? t('auser.unchanged') : t('auser.optional')}" autocomplete="new-password" /></label>
+        <label class="adminusers-field"><span>${t('auser.language')}</span><select id="adminuser-language">${this.languageoptions(user?.language || 'en')}</select></label>
         <label class="adminusers-field adminusers-field-wide">
-          <span>External ID</span>
+          <span>${t('auser.externalid')}</span>
           <input type="text" id="adminuser-external-id" value="${this.safeattr(user?.external_id)}" />
-          <small class="adminusers-field-note">An optional ID from another system, such as billing or customer software. It lets integrations match this panel user without relying on their email or username.</small>
+          <small class="adminusers-field-note">${t('auser.externalhint')}</small>
         </label>
         <div class="adminusers-field adminusers-field-wide">
-          <span>Administrator</span>
-          <label class="paneladmin-toggle"><input type="checkbox" id="adminuser-root-admin" ${user?.root_admin ? 'checked' : ''} onchange="adminpanel.statustoggle('adminuser-root-admin')" /><span></span><em>${user?.root_admin ? 'Enabled' : 'Disabled'}</em></label>
+          <span>${t('auser.admin')}</span>
+          <label class="paneladmin-toggle"><input type="checkbox" id="adminuser-root-admin" ${user?.root_admin ? 'checked' : ''} onchange="adminpanel.statustoggle('adminuser-root-admin')" /><span></span><em>${user?.root_admin ? t('csub.enabled') : t('csub.disabled')}</em></label>
         </div>
       </div>
       <div class="modal-actions adminusers-form-actions">
-        <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button type="button" class="btn btn-primary" id="adminusers-form-save" onclick="adminusers.saveuser()">${editing ? 'Save changes' : 'Create user'}</button>
+        <button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button>
+        <button type="button" class="btn btn-primary" id="adminusers-form-save" onclick="adminusers.saveuser()">${editing ? t('auser.save') : t('auser.create')}</button>
       </div>`;
   },
 
@@ -230,7 +240,7 @@ const adminusers = {
     if (!options.some(option => String(option.value) === String(selected))) {
       options.unshift({ value: selected, label: selected });
     }
-    if (!options.length) options.push({ value: 'en', label: 'English' });
+    if (!options.length) options.push({ value: 'en', label: t('auser.english') });
     return options.map(option => `<option value="${this.safeattr(option.value)}" ${String(option.value) === String(selected) ? 'selected' : ''}>${this.safe(option.label)}</option>`).join('');
   },
 
@@ -254,12 +264,12 @@ const adminusers = {
     const errorbox = Utils.el('adminusers-form-error');
     const button = Utils.el('adminusers-form-save');
     if (!payload.email || !payload.username || !payload.first_name || !payload.last_name) {
-      if (errorbox) errorbox.innerHTML = '<div class="paneladmin-notice error">Complete all required fields.</div>';
+      if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${t('auser.required')}</div>`;
       return;
     }
     if (button) {
       button.disabled = true;
-      button.textContent = this.editingid === null ? 'Creating...' : 'Saving...';
+      button.textContent = this.editingid === null ? t('auser.creating') : t('cset.saving');
     }
     try {
       const { server, apikey } = await adminpanel.credentials();
@@ -275,7 +285,7 @@ const adminusers = {
       if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${this.safe(error.message)}</div>`;
       if (button) {
         button.disabled = false;
-        button.textContent = this.editingid === null ? 'Create user' : 'Save changes';
+        button.textContent = this.editingid === null ? t('auser.create') : t('auser.save');
       }
     }
   },
@@ -285,12 +295,12 @@ const adminusers = {
     if (!user) return;
     this.deletingid = Number(id);
     const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username;
-    Modal.open('Delete User', `
+    Modal.open(t('auser.delete.title'), `
       <div id="adminusers-delete-error"></div>
-      <p class="adminusers-delete-copy">Delete <strong>${this.safe(name)}</strong> from this panel? This cannot be undone.</p>
+      <p class="adminusers-delete-copy">${t('auser.delete.confirm', { name: this.safe(name) })}</p>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button type="button" class="btn btn-danger" id="adminusers-delete" onclick="adminusers.deleteuser()">Delete user</button>
+        <button type="button" class="btn btn-secondary" onclick="Modal.close()">${t('cset.cancel')}</button>
+        <button type="button" class="btn btn-danger" id="adminusers-delete" onclick="adminusers.deleteuser()">${t('auser.deleteuser')}</button>
       </div>`);
   },
 
@@ -300,7 +310,7 @@ const adminusers = {
     const button = Utils.el('adminusers-delete');
     if (button) {
       button.disabled = true;
-      button.textContent = 'Deleting...';
+      button.textContent = t('auser.deleting');
     }
     try {
       const { server, apikey } = await adminpanel.credentials();
@@ -314,7 +324,7 @@ const adminusers = {
       if (errorbox) errorbox.innerHTML = `<div class="paneladmin-notice error">${this.safe(error.message)}</div>`;
       if (button) {
         button.disabled = false;
-        button.textContent = 'Delete user';
+        button.textContent = t('auser.deleteuser');
       }
     }
   },
@@ -323,9 +333,9 @@ const adminusers = {
     container.innerHTML = `
       <div class="paneladmin-error-state">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <strong>Unable to load users</strong>
+        <strong>${t('auser.err.load')}</strong>
         <span>${this.safe(error.message)}</span>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="adminusers.load(adminusers.page)">Retry</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="adminusers.load(adminusers.page)">${t('cset.banner.retry')}</button>
       </div>`;
   },
 
@@ -336,9 +346,9 @@ const adminusers = {
   },
 
   formatdate(value) {
-    if (!value) return 'Unknown';
+    if (!value) return t('aapi.unknown');
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return 'Unknown';
+    if (Number.isNaN(date.getTime())) return t('aapi.unknown');
     return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   },
 

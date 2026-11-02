@@ -33,11 +33,11 @@ const Utils = {
 
   statuslabel(state) {
     const map = {
-      running: 'Running',
-      starting: 'Starting',
-      stopping: 'Stopping',
-      online: 'Online',
-      offline: 'Offline'
+      running: t('status.running'),
+      starting: t('status.starting'),
+      stopping: t('status.stopping'),
+      online: t('status.online'),
+      offline: t('status.offline')
     };
     return map[state] || state || 'Unknown';
   },

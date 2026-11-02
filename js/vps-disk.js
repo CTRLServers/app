@@ -15,28 +15,28 @@ const VPSDisk = {
 
   renderloading() {
     const c = Utils.el('tabDisk');
-    if (c) c.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Loading...</div></div>';
+    if (c) c.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">${t('common.loading')}</div></div>`;
   },
 
   render() {
     const c = Utils.el('tabDisk');
     c.innerHTML = `
       <div class="vps-section-header">
-        <h2>Disk Usage Analyzer</h2>
-        <button class="btn btn-sm btn-secondary" onclick="VPSDisk.fetch()">Refresh</button>
+        <h2>${t('disk.heading')}</h2>
+        <button class="btn btn-sm btn-secondary" onclick="VPSDisk.fetch()">${t('disk.refresh')}</button>
       </div>
       <div class="vps-disk-overview" id="diskOverview"></div>
       <div class="vps-disk-section">
-        <h3>Filesystem Usage</h3>
+        <h3>${t('disk.fsusage')}</h3>
         <div class="vps-disk-bars" id="diskBars"></div>
       </div>
       <div class="vps-disk-section">
-        <h3>Directory Treemap</h3>
-        <p class="vps-disk-hint">Top directories by disk usage in <code>/</code></p>
+        <h3>${t('disk.treemap')}</h3>
+        <p class="vps-disk-hint">${t('disk.treemap.hint')}</p>
         <div class="vps-disk-treemap" id="diskTreemap"></div>
       </div>
       <div class="vps-disk-section">
-        <h3>Largest Files</h3>
+        <h3>${t('disk.largest')}</h3>
         <div class="vps-disk-files" id="diskFiles"></div>
       </div>`;
   },
@@ -83,8 +83,8 @@ const VPSDisk = {
         </div>
         <div class="vps-disk-stat-info">
           <div class="vps-disk-stat-val">${Utils.formatbytes(used)} / ${Utils.formatbytes(total)}</div>
-          <div class="vps-disk-stat-lbl">Used / Total</div>
-          <div class="vps-disk-stat-avail">Available: ${Utils.formatbytes(avail)}</div>
+          <div class="vps-disk-stat-lbl">${t('disk.usedtotal')}</div>
+          <div class="vps-disk-stat-avail">${t('disk.available', { size: Utils.formatbytes(avail) })}</div>
         </div>
       </div>`;
   },
@@ -110,7 +110,7 @@ const VPSDisk = {
       });
     }
     if (entries.length === 0) {
-      el.innerHTML = '<div class="vps-disk-empty">No filesystem data.</div>';
+      el.innerHTML = `<div class="vps-disk-empty">${t('disk.nofs')}</div>`;
       return;
     }
     el.innerHTML = entries.map(e => `
@@ -124,7 +124,7 @@ const VPSDisk = {
         </div>
         <div class="vps-disk-bar-meta">
           <span>${Utils.escape(e.fs)}</span>
-          <span>${e.used} used of ${e.size}</span>
+          <span>${Utils.escape(e.used)} ${t('disk.barmeta', { size: Utils.escape(e.size) })}</span>
         </div>
       </div>`).join('');
   },
@@ -146,7 +146,7 @@ const VPSDisk = {
     }
     entries.sort((a, b) => b.val - a.val);
     if (entries.length === 0) {
-      el.innerHTML = '<div class="vps-disk-empty">No treemap data available.</div>';
+      el.innerHTML = `<div class="vps-disk-empty">${t('disk.notreemap')}</div>`;
       return;
     }
     const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
@@ -173,11 +173,11 @@ const VPSDisk = {
       if (size > 0 && path) entries.push({ size, path });
     }
     if (entries.length === 0) {
-      el.innerHTML = '<div class="vps-disk-empty">No large files found.</div>';
+      el.innerHTML = `<div class="vps-disk-empty">${t('disk.nofiles')}</div>`;
       return;
     }
     el.innerHTML = `<table class="vps-disk-file-table">
-      <thead><tr><th>Size</th><th>Path</th></tr></thead>
+      <thead><tr><th>${t('disk.h.size')}</th><th>${t('disk.h.path')}</th></tr></thead>
       <tbody>${entries.map(e => `<tr>
         <td class="vps-disk-file-size">${Utils.formatbytes(e.size)}</td>
         <td class="vps-disk-file-path" title="${Utils.escape(e.path)}">${Utils.escape(e.path)}</td>

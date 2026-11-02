@@ -24,22 +24,22 @@ const ServerKeychain = {
   opencreatemodal(editIdx) {
     const isEdit = editIdx !== undefined && editIdx !== null;
     const existing = isEdit ? this.keys[editIdx] : null;
-    Modal.open(isEdit ? 'Edit Key' : 'New Key', `
+    Modal.open(isEdit ? t('keychain.title.edit') : t('keychain.title.new'), `
       <div class="form-group">
-        <label class="form-label">Name</label>
-        <input type="text" class="form-input" id="keyName" placeholder="e.g. My SSH Key" value="${existing ? Utils.escape(existing.name) : ''}" />
+        <label class="form-label">${t('keychain.name')}</label>
+        <input type="text" class="form-input" id="keyName" placeholder="${t('keychain.name_placeholder')}" value="${existing ? Utils.escape(existing.name) : ''}" />
       </div>
       <div class="form-group">
-        <label class="form-label">Public Key</label>
+        <label class="form-label">${t('keychain.public')}</label>
         <textarea class="form-input keychain-textarea" id="keyPublic" placeholder="ssh-rsa AAAA... user@host">${existing ? Utils.escape(existing.publicKey) : ''}</textarea>
       </div>
       <div class="form-group">
-        <label class="form-label">Private Key</label>
-        <textarea class="form-input keychain-textarea" id="keyPrivate" placeholder="${isEdit ? 'Leave blank to keep the securely stored private key' : '-----BEGIN OPENSSH PRIVATE KEY-----...'}"></textarea>
+        <label class="form-label">${t('keychain.private')}</label>
+        <textarea class="form-input keychain-textarea" id="keyPrivate" placeholder="${isEdit ? t('keychain.private_keep') : '-----BEGIN OPENSSH PRIVATE KEY-----...'}"></textarea>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="keySaveBtn">${isEdit ? 'Save Changes' : 'Create Key'}</button>
+        <button class="btn btn-secondary" onclick="Modal.close()">${t('keychain.cancel')}</button>
+        <button class="btn btn-primary" id="keySaveBtn">${isEdit ? t('keychain.save_changes') : t('keychain.create')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -88,7 +88,7 @@ const ServerKeychain = {
   remove(idx) {
     const key = this.keys[idx];
     if (!key) return;
-    Modal.confirm('Delete Key', `Are you sure you want to delete "${Utils.escape(key.name)}"? This cannot be undone.`, () => {
+    Modal.confirm(t('keychain.delete.title'), t('keychain.delete.message', { name: Utils.escape(key.name) }), () => {
       this.keys.splice(idx, 1);
       this.save();
       this.renderall();
@@ -123,10 +123,10 @@ const ServerKeychain = {
                 <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
               </svg>
             </div>
-            <h3>You have no keys right now.</h3>
+            <h3>${t('keychain.empty')}</h3>
             <button class="btn btn-primary" onclick="ServerKeychain.opencreatemodal()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Create one!
+              ${t('keychain.create_one')}
             </button>
           </div>
         </div>`;
@@ -136,18 +136,18 @@ const ServerKeychain = {
         <div class="network-header">
           <div class="network-info-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-            <span>Store and manage your SSH keys locally.</span>
+            <span>${t('keychain.hint')}</span>
           </div>
           <button class="btn btn-primary btn-sm" onclick="ServerKeychain.opencreatemodal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            New Key
+            ${t('keychain.new')}
           </button>
         </div>
         <div class="keychain-list">`;
     for (let i = 0; i < this.keys.length; i++) {
       const key = this.keys[i];
-      const fingerprint = key.publicKey ? key.publicKey.substring(0, 60) + (key.publicKey.length > 60 ? '...' : '') : 'No public key';
-      const maskedPrivate = key.secretId ? '\u2022'.repeat(20) : 'No private key';
+      const fingerprint = key.publicKey ? key.publicKey.substring(0, 60) + (key.publicKey.length > 60 ? '...' : '') : t('keychain.no_public');
+      const maskedPrivate = key.secretId ? '\u2022'.repeat(20) : t('keychain.no_private');
       html += `
           <div class="keychain-card">
             <div class="keychain-card-header">
@@ -158,26 +158,26 @@ const ServerKeychain = {
               <div class="keychain-card-actions">
                 <button class="btn btn-secondary btn-sm" onclick="ServerKeychain.opencreatemodal(${i})">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                  Edit
+                  ${t('keychain.edit')}
                 </button>
-                <button class="btn-icon btn-danger-sm" onclick="ServerKeychain.remove(${i})" title="Delete">
+                <button class="btn-icon btn-danger-sm" onclick="ServerKeychain.remove(${i})" title="${t('keychain.delete')}">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
               </div>
             </div>
             <div class="keychain-card-details">
               <div class="db-row">
-                <span class="db-label">Public Key</span>
+                <span class="db-label">${t('keychain.public')}</span>
                 <div class="db-val-box">
                   <code>${Utils.escape(fingerprint)}</code>
-                  <span class="copy-icon" onclick="ServerKeychain.copyfield(${i}, 'publicKey')" title="Copy">${copySvg}</span>
+                  <span class="copy-icon" onclick="ServerKeychain.copyfield(${i}, 'publicKey')" title="${t('keychain.copy')}">${copySvg}</span>
                 </div>
               </div>
               <div class="db-row">
-                <span class="db-label">Private Key</span>
+                <span class="db-label">${t('keychain.private')}</span>
                 <div class="db-val-box">
                   <code>${Utils.escape(maskedPrivate)}</code>
-                  <span class="copy-icon" onclick="ServerKeychain.copyfield(${i}, 'privateKey')" title="Copy">${copySvg}</span>
+                  <span class="copy-icon" onclick="ServerKeychain.copyfield(${i}, 'privateKey')" title="${t('keychain.copy')}">${copySvg}</span>
                 </div>
               </div>
             </div>

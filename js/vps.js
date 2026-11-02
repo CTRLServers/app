@@ -99,7 +99,7 @@ const VPSConsole = {
       if (id !== this.sshId) return;
       this.connected = false;
       this.sshId = null;
-      const message = reason || 'Connection closed';
+      const message = reason || t('vps.closed');
       if (this.server) {
         this._cache[this._cachekey(this.server)] = { sshId: null, connected: false, termData: this._termDataCache, disconnected: true, reason: message };
       }
@@ -279,7 +279,7 @@ const VPSConsole = {
 
   async checkcachedconnection(cached) {
     if (!cached || cached.sshId === null || cached.sshId === undefined) {
-      this.showreconnect(cached?.reason || 'Connection timed-out');
+      this.showreconnect(cached?.reason || t('vps.timeout'));
       return;
     }
     try {
@@ -287,10 +287,10 @@ const VPSConsole = {
       if (active || !this.server || this.sshId !== cached.sshId) return;
       this.connected = false;
       this.sshId = null;
-      this._cache[this._cachekey(this.server)] = { ...cached, sshId: null, connected: false, disconnected: true, reason: 'Connection timed-out' };
-      this.showreconnect('Connection timed-out');
+      this._cache[this._cachekey(this.server)] = { ...cached, sshId: null, connected: false, disconnected: true, reason: t('vps.timeout') };
+      this.showreconnect(t('vps.timeout'));
     } catch (e) {
-      this.showreconnect('Connection timed-out');
+      this.showreconnect(t('vps.timeout'));
     }
   },
 
@@ -304,7 +304,7 @@ const VPSConsole = {
       panel.className = 'vps-console-reconnect';
       container.appendChild(panel);
     }
-    panel.innerHTML = `<div>${Utils.escape(reason || 'Connection timed-out')}</div><button class="btn btn-primary btn-sm" onclick="VPSConsole.reconnect()">Reconnect</button>`;
+    panel.innerHTML = `<div>${Utils.escape(reason || t('vps.timeout'))}</div><button class="btn btn-primary btn-sm" onclick="VPSConsole.reconnect()">${t('vps.reconnect')}</button>`;
     panel.style.display = 'flex';
   },
 
@@ -316,7 +316,7 @@ const VPSConsole = {
   async reconnect() {
     if (!this.server) return;
     this.hidereconnect();
-    if (this.term) this.term.writeln('\r\n\x1b[36mReconnecting...\x1b[0m');
+    if (this.term) this.term.writeln('\r\n\x1b[36m' + t('vps.reconnecting') + '\x1b[0m');
     this.sshId = null;
     this.connected = false;
     await this.connect();
@@ -360,7 +360,7 @@ const VPSConsole = {
 
     config.authType = this.server.authType || 'password';
 
-    if (this.term) this.term.writeln('\x1b[36mConnecting to ' + this.server.host + '...\x1b[0m');
+    if (this.term) this.term.writeln('\x1b[36m' + t('vps.connecting', { host: this.server.host }) + '\x1b[0m');
 
     try {
       const sshId = await window.electronAPI.sshconnect(config);
@@ -371,7 +371,7 @@ const VPSConsole = {
         return;
       }
       if (sshId === null || sshId === undefined) {
-        if (this.term) this.term.writeln('\x1b[31mConnection failed: no session ID returned.\x1b[0m');
+        if (this.term) this.term.writeln('\x1b[31m' + t('vps.nosession') + '\x1b[0m');
         return;
       }
       this.sshId = sshId;
@@ -388,12 +388,12 @@ const VPSConsole = {
       const msg = typeof e === 'string' ? e : (e && e.message) ? e.message : String(e);
       if (this.term) {
         if (msg.includes('authentication') || msg.includes('AUTH') || msg.includes('auth')) {
-          this.term.writeln('\x1b[31mAuthentication failed. Check your username and password/key.\x1b[0m');
+          this.term.writeln('\x1b[31m' + t('vps.authfailed') + '\x1b[0m');
         } else {
-          this.term.writeln('\x1b[31mConnection failed: ' + msg + '\x1b[0m');
+          this.term.writeln('\x1b[31m' + t('vps.failed', { error: msg }) + '\x1b[0m');
         }
       }
-      this.showreconnect(/timed out|timeout/i.test(msg) ? 'Connection timed-out' : 'Connection failed: ' + msg);
+      this.showreconnect(/timed out|timeout/i.test(msg) ? t('vps.timeout') : t('vps.failed', { error: msg }));
     }
   },
 

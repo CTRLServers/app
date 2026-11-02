@@ -25,11 +25,11 @@ const ServerBackups = {
   },
 
   opencreatemodal() {
-    Modal.open('Create Backup', `
+    Modal.open(t('backups.create.title'), `
       <div class="form-group">
-        <label class="form-label">Backup Name</label>
+        <label class="form-label">${t('backups.namelabel')}</label>
         <p style="font-size:12px;color:var(--text-muted);margin:0 0 6px;">If provided, the name that should be used to reference this backup.</p>
-        <input type="text" class="form-input" id="backupName" placeholder="Optional backup name" />
+        <input type="text" class="form-input" id="backupName" placeholder="${t('backups.name.ph')}" />
       </div>
       <div class="form-group">
         <label class="form-label">Ignored Files & Directories</label>
@@ -45,7 +45,7 @@ const ServerBackups = {
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="backupCreateBtn">Start Backup</button>
+        <button class="btn btn-primary" id="backupCreateBtn">${t('backups.start')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -86,7 +86,7 @@ const ServerBackups = {
       alert('Unlock the backup before deleting.');
       return;
     }
-    Modal.confirm('Delete Backup', `Delete backup "${backup.name}"? This cannot be undone.`, async () => {
+    Modal.confirm(t('files.delete'), t('backups.delete.confirm', { name: backup.name }), async () => {
       const s = App.currentServer;
       if (!s) return;
       const apiKey = await Servers.resolveapikey(s);
@@ -102,7 +102,7 @@ const ServerBackups = {
   async restorebackup(idx) {
     const backup = this.backups[idx];
     if (!backup) return;
-    Modal.confirm('Restore Backup', `Restore server from backup "${backup.name}"? Current files will be truncated.`, async () => {
+    Modal.confirm(t('backups.restore.title'), t('backups.restore.confirm', { name: backup.name }), async () => {
       const s = App.currentServer;
       if (!s) return;
       const apiKey = await Servers.resolveapikey(s);
@@ -179,11 +179,11 @@ const ServerBackups = {
         <div class="network-header">
           <div class="network-info-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            <span>Backups let you restore your server to a previous state.</span>
+            <span>${t('backups.intro')}</span>
           </div>
           <button class="btn btn-primary btn-sm" onclick="ServerBackups.opencreatemodal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create Backup
+            ${t('backups.create.btn')}
           </button>
         </div>
         <div class="backups-list">`;
@@ -193,9 +193,9 @@ const ServerBackups = {
       const isInProgress = backup.completed_at === null && backup.is_successful === null;
       const isOk = backup.is_successful === true;
       let statusClass = 'pending';
-      let statusText = 'In Progress';
-      if (isFailed) { statusClass = 'failed'; statusText = 'Failed'; }
-      else if (isOk) { statusClass = 'success'; statusText = 'Completed'; }
+      let statusText = t('backups.inprogress');
+      if (isFailed) { statusClass = 'failed'; statusText = t('backups.failed'); }
+      else if (isOk) { statusClass = 'success'; statusText = t('backups.completed'); }
 
       html += `
           <div class="backup-card${backup.is_locked ? ' locked' : ''}${isFailed ? ' failed' : ''}${isInProgress ? ' in-progress' : ''}">
@@ -210,7 +210,7 @@ const ServerBackups = {
                 </div>
               </div>
               <div class="backup-badges">
-                ${backup.is_locked ? '<span class="backup-badge locked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Locked</span>' : ''}
+                ${backup.is_locked ? `<span class="backup-badge locked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> ${t('backups.locked')}</span>` : ''}
                 <span class="backup-badge ${statusClass}">${statusText}</span>
               </div>
             </div>
@@ -226,23 +226,23 @@ const ServerBackups = {
             <div class="backup-card-actions">
               ${isOk ? `<button class="btn btn-secondary btn-sm" onclick="ServerBackups.downloadbackup(${i})">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download
+                ${t('files.download')}
               </button>` : ''}
               ${isOk ? `<button class="btn btn-secondary btn-sm" onclick="ServerBackups.restorebackup(${i})">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                Restore
+                ${t('backups.restore.btn')}
               </button>` : ''}
               <button class="btn btn-secondary btn-sm" onclick="ServerBackups.togglelock(${i})">
-                ${backup.is_locked ? 'Unlock' : 'Lock'}
+                ${backup.is_locked ? t('backups.unlock') : t('backups.lockbtn')}
               </button>
-              ${!backup.is_locked ? `<button class="btn-icon btn-danger-sm" onclick="ServerBackups.deletebackup(${i})" title="Delete">
+              ${!backup.is_locked ? `<button class="btn-icon btn-danger-sm" onclick="ServerBackups.deletebackup(${i})" title="${t('files.delete')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>` : ''}
             </div>
           </div>`;
     }
     if (!this.backups.length) {
-      html += '<div class="tab-empty">No backups found. Create one to get started.</div>';
+      html += `<div class="tab-empty">${t('backups.empty')}</div>`;
     }
     html += '</div></div>';
     container.innerHTML = html;

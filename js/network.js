@@ -49,7 +49,7 @@ const ServerNetwork = {
   },
 
   async remove(id) {
-    Modal.confirm('Remove Allocation', 'Are you sure you want to remove this allocation? The server must be stopped.', async () => {
+    Modal.confirm(t('net.remove.title'), t('net.remove.confirm'), async () => {
       const s = App.currentServer;
       if (!s) return;
       const apiKey = await Servers.resolveapikey(s);
@@ -68,14 +68,14 @@ const ServerNetwork = {
     if (!alloc) return;
     this._editingAlloc = alloc;
     const current = alloc.notes || '';
-    Modal.open('Allocation Notes', `
+    Modal.open(t('net.notes.title'), `
       <div class="form-group">
-        <label class="form-label">Notes for ${Utils.escape(alloc.ip)}:${alloc.port}</label>
-        <textarea class="form-input" id="allocNotes" rows="3" placeholder="Add notes...">${Utils.escape(current)}</textarea>
+        <label class="form-label">${t('net.notesfor', { ip: Utils.escape(alloc.ip) + ':' + alloc.port })}</label>
+        <textarea class="form-input" id="allocNotes" rows="3" placeholder="${t('net.notes.ph')}">${Utils.escape(current)}</textarea>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-        <button class="btn btn-primary" id="allocNotesBtn">Save</button>
+        <button class="btn btn-primary" id="allocNotesBtn">${t('settings.save')}</button>
       </div>
     `);
     setTimeout(() => {
@@ -109,11 +109,11 @@ const ServerNetwork = {
         <div class="network-header">
           <div class="network-info-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <span>Port allocations allow your server to communicate over different ports.</span>
+            <span>${t('net.intro')}</span>
           </div>
           <button class="btn btn-primary btn-sm" onclick="ServerNetwork.create()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create Allocation
+            ${t('net.create.btn')}
           </button>
         </div>
         <div class="alloc-list">`;
@@ -127,22 +127,22 @@ const ServerNetwork = {
                   <code>${Utils.escape(addr)}</code><span class="port-sep">:</span><code>${alloc.port}</code>
                 </div>
                 <div class="alloc-note" onclick="ServerNetwork.opennotes(${alloc.id})">
-                  ${Utils.escape(alloc.notes || 'No notes added')}
+                  ${Utils.escape(alloc.notes || t('net.nonotes'))}
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                 </div>
               </div>
               ${alloc.is_default ? '<span class="primary-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Primary</span>' : ''}
             </div>
             <div class="alloc-actions">
-              ${!alloc.is_default ? `<button class="btn btn-secondary btn-sm" onclick="ServerNetwork.setprimary(${alloc.id})">Make Primary</button>` : ''}
-              ${!alloc.is_default ? `<button class="btn-icon btn-danger-sm" onclick="ServerNetwork.remove(${alloc.id})" title="Remove allocation">
+              ${!alloc.is_default ? `<button class="btn btn-secondary btn-sm" onclick="ServerNetwork.setprimary(${alloc.id})">${t('net.makeprimary')}</button>` : ''}
+              ${!alloc.is_default ? `<button class="btn-icon btn-danger-sm" onclick="ServerNetwork.remove(${alloc.id})" title="${t('net.remove.title')}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>` : ''}
             </div>
           </div>`;
     }
     if (!this.allocations.length) {
-      html += '<div class="tab-empty">No allocations configured.</div>';
+      html += `<div class="tab-empty">${t('net.empty')}</div>`;
     }
     html += '</div></div>';
     container.innerHTML = html;
